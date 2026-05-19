@@ -1,4 +1,4 @@
-﻿package com.aha.common.exception;
+package com.aha.common.exception;
 
 import org.springframework.validation.BindingResult;
 
