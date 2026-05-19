@@ -1,4 +1,4 @@
-package com.aha.global.exception;
+package com.aha.common.exception;
 
 public class BusinessException extends RuntimeException {
 
