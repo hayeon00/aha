@@ -56,3 +56,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+
+### Frontend ###
+aha-frontend/node_modules/
+aha-frontend/dist/
+aha-frontend/.env
+aha-frontend/.env.local
+aha-frontend/.env.development.local
+aha-frontend/.env.production.local
+aha-frontend/npm-debug.log*
+aha-frontend/yarn-debug.log*
+aha-frontend/yarn-error.log*
+aha-frontend/pnpm-debug.log*
