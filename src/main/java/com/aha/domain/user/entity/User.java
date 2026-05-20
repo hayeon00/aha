@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "user",
+    name = "users",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_user_email", columnNames = "email"),
         @UniqueConstraint(name = "uk_user_nickname", columnNames = "nickname")
@@ -39,7 +39,7 @@ public class User {
   private String nickname;
 
   @Column(nullable = false, length = 20)
-  private String role; // 초기값 설정을 위해 String 유지 (필요 시 Enum 전환 가능)
+  private String role;
 
   @Column(nullable = false, length = 20)
   private String status;

@@ -1,9 +1,18 @@
 
+# drop table ai_generated_problem_choice;
+# drop table problem_review_detail;
+# drop table problem_review;
+# drop table problem_choice;
+# drop table problem_available_usage_type;
+# drop table problem;
+# drop table ai_generated_problem;
+# drop table problem_set_generation_job;
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 
-DROP TABLE IF EXISTS `user`;
-CREATE TABLE `user` (
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
                         `id`                BIGINT          NOT NULL AUTO_INCREMENT,
                         `email`             VARCHAR(100)    NOT NULL,
                         `password`          VARCHAR(255)    NOT NULL,
