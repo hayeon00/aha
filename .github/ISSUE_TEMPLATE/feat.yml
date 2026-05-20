@@ -1,0 +1,70 @@
+name: "Feat"
+description: "새로운 기능 구현"
+title: "[Feat] "
+labels: ["feat"]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: "기능 요약"
+      description: "구현할 기능을 간단히 작성해주세요."
+      placeholder: "예: 회원가입 및 로그인 기능 구현"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "기능 설명"
+      description: "기능이 필요한 이유와 동작 방식을 작성해주세요."
+      placeholder: |
+        사용자가 이메일, 비밀번호, 이름을 입력하여 회원가입할 수 있다.
+        로그인 성공 시 JWT Access Token을 발급한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: "작업 목록"
+      description: "구현해야 할 작업을 체크리스트로 작성해주세요."
+      value: |
+        - [ ] DTO 생성
+        - [ ] Entity/Repository 연동
+        - [ ] Service 로직 구현
+        - [ ] Controller 구현
+        - [ ] 예외 처리
+        - [ ] API 테스트
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: "관련 API"
+      description: "관련된 API Method와 URL을 작성해주세요."
+      value: |
+        POST /api/v1/auth/signup
+        POST /api/v1/auth/login
+    validations:
+      required: false
+
+  - type: input
+    id: branch
+    attributes:
+      label: "브랜치명"
+      description: "이슈 생성 후 사용할 브랜치명을 작성해주세요."
+      placeholder: "예: feat/12-auth-signup-login"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "우선순위"
+      options:
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
