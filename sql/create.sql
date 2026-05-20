@@ -178,7 +178,7 @@ CREATE TABLE `problem_set_generation_job` (
                                               `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                               `updated_at`          DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
                                               PRIMARY KEY (`id`),
-                                              CONSTRAINT `fk_psgj_user_id` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
+                                              CONSTRAINT `fk_psgj_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
                                               CONSTRAINT `fk_psgj_exam_version_id` FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`) ON DELETE CASCADE,
                                               CONSTRAINT `fk_psgj_exam_scope_node_id` FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE SET NULL,
                                               CONSTRAINT `fk_psgj_domain_type_id` FOREIGN KEY (`domain_type_id`) REFERENCES `domain_type` (`id`) ON DELETE SET NULL

@@ -1,11 +1,23 @@
 package com.aha.domain.problem.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -27,19 +39,14 @@ public class ProblemChoice {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "problem_id", nullable = false, foreignKey = @ForeignKey(name = "fk_problem_choice_problem_id"))
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private Problem problem;
 
   @Column(name = "choice_no", nullable = false)
   private Integer choiceNo;
 
-  @Column(name = "choice_type", nullable = false, length = 30)
-  private String choiceType;
-
-  @Column(name = "choice_content_json", nullable = false, columnDefinition = "TEXT")
+  @Column(name = "choice_content_json", nullable = false, columnDefinition = "JSON")
   private String choiceContentJson;
-
-  @Column(name = "is_answer", nullable = false)
-  private boolean isAnswer;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -50,13 +57,10 @@ public class ProblemChoice {
   private LocalDateTime updatedAt;
 
   @Builder
-  public ProblemChoice(Problem problem, Integer choiceNo, String choiceType,
-      String choiceContentJson, Boolean isAnswer) {
+  public ProblemChoice(Problem problem, Integer choiceNo, String choiceContentJson) {
     this.problem = problem;
     this.choiceNo = choiceNo;
-    this.choiceType = choiceType;
     this.choiceContentJson = choiceContentJson;
-    this.isAnswer = (isAnswer != null) ? isAnswer : false;
     if (problem != null) {
       problem.getChoices().add(this);
     }

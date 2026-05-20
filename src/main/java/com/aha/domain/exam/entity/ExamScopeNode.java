@@ -1,11 +1,24 @@
 package com.aha.domain.exam.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -16,7 +29,7 @@ import java.util.List;
 @Table(
     name = "exam_scope_node",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_exam_scope_node_version_code", columnNames = {"exam_version_id", "code"})
+        @UniqueConstraint(name = "uk_exam_version_id_code", columnNames = {"exam_version_id", "code"})
     }
 )
 @Getter
@@ -29,18 +42,19 @@ public class ExamScopeNode {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_version_id", nullable = false, foreignKey = @ForeignKey(name = "fk_exam_scope_node_exam_version_id"))
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private ExamVersion examVersion;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_part_id", nullable = false, foreignKey = @ForeignKey(name = "fk_exam_scope_node_exam_part_id"))
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private ExamPart examPart;
 
-  // 계층형 트리 구조 매핑 (Parent)
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "parent_id", foreignKey = @ForeignKey(name = "fk_exam_scope_node_parent_id"))
+  @OnDelete(action = OnDeleteAction.SET_NULL)
   private ExamScopeNode parent;
 
-  // 계층형 트리 구조 매핑 (Children)
   @OneToMany(mappedBy = "parent")
   private List<ExamScopeNode> children = new ArrayList<>();
 
@@ -48,7 +62,7 @@ public class ExamScopeNode {
   private String code;
 
   @Column(name = "node_type", nullable = false, length = 30)
-  private String nodeType; // CHAPTER, SECTION 등
+  private String nodeType;
 
   @Column(nullable = false)
   private Integer depth;
@@ -86,7 +100,7 @@ public class ExamScopeNode {
     this.title = title;
     this.isLeaf = isLeaf;
     this.isActive = isActive;
-    this.displayOrder = displayOrder;
+    this.displayOrder = (displayOrder != null) ? displayOrder : 0;
     if (parent != null) {
       parent.getChildren().add(this);
     }
