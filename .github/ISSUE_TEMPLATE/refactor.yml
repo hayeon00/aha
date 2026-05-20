@@ -1,0 +1,43 @@
+name: "Refactor"
+description: "기능 변경 없는 코드 구조 개선"
+title: "[Refactor] "
+labels: ["refactor"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: "리팩토링 대상"
+      description: "리팩토링할 파일, 클래스, 기능을 작성해주세요."
+      placeholder: "예: AuthService 로그인 로직"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: "리팩토링 이유"
+      description: "왜 리팩토링이 필요한지 작성해주세요."
+      placeholder: |
+        AuthService에 회원가입/로그인 검증 로직이 길어져서 메서드 분리가 필요하다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: "작업 목록"
+      value: |
+        - [ ] 중복 코드 제거
+        - [ ] 메서드 분리
+        - [ ] 네이밍 정리
+        - [ ] 테스트 확인
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: "브랜치명"
+      placeholder: "예: refactor/15-auth-service"
+    validations:
+      required: false
