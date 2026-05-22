@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 import SyllabusTree from "../components/exam/SyllabusTree";
 
-function HomePage() {
+function HomePage({ onLogout }) {
     const [examVersionId, setExamVersionId] = useState(1);
     const [syllabus, setSyllabus] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -23,7 +23,7 @@ function HomePage() {
                 `/api/v1/exam-versions/${examVersionId}/syllabus`
             );
 
-            setSyllabus(response.data.data);
+            setSyllabus(response.data.data || []);
         } catch (error) {
             console.error(error);
             setErrorMessage("목차 조회에 실패했습니다.");
@@ -51,7 +51,9 @@ function HomePage() {
             setLearningContent(response.data.data);
         } catch (error) {
             console.error(error);
-            setErrorMessage("개념 설명 조회에 실패했습니다. 해당 소목차에 데이터가 있는지 확인해주세요.");
+            setErrorMessage(
+                "개념 설명 조회에 실패했습니다. 해당 소목차에 데이터가 있는지 확인해주세요."
+            );
         } finally {
             setContentLoading(false);
         }
@@ -69,6 +71,10 @@ function HomePage() {
                 <p className="hero-description">
                     목차를 클릭하면 해당 소목차의 개념 설명을 확인할 수 있습니다.
                 </p>
+
+                <button className="logout-button" type="button" onClick={onLogout}>
+                    로그아웃
+                </button>
             </section>
 
             <section className="control-section">
@@ -84,7 +90,10 @@ function HomePage() {
                 </button>
             </section>
 
-            {syllabusLoading && <p className="info-text">목차를 불러오는 중입니다...</p>}
+            {syllabusLoading && (
+                <p className="info-text">목차를 불러오는 중입니다...</p>
+            )}
+
             {errorMessage && <p className="error-text">{errorMessage}</p>}
 
             <section className="content-layout">
@@ -134,7 +143,9 @@ function HomePage() {
                                     <div className="body-list">
                                         {learningContent.bodies.map((body) => (
                                             <article key={body.id} className="body-card">
-                        <span className={`body-type ${body.bodyType.toLowerCase()}`}>
+                        <span
+                            className={`body-type ${body.bodyType.toLowerCase()}`}
+                        >
                           {convertBodyType(body.bodyType)}
                         </span>
                                                 <h4>{body.title}</h4>
