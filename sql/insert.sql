@@ -216,3 +216,14 @@ INSERT INTO exam_scope_node (exam_version_id, exam_part_id, code, parent_id, nod
 INSERT INTO exam_scope_node (exam_version_id, exam_part_id, code, parent_id, node_type, depth, title, is_leaf, is_active, display_order) SELECT ev.id, ep.id, 'SQLD-SQL-03-03', (SELECT id FROM exam_scope_node WHERE code = 'SQLD-SQL-03' LIMIT 1), 'TOPIC', 2, 'DDL', 1, 1, 3 FROM exam_version ev JOIN exam e ON ev.exam_id = e.id JOIN exam_part ep ON ep.exam_version_id = ev.id WHERE e.code = 'SQLD' AND ev.version_no = 2025 AND ep.code = 'SQLD_PART_02';
 
 INSERT INTO exam_scope_node (exam_version_id, exam_part_id, code, parent_id, node_type, depth, title, is_leaf, is_active, display_order) SELECT ev.id, ep.id, 'SQLD-SQL-03-04', (SELECT id FROM exam_scope_node WHERE code = 'SQLD-SQL-03' LIMIT 1), 'TOPIC', 2, 'DCL', 1, 1, 4 FROM exam_version ev JOIN exam e ON ev.exam_id = e.id JOIN exam_part ep ON ep.exam_version_id = ev.id WHERE e.code = 'SQLD' AND ev.version_no = 2025 AND ep.code = 'SQLD_PART_02';
+
+
+INSERT INTO domain_type (
+    code,
+    name,
+    is_active
+) VALUES
+      ('CONCEPT', '개념 문제', TRUE),
+      ('WORKBOOK', '워크북', TRUE);
+
+
