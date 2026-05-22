@@ -1,12 +1,4 @@
 
-# drop table ai_generated_problem_choice;
-# drop table problem_review_detail;
-# drop table problem_review;
-# drop table problem_choice;
-# drop table problem_available_usage_type;
-# drop table problem;
-# drop table ai_generated_problem;
-# drop table problem_set_generation_job;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -302,3 +294,249 @@ CREATE TABLE `problem_available_usage_type` (
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+
+-- 하연 테이블 ======================================================================================================================
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP TABLE IF EXISTS `ai_reference`;
+DROP TABLE IF EXISTS `ai_message`;
+DROP TABLE IF EXISTS `learning_problem_attempt`;
+DROP TABLE IF EXISTS `learning_progress`;
+DROP TABLE IF EXISTS `learning_session`;
+DROP TABLE IF EXISTS `learning_content_body`;
+DROP TABLE IF EXISTS `learning_content`;
+DROP TABLE IF EXISTS `extracted_content`;
+DROP TABLE IF EXISTS `document_processing`;
+DROP TABLE IF EXISTS `learning_source_document`;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+
+CREATE TABLE `learning_source_document` (
+                                            `id`          BIGINT        NOT NULL AUTO_INCREMENT,
+                                            `title`       VARCHAR(200)  NOT NULL,
+                                            `source_type` VARCHAR(50)   NOT NULL,
+                                            `file_name`   VARCHAR(255)      NULL,
+                                            `file_path`   VARCHAR(500)      NULL,
+                                            `description` VARCHAR(500)      NULL,
+                                            `is_active`   BOOLEAN       NOT NULL DEFAULT TRUE,
+                                            `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `updated_at`  DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+                                            PRIMARY KEY (`id`)
+);
+
+
+CREATE TABLE `document_processing` (
+                                       `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
+                                       `source_document_id` BIGINT        NOT NULL,
+                                       `status`             VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
+                                       `requested_by`       BIGINT            NULL,
+                                       `error_message`      VARCHAR(1000)     NULL,
+                                       `started_at`         DATETIME          NULL,
+                                       `completed_at`       DATETIME          NULL,
+                                       `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       `updated_at`         DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+                                       PRIMARY KEY (`id`),
+                                       CONSTRAINT `fk_document_processing_source_document_id`
+                                           FOREIGN KEY (`source_document_id`) REFERENCES `learning_source_document` (`id`) ON DELETE CASCADE,
+                                       CONSTRAINT `fk_document_processing_requested_by`
+                                           FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+);
+
+
+CREATE TABLE `extracted_content` (
+                                     `id`                   BIGINT    NOT NULL AUTO_INCREMENT,
+                                     `source_document_id`   BIGINT    NOT NULL,
+                                     `processing_id`        BIGINT        NULL,
+                                     `exam_scope_node_id`   BIGINT        NULL,
+                                     `chunk_order`          INT       NOT NULL,
+                                     `page_no`              INT           NULL,
+                                     `content_text`         LONGTEXT  NOT NULL,
+                                     `is_used_for_learning` BOOLEAN   NOT NULL DEFAULT FALSE,
+                                     `is_used_for_rag`      BOOLEAN   NOT NULL DEFAULT TRUE,
+                                     `created_at`           DATETIME  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                     `updated_at`           DATETIME      NULL ON UPDATE CURRENT_TIMESTAMP,
+                                     PRIMARY KEY (`id`),
+                                     CONSTRAINT `fk_extracted_content_source_document_id`
+                                         FOREIGN KEY (`source_document_id`) REFERENCES `learning_source_document` (`id`) ON DELETE CASCADE,
+                                     CONSTRAINT `fk_extracted_content_processing_id`
+                                         FOREIGN KEY (`processing_id`) REFERENCES `document_processing` (`id`) ON DELETE SET NULL,
+                                     CONSTRAINT `fk_extracted_content_exam_scope_node_id`
+                                         FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE SET NULL
+);
+
+
+CREATE TABLE `learning_content` (
+                                    `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+                                    `exam_scope_node_id` BIGINT       NOT NULL,
+                                    `title`              VARCHAR(200) NOT NULL,
+                                    `summary`            VARCHAR(500)     NULL,
+                                    `rag_enabled`        BOOLEAN      NOT NULL DEFAULT TRUE,
+                                    `is_active`          BOOLEAN      NOT NULL DEFAULT TRUE,
+                                    `display_order`      INT          NOT NULL DEFAULT 1,
+                                    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                    PRIMARY KEY (`id`),
+                                    UNIQUE KEY `uk_learning_content_scope_node_order` (`exam_scope_node_id`, `display_order`),
+                                    CONSTRAINT `fk_learning_content_exam_scope_node_id`
+                                        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE
+);
+
+
+CREATE TABLE `learning_content_body` (
+                                         `id`                  BIGINT       NOT NULL AUTO_INCREMENT,
+                                         `learning_content_id` BIGINT       NOT NULL,
+                                         `body_type`           VARCHAR(50)  NOT NULL,
+                                         `title`               VARCHAR(200)     NULL,
+                                         `body_text`           LONGTEXT     NOT NULL,
+                                         `display_order`       INT          NOT NULL,
+                                         `rag_chunk_order`     INT              NULL,
+                                         `is_active`           BOOLEAN      NOT NULL DEFAULT TRUE,
+                                         `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         `updated_at`          DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                         PRIMARY KEY (`id`),
+                                         UNIQUE KEY `uk_learning_content_body_order` (`learning_content_id`, `display_order`),
+                                         CONSTRAINT `fk_learning_content_body_learning_content_id`
+                                             FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE CASCADE
+);
+
+
+CREATE TABLE `learning_session` (
+                                    `id`                 BIGINT   NOT NULL AUTO_INCREMENT,
+                                    `user_id`            BIGINT   NOT NULL,
+                                    `exam_scope_node_id` BIGINT   NOT NULL,
+                                    `learning_content_id` BIGINT      NULL,
+                                    `started_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `ended_at`           DATETIME     NULL,
+                                    `last_accessed_at`   DATETIME     NULL,
+                                    `created_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `updated_at`         DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+                                    PRIMARY KEY (`id`),
+                                    CONSTRAINT `fk_learning_session_user_id`
+                                        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                                    CONSTRAINT `fk_learning_session_exam_scope_node_id`
+                                        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE,
+                                    CONSTRAINT `fk_learning_session_learning_content_id`
+                                        FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE SET NULL
+);
+
+
+CREATE TABLE `learning_progress` (
+                                     `id`                  BIGINT      NOT NULL AUTO_INCREMENT,
+                                     `user_id`             BIGINT      NOT NULL,
+                                     `exam_scope_node_id`  BIGINT      NOT NULL,
+                                     `learning_content_id` BIGINT          NULL,
+                                     `status`              VARCHAR(30) NOT NULL DEFAULT 'NOT_STARTED',
+                                     `view_count`          INT         NOT NULL DEFAULT 0,
+                                     `correct_count`       INT         NOT NULL DEFAULT 0,
+                                     `wrong_count`         INT         NOT NULL DEFAULT 0,
+                                     `completed_at`        DATETIME        NULL,
+                                     `last_studied_at`     DATETIME        NULL,
+                                     `created_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                     `updated_at`          DATETIME        NULL ON UPDATE CURRENT_TIMESTAMP,
+                                     PRIMARY KEY (`id`),
+                                     UNIQUE KEY `uk_learning_progress_user_scope` (`user_id`, `exam_scope_node_id`),
+                                     CONSTRAINT `fk_learning_progress_user_id`
+                                         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                                     CONSTRAINT `fk_learning_progress_exam_scope_node_id`
+                                         FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE,
+                                     CONSTRAINT `fk_learning_progress_learning_content_id`
+                                         FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE SET NULL
+);
+
+
+CREATE TABLE `learning_problem_attempt` (
+                                            `id`                  BIGINT   NOT NULL AUTO_INCREMENT,
+                                            `user_id`             BIGINT   NOT NULL,
+                                            `learning_session_id` BIGINT       NULL,
+                                            `exam_scope_node_id`  BIGINT   NOT NULL,
+                                            `problem_id`          BIGINT   NOT NULL,
+                                            `selected_choice_id`  BIGINT       NULL,
+                                            `is_correct`          BOOLEAN  NOT NULL,
+                                            `submitted_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `created_at`          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `updated_at`          DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+                                            PRIMARY KEY (`id`),
+                                            CONSTRAINT `fk_learning_problem_attempt_user_id`
+                                                FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                                            CONSTRAINT `fk_learning_problem_attempt_session_id`
+                                                FOREIGN KEY (`learning_session_id`) REFERENCES `learning_session` (`id`) ON DELETE SET NULL,
+                                            CONSTRAINT `fk_learning_problem_attempt_exam_scope_node_id`
+                                                FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE,
+                                            CONSTRAINT `fk_learning_problem_attempt_problem_id`
+                                                FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`) ON DELETE CASCADE,
+                                            CONSTRAINT `fk_learning_problem_attempt_selected_choice_id`
+                                                FOREIGN KEY (`selected_choice_id`) REFERENCES `problem_choice` (`id`) ON DELETE SET NULL
+);
+
+
+
+CREATE TABLE `ai_message` (
+                              `id`                  BIGINT      NOT NULL AUTO_INCREMENT,
+                              `learning_session_id` BIGINT          NULL,
+                              `user_id`             BIGINT      NOT NULL,
+                              `exam_scope_node_id`  BIGINT          NULL,
+                              `role`                VARCHAR(20) NOT NULL,
+                              `question_type`       VARCHAR(50)     NULL,
+                              `message_text`        LONGTEXT    NOT NULL,
+                              `created_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              `updated_at`          DATETIME        NULL ON UPDATE CURRENT_TIMESTAMP,
+                              PRIMARY KEY (`id`),
+                              CONSTRAINT `fk_ai_message_learning_session_id`
+                                  FOREIGN KEY (`learning_session_id`) REFERENCES `learning_session` (`id`) ON DELETE SET NULL,
+                              CONSTRAINT `fk_ai_message_user_id`
+                                  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                              CONSTRAINT `fk_ai_message_exam_scope_node_id`
+                                  FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE SET NULL
+);
+
+
+
+CREATE TABLE `ai_reference` (
+                                `id`                       BIGINT   NOT NULL AUTO_INCREMENT,
+                                `ai_message_id`            BIGINT   NOT NULL,
+                                `learning_content_id`      BIGINT       NULL,
+                                `learning_content_body_id` BIGINT       NULL,
+                                `extracted_content_id`     BIGINT       NULL,
+                                `similarity_score`         DOUBLE       NULL,
+                                `display_order`            INT      NOT NULL,
+                                `created_at`               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                `updated_at`               DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+                                PRIMARY KEY (`id`),
+                                CONSTRAINT `fk_ai_reference_ai_message_id`
+                                    FOREIGN KEY (`ai_message_id`) REFERENCES `ai_message` (`id`) ON DELETE CASCADE,
+                                CONSTRAINT `fk_ai_reference_learning_content_id`
+                                    FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE SET NULL,
+                                CONSTRAINT `fk_ai_reference_learning_content_body_id`
+                                    FOREIGN KEY (`learning_content_body_id`) REFERENCES `learning_content_body` (`id`) ON DELETE SET NULL,
+                                CONSTRAINT `fk_ai_reference_extracted_content_id`
+                                    FOREIGN KEY (`extracted_content_id`) REFERENCES `extracted_content` (`id`) ON DELETE SET NULL
+);
+
+
+CREATE INDEX `idx_document_processing_source_document_id` ON `document_processing` (`source_document_id`);
+
+CREATE INDEX `idx_extracted_content_source_document_id` ON `extracted_content` (`source_document_id`);
+CREATE INDEX `idx_extracted_content_exam_scope_node_id` ON `extracted_content` (`exam_scope_node_id`);
+
+CREATE INDEX `idx_learning_content_exam_scope_node_id` ON `learning_content` (`exam_scope_node_id`);
+CREATE INDEX `idx_learning_content_body_learning_content_id` ON `learning_content_body` (`learning_content_id`);
+
+CREATE INDEX `idx_learning_session_user_id` ON `learning_session` (`user_id`);
+CREATE INDEX `idx_learning_session_scope_node_id` ON `learning_session` (`exam_scope_node_id`);
+
+CREATE INDEX `idx_learning_progress_user_id` ON `learning_progress` (`user_id`);
+CREATE INDEX `idx_learning_progress_scope_node_id` ON `learning_progress` (`exam_scope_node_id`);
+
+CREATE INDEX `idx_learning_problem_attempt_user_id` ON `learning_problem_attempt` (`user_id`);
+CREATE INDEX `idx_learning_problem_attempt_problem_id` ON `learning_problem_attempt` (`problem_id`);
+
+CREATE INDEX `idx_ai_message_user_id` ON `ai_message` (`user_id`);
+CREATE INDEX `idx_ai_message_session_id` ON `ai_message` (`learning_session_id`);
+CREATE INDEX `idx_ai_reference_message_id` ON `ai_reference` (`ai_message_id`);
+
+
+-- ===================================================================================================================================
