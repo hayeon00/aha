@@ -23,7 +23,7 @@ public class SignupResponseDto {
         this.email = user.getEmail();
         this.name = user.getName();
         this.nickname = user.getNickname();
-        this.role = user.getRole();
+        this.role = user.getRole().name();
         this.status = user.getStatus();
         this.loginType = user.getLoginType();
         this.emailVerified = user.isEmailVerified();
