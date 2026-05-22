@@ -17,7 +17,6 @@ public class LearningContent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // exam_scope_node.id
     @Column(name = "exam_scope_node_id", nullable = false)
     private Long examScopeNodeId;
 
@@ -46,7 +45,7 @@ public class LearningContent {
         this.examScopeNodeId = examScopeNodeId;
         this.title = title;
         this.summary = summary;
-        this.displayOrder = displayOrder;
+        this.displayOrder = displayOrder != null ? displayOrder : 1;
         this.ragEnabled = true;
         this.isActive = true;
     }

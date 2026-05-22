@@ -6,13 +6,18 @@ function HomePage() {
     const [examVersionId, setExamVersionId] = useState(1);
     const [syllabus, setSyllabus] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [learningContent, setLearningContent] = useState(null);
+
+    const [syllabusLoading, setSyllabusLoading] = useState(false);
+    const [contentLoading, setContentLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
     const fetchSyllabus = async () => {
         try {
-            setLoading(true);
+            setSyllabusLoading(true);
             setErrorMessage("");
+            setSelectedNode(null);
+            setLearningContent(null);
 
             const response = await axiosInstance.get(
                 `/api/v1/exam-versions/${examVersionId}/syllabus`
@@ -21,9 +26,34 @@ function HomePage() {
             setSyllabus(response.data.data);
         } catch (error) {
             console.error(error);
-            setErrorMessage("목차 조회에 실패했습니다. 백엔드 서버와 API 경로를 확인해주세요.");
+            setErrorMessage("목차 조회에 실패했습니다.");
         } finally {
-            setLoading(false);
+            setSyllabusLoading(false);
+        }
+    };
+
+    const handleSelectNode = async (node) => {
+        setSelectedNode(node);
+        setLearningContent(null);
+        setErrorMessage("");
+
+        if (!node.isLeaf) {
+            return;
+        }
+
+        try {
+            setContentLoading(true);
+
+            const response = await axiosInstance.get(
+                `/api/v1/learning/contents/${node.id}`
+            );
+
+            setLearningContent(response.data.data);
+        } catch (error) {
+            console.error(error);
+            setErrorMessage("개념 설명 조회에 실패했습니다. 해당 소목차에 데이터가 있는지 확인해주세요.");
+        } finally {
+            setContentLoading(false);
         }
     };
 
@@ -35,9 +65,9 @@ function HomePage() {
         <main className="page">
             <section className="hero-section">
                 <p className="eyebrow">Aha Learning Platform</p>
-                <h1>SQLD 목차 조회 테스트</h1>
+                <h1>SQLD 개념학습</h1>
                 <p className="hero-description">
-                    백엔드 목차 조회 API를 호출해서 React 화면에 시험 목차 트리를 표시합니다.
+                    목차를 클릭하면 해당 소목차의 개념 설명을 확인할 수 있습니다.
                 </p>
             </section>
 
@@ -54,7 +84,7 @@ function HomePage() {
                 </button>
             </section>
 
-            {loading && <p className="info-text">목차를 불러오는 중입니다...</p>}
+            {syllabusLoading && <p className="info-text">목차를 불러오는 중입니다...</p>}
             {errorMessage && <p className="error-text">{errorMessage}</p>}
 
             <section className="content-layout">
@@ -67,49 +97,71 @@ function HomePage() {
                     <SyllabusTree
                         nodes={syllabus}
                         selectedNodeId={selectedNode?.id}
-                        onSelectNode={setSelectedNode}
+                        onSelectNode={handleSelectNode}
                     />
                 </aside>
 
                 <section className="detail-panel">
-                    <h2>선택한 목차 정보</h2>
-
-                    {selectedNode ? (
-                        <div className="node-detail-card">
-                            <p>
-                                <strong>ID</strong>
-                                <span>{selectedNode.id}</span>
-                            </p>
-                            <p>
-                                <strong>코드</strong>
-                                <span>{selectedNode.code}</span>
-                            </p>
-                            <p>
-                                <strong>제목</strong>
-                                <span>{selectedNode.title}</span>
-                            </p>
-                            <p>
-                                <strong>타입</strong>
-                                <span>{selectedNode.nodeType}</span>
-                            </p>
-                            <p>
-                                <strong>깊이</strong>
-                                <span>{selectedNode.depth}</span>
-                            </p>
-                            <p>
-                                <strong>Leaf 여부</strong>
-                                <span>{selectedNode.isLeaf ? "예" : "아니오"}</span>
-                            </p>
-                        </div>
-                    ) : (
+                    {!selectedNode && (
                         <p className="empty-text">
-                            왼쪽 목차를 클릭하면 상세 정보가 표시됩니다.
+                            왼쪽 목차를 클릭하면 개념 설명이 표시됩니다.
                         </p>
+                    )}
+
+                    {selectedNode && (
+                        <>
+                            <div className="selected-node-header">
+                                <p className="eyebrow">{selectedNode.nodeType}</p>
+                                <h2>{selectedNode.title}</h2>
+                                <span>{selectedNode.code}</span>
+                            </div>
+
+                            {!selectedNode.isLeaf && (
+                                <p className="empty-text">
+                                    상위 목차입니다. 하위 소목차를 선택해주세요.
+                                </p>
+                            )}
+
+                            {contentLoading && (
+                                <p className="info-text">개념 설명을 불러오는 중입니다...</p>
+                            )}
+
+                            {learningContent && (
+                                <div className="learning-content">
+                                    <h3>{learningContent.title}</h3>
+                                    <p className="summary">{learningContent.summary}</p>
+
+                                    <div className="body-list">
+                                        {learningContent.bodies.map((body) => (
+                                            <article key={body.id} className="body-card">
+                        <span className={`body-type ${body.bodyType.toLowerCase()}`}>
+                          {convertBodyType(body.bodyType)}
+                        </span>
+                                                <h4>{body.title}</h4>
+                                                <p>{body.bodyText}</p>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </section>
             </section>
         </main>
     );
+}
+
+function convertBodyType(bodyType) {
+    const labels = {
+        BASE_EXPLANATION: "기본 설명",
+        CORE_POINT: "핵심 포인트",
+        EXAMPLE: "예시",
+        CONFUSION_NOTE: "헷갈리는 개념",
+        EXAM_POINT: "출제 포인트",
+    };
+
+    return labels[bodyType] || bodyType;
 }
 
 export default HomePage;

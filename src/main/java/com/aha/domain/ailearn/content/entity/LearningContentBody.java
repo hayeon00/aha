@@ -28,7 +28,7 @@ public class LearningContentBody {
     private String title;
 
     @Lob
-    @Column(name = "body_text", nullable = false)
+    @Column(name = "body_text", nullable = false, columnDefinition = "LONGTEXT")
     private String bodyText;
 
     @Column(name = "display_order", nullable = false)
@@ -43,13 +43,22 @@ public class LearningContentBody {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public LearningContentBody(Long learningContentId, ContentBodyType bodyType, String title,
-                               String bodyText, Integer displayOrder, Integer ragChunkOrder) {
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public LearningContentBody(
+            Long learningContentId,
+            ContentBodyType bodyType,
+            String title,
+            String bodyText,
+            Integer displayOrder,
+            Integer ragChunkOrder
+    ) {
         this.learningContentId = learningContentId;
         this.bodyType = bodyType;
         this.title = title;
         this.bodyText = bodyText;
-        this.displayOrder = displayOrder;
+        this.displayOrder = displayOrder != null ? displayOrder : 1;
         this.ragChunkOrder = ragChunkOrder;
         this.isActive = true;
     }
@@ -57,5 +66,10 @@ public class LearningContentBody {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

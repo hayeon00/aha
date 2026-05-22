@@ -206,3 +206,71 @@
 .empty-text {
     color: #6b7280;
 }
+
+.selected-node-header {
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.selected-node-header h2 {
+    margin: 4px 0 8px;
+    font-size: 26px;
+}
+
+.selected-node-header span {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.learning-content {
+    margin-top: 20px;
+}
+
+.learning-content h3 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.summary {
+    margin-top: 10px;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+.body-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.body-card {
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #f9fafb;
+}
+
+.body-type {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.body-card h4 {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.body-card p {
+    margin: 0;
+    line-height: 1.8;
+    color: #374151;
+    white-space: pre-line;
+}
