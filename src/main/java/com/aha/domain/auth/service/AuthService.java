@@ -5,6 +5,7 @@ import com.aha.domain.auth.dto.request.SignupRequestDto;
 import com.aha.domain.auth.dto.response.LoginResponseDto;
 import com.aha.domain.auth.dto.response.SignupResponseDto;
 import com.aha.domain.user.entity.User;
+import com.aha.domain.user.enums.UserRole;
 import com.aha.domain.user.repository.UserRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -35,7 +36,7 @@ public class AuthService {
                 .password(encodedPassword)
                 .name(request.getName())
                 .nickname(request.getNickname())
-                .role("USER")
+                .role(UserRole.USER)
                 .status("ACTIVE")
                 .loginType("LOCAL")
                 .build();
@@ -57,7 +58,7 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(
                 user.getId(),
                 user.getEmail(),
-                user.getRole()
+                user.getRole().name()
         );
 
         return new LoginResponseDto(

@@ -27,7 +27,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/signup",
-                                "/api/v1/auth/login"
+                                "/api/v1/auth/login",
+                                "/api/v1/exam-versions/*/syllabus",
+                                "/api/v1/learning/contents/*",
+                                "/api/v1/learning/sessions"
+
                         ).permitAll()
                         .anyRequest().authenticated()
                 );

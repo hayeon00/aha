@@ -35,6 +35,12 @@ public class LearningSession {
     @Column(name = "last_accessed_at")
     private LocalDateTime lastAccessedAt;
 
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     public LearningSession(Long userId, Long examScopeNodeId, Long learningContentId) {
         this.userId = userId;
         this.examScopeNodeId = examScopeNodeId;
@@ -43,11 +49,21 @@ public class LearningSession {
         this.lastAccessedAt = LocalDateTime.now();
     }
 
+    public void touch() {
+        this.lastAccessedAt = LocalDateTime.now();
+    }
+
     public void end() {
         this.endedAt = LocalDateTime.now();
     }
 
-    public void touch() {
-        this.lastAccessedAt = LocalDateTime.now();
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
