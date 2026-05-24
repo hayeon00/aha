@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 import SyllabusTree from "../components/exam/SyllabusTree";
 
@@ -22,6 +22,10 @@ function HomePage({ onLogout }) {
     const [assistantQuestionType, setAssistantQuestionType] = useState("EASY_EXPLANATION");
     const [assistantInput, setAssistantInput] = useState("");
     const [assistantLoading, setAssistantLoading] = useState(false);
+
+    const [assistantWidth, setAssistantWidth] = useState(360);
+    const [isResizingAssistant, setIsResizingAssistant] = useState(false);
+    const contentLayoutRef = useRef(null);
 
     const [progressSummary, setProgressSummary] = useState(null);
     const [progressLoading, setProgressLoading] = useState(false);
@@ -333,6 +337,54 @@ function HomePage({ onLogout }) {
         }
     };
 
+    const handleAssistantResizeStart = () => {
+        setIsResizingAssistant(true);
+    };
+
+    useEffect(() => {
+        if (!isResizingAssistant) {
+            return;
+        }
+
+        const handleMouseMove = (event) => {
+            if (!contentLayoutRef.current) {
+                return;
+            }
+
+            const layoutRect = contentLayoutRef.current.getBoundingClientRect();
+
+            const newAssistantWidth = layoutRect.right - event.clientX;
+
+            const minWidth = 280;
+            const maxWidth = 620;
+
+            const limitedWidth = Math.min(
+                Math.max(newAssistantWidth, minWidth),
+                maxWidth
+            );
+
+            setAssistantWidth(limitedWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizingAssistant(false);
+        };
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+
+            document.body.style.cursor = "";
+            document.body.style.userSelect = "";
+        };
+    }, [isResizingAssistant]);
+
 
 
     const getProblemResult = (problemId) => {
@@ -394,7 +446,13 @@ function HomePage({ onLogout }) {
 
             {errorMessage && <p className="error-text">{errorMessage}</p>}
 
-            <section className="content-layout">
+            <section
+                ref={contentLayoutRef}
+                className="content-layout"
+                style={{
+                    gridTemplateColumns: `300px minmax(420px, 1fr) 8px ${assistantWidth}px`,
+                }}
+            >
                 <aside className="syllabus-panel">
                     <div className="panel-header">
                         <h2>시험 목차</h2>
@@ -655,6 +713,13 @@ function HomePage({ onLogout }) {
                         </>
                     )}
                 </section>
+
+                <div
+                    className={`assistant-resizer ${isResizingAssistant ? "active" : ""}`}
+                    onMouseDown={handleAssistantResizeStart}
+                    role="separator"
+                    aria-orientation="vertical"
+                />
 
                 <aside className="assistant-panel">
                     <div className="assistant-header">

@@ -66,8 +66,7 @@
 
 .content-layout {
     display: grid;
-    grid-template-columns: 300px minmax(0, 1fr) 340px;
-    gap: 24px;
+    gap: 20px;
     align-items: start;
 }
 
@@ -746,8 +745,7 @@
 }
 
 .assistant-panel {
-    min-width: 320px;
-    max-width: 360px;
+    width: 100%;
     height: fit-content;
     padding: 22px;
     border-radius: 22px;
@@ -911,4 +909,34 @@
     background: #cbd5e1;
     cursor: not-allowed;
     transform: none;
+}
+
+
+.assistant-resizer {
+    width: 8px;
+    min-height: 80vh;
+    border-radius: 999px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.15s ease;
+}
+
+.assistant-resizer:hover,
+.assistant-resizer.active {
+    background: #c7d2fe;
+}
+
+.assistant-resizer::before {
+    content: "";
+    display: block;
+    width: 3px;
+    height: 100%;
+    margin: 0 auto;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.assistant-resizer:hover::before,
+.assistant-resizer.active::before {
+    background: #6366f1;
 }
