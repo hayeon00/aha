@@ -7,9 +7,13 @@ function HomePage({ onLogout }) {
     const [syllabus, setSyllabus] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
     const [learningContent, setLearningContent] = useState(null);
+    const [learningSessionId, setLearningSessionId] = useState(null);
+    const [conceptProblems, setConceptProblems] = useState(null);
+    const [selectedAnswers, setSelectedAnswers] = useState({});
 
     const [syllabusLoading, setSyllabusLoading] = useState(false);
     const [contentLoading, setContentLoading] = useState(false);
+    const [problemLoading, setProblemLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
     const fetchSyllabus = async () => {
@@ -18,6 +22,9 @@ function HomePage({ onLogout }) {
             setErrorMessage("");
             setSelectedNode(null);
             setLearningContent(null);
+            setLearningSessionId(null);
+            setConceptProblems(null);
+            setSelectedAnswers({});
 
             const response = await axiosInstance.get(
                 `/api/v1/exam-versions/${examVersionId}/syllabus`
@@ -33,8 +40,13 @@ function HomePage({ onLogout }) {
     };
 
     const handleSelectNode = async (node) => {
+        console.log("선택한 node:", node);
+
         setSelectedNode(node);
         setLearningContent(null);
+        setLearningSessionId(null);
+        setConceptProblems(null);
+        setSelectedAnswers({});
         setErrorMessage("");
 
         if (!node.isLeaf) {
@@ -44,19 +56,77 @@ function HomePage({ onLogout }) {
         try {
             setContentLoading(true);
 
-            const response = await axiosInstance.get(
+            // 1. 개념설명 조회
+            const contentResponse = await axiosInstance.get(
                 `/api/v1/learning/contents/${node.id}`
             );
 
-            setLearningContent(response.data.data);
+            const contentData = contentResponse.data.data;
+            setLearningContent(contentData);
+
+            // 2. 학습세션 생성
+            // Postman에서 성공한 방식과 동일하게 examScopeNodeId만 전송
+            const sessionRequestBody = {
+                examScopeNodeId: node.id,
+            };
+
+            console.log("학습세션 생성 요청 body:", sessionRequestBody);
+
+            const sessionResponse = await axiosInstance.post(
+                "/api/v1/learning/sessions",
+                sessionRequestBody
+            );
+
+            const sessionData = sessionResponse.data.data;
+
+            console.log("학습세션 생성 응답:", sessionData);
+
+            setLearningSessionId(
+                sessionData.learningSessionId ?? sessionData.id
+            );
         } catch (error) {
-            console.error(error);
+            console.error("소목차 선택 처리 실패:", error);
+            console.error("응답 상태:", error.response?.status);
+            console.error("응답 데이터:", error.response?.data);
+
             setErrorMessage(
-                "개념 설명 조회에 실패했습니다. 해당 소목차에 데이터가 있는지 확인해주세요."
+                error.response?.data?.message ||
+                "개념 설명 또는 학습 세션 생성에 실패했습니다. 해당 소목차 데이터를 확인해주세요."
             );
         } finally {
             setContentLoading(false);
         }
+    };
+
+    const handleLoadConceptProblems = async () => {
+        if (!learningSessionId) {
+            setErrorMessage("학습 세션 정보가 없습니다. 소목차를 다시 선택해주세요.");
+            return;
+        }
+
+        try {
+            setProblemLoading(true);
+            setErrorMessage("");
+
+            const response = await axiosInstance.get(
+                `/api/v1/learning/sessions/${learningSessionId}/concept-problems`
+            );
+
+            setConceptProblems(response.data.data);
+            setSelectedAnswers({});
+        } catch (error) {
+            console.error(error);
+            setErrorMessage("개념확인 문제 조회에 실패했습니다.");
+        } finally {
+            setProblemLoading(false);
+        }
+    };
+
+    const handleSelectAnswer = (problemId, choiceNo) => {
+        setSelectedAnswers((prev) => ({
+            ...prev,
+            [problemId]: choiceNo,
+        }));
     };
 
     useEffect(() => {
@@ -143,17 +213,89 @@ function HomePage({ onLogout }) {
                                     <div className="body-list">
                                         {learningContent.bodies.map((body) => (
                                             <article key={body.id} className="body-card">
-                        <span
-                            className={`body-type ${body.bodyType.toLowerCase()}`}
-                        >
-                          {convertBodyType(body.bodyType)}
-                        </span>
+                                                <span
+                                                    className={`body-type ${body.bodyType.toLowerCase()}`}
+                                                >
+                                                    {convertBodyType(body.bodyType)}
+                                                </span>
                                                 <h4>{body.title}</h4>
                                                 <p>{body.bodyText}</p>
                                             </article>
                                         ))}
                                     </div>
+
+                                    <div className="concept-problem-button-area">
+                                        <button
+                                            type="button"
+                                            className="start-concept-problem-button"
+                                            onClick={handleLoadConceptProblems}
+                                            disabled={!learningSessionId || problemLoading}
+                                        >
+                                            {problemLoading
+                                                ? "문제를 불러오는 중..."
+                                                : "개념확인 문제풀이"}
+                                        </button>
+                                    </div>
                                 </div>
+                            )}
+
+                            {conceptProblems && (
+                                <section className="concept-problem-section">
+                                    <div className="concept-problem-header">
+                                        <p className="eyebrow">CONCEPT CHECK</p>
+                                        <h3>{conceptProblems.examScopeNodeTitle}</h3>
+                                        <span>총 {conceptProblems.totalCount}문제</span>
+                                    </div>
+
+                                    <div className="problem-list">
+                                        {conceptProblems.problems.map((problem, index) => (
+                                            <article
+                                                key={problem.problemId}
+                                                className="problem-card"
+                                            >
+                                                <div className="problem-title">
+                                                    <span>문제 {index + 1}</span>
+                                                    <h4>{problem.questionText}</h4>
+                                                </div>
+
+                                                <div className="choice-list">
+                                                    {problem.choices.map((choice) => (
+                                                        <label
+                                                            key={choice.choiceId}
+                                                            className={
+                                                                selectedAnswers[problem.problemId] === choice.choiceNo
+                                                                    ? "choice-item selected"
+                                                                    : "choice-item"
+                                                            }
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                name={`problem-${problem.problemId}`}
+                                                                value={choice.choiceNo}
+                                                                checked={
+                                                                    selectedAnswers[problem.problemId] === choice.choiceNo
+                                                                }
+                                                                onChange={() =>
+                                                                    handleSelectAnswer(
+                                                                        problem.problemId,
+                                                                        choice.choiceNo
+                                                                    )
+                                                                }
+                                                            />
+                                                            <span>
+                                                                {choice.choiceNo}. {choice.choiceText}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+
+                                    <button type="button" className="submit-problem-button">
+                                        답안 제출
+                                    </button>
+                                </section>
                             )}
                         </>
                     )}

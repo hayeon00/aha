@@ -370,3 +370,152 @@
     font-weight: 700;
     cursor: pointer;
 }
+
+.concept-problem-button-area {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.start-concept-problem-button {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 12px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.start-concept-problem-button:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+.start-concept-problem-button:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.concept-problem-section {
+    margin-top: 32px;
+    padding: 28px;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    background: #f8fafc;
+}
+
+.concept-problem-header {
+    margin-bottom: 24px;
+}
+
+.concept-problem-header h3 {
+    margin: 6px 0 4px;
+    font-size: 24px;
+    color: #111827;
+}
+
+.concept-problem-header span {
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.problem-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.problem-card {
+    padding: 22px;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.problem-title {
+    margin-bottom: 18px;
+}
+
+.problem-title span {
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.problem-title h4 {
+    margin: 0;
+    color: #111827;
+    font-size: 17px;
+    line-height: 1.6;
+}
+
+.choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.choice-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.choice-item:hover {
+    border-color: #93c5fd;
+    background: #f8fbff;
+}
+
+.choice-item.selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-weight: 700;
+}
+
+.choice-item input {
+    width: 16px;
+    height: 16px;
+    accent-color: #2563eb;
+}
+
+.submit-problem-button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 14px 18px;
+    border: none;
+    border-radius: 14px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.submit-problem-button:hover {
+    background: #030712;
+    transform: translateY(-1px);
+}
