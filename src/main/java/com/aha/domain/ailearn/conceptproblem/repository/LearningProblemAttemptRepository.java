@@ -1,6 +1,6 @@
-package com.aha.domain.ailearn.session.repository;
+package com.aha.domain.ailearn.conceptproblem.repository;
 
-import com.aha.domain.ailearn.session.entity.LearningProblemAttempt;
+import com.aha.domain.ailearn.conceptproblem.entity.LearningProblemAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

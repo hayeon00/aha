@@ -1,11 +1,11 @@
-package com.aha.domain.ailearn.session.service;
+package com.aha.domain.ailearn.conceptproblem.service;
 
-import com.aha.domain.ailearn.session.dto.request.ConceptProblemAnswerRequest;
-import com.aha.domain.ailearn.session.dto.request.ConceptProblemSubmitRequest;
-import com.aha.domain.ailearn.session.dto.response.*;
-import com.aha.domain.ailearn.session.entity.LearningProblemAttempt;
+import com.aha.domain.ailearn.conceptproblem.dto.request.ConceptProblemAnswerRequest;
+import com.aha.domain.ailearn.conceptproblem.dto.request.ConceptProblemSubmitRequest;
+import com.aha.domain.ailearn.conceptproblem.dto.response.*;
+import com.aha.domain.ailearn.conceptproblem.entity.LearningProblemAttempt;
 import com.aha.domain.ailearn.session.entity.LearningSession;
-import com.aha.domain.ailearn.session.repository.LearningProblemAttemptRepository;
+import com.aha.domain.ailearn.conceptproblem.repository.LearningProblemAttemptRepository;
 import com.aha.domain.ailearn.session.repository.LearningSessionRepository;
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.exam.repository.ExamScopeNodeRepository;

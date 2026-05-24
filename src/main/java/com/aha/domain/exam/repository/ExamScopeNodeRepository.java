@@ -21,5 +21,9 @@ public interface ExamScopeNodeRepository extends JpaRepository<ExamScopeNode, Lo
 
     long countByExamVersion_IdAndIsLeafTrueAndIsActiveTrue(Long examVersionId);
 
+    List<ExamScopeNode> findByExamVersion_IdAndIsLeafTrueAndIsActiveTrueOrderByDisplayOrderAsc(
+            Long examVersionId
+    );
+
 
 }

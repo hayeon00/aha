@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.session.dto.request;
+package com.aha.domain.ailearn.conceptproblem.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 

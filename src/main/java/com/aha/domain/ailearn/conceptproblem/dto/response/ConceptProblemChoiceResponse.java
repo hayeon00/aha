@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.session.dto.response;
+package com.aha.domain.ailearn.conceptproblem.dto.response;
 
 public record ConceptProblemChoiceResponse(
         Long choiceId,

@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.session.entity;
+package com.aha.domain.ailearn.conceptproblem.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

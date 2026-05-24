@@ -248,6 +248,18 @@ function HomePage({ onLogout }) {
         );
     };
 
+    const getSelectedNodeProgressStatus = () => {
+        if (!selectedNode || !progressSummary?.topics) {
+            return null;
+        }
+
+        const topicProgress = progressSummary.topics.find(
+            (topic) => topic.examScopeNodeId === selectedNode.id
+        );
+
+        return topicProgress?.status || "NOT_STARTED";
+    };
+
     useEffect(() => {
         fetchSyllabus();
     }, []);
@@ -327,6 +339,7 @@ function HomePage({ onLogout }) {
                         nodes={syllabus}
                         selectedNodeId={selectedNode?.id}
                         onSelectNode={handleSelectNode}
+                        topicProgresses={progressSummary?.topics || []}
                     />
                 </aside>
 
@@ -376,6 +389,12 @@ function HomePage({ onLogout }) {
                                         ))}
                                     </div>
 
+                                    {getSelectedNodeProgressStatus() === "COMPLETED" && (
+                                        <p className="completed-topic-notice">
+                                            이미 개념확인 문제를 완료한 소목차입니다. 풀이 결과를 다시 확인할 수 있습니다.
+                                        </p>
+                                    )}
+
                                     <div className="concept-problem-button-area">
                                         <button
                                             type="button"
@@ -385,7 +404,9 @@ function HomePage({ onLogout }) {
                                         >
                                             {problemLoading
                                                 ? "문제를 불러오는 중..."
-                                                : "개념확인 문제풀이"}
+                                                : getSelectedNodeProgressStatus() === "COMPLETED"
+                                                    ? "풀이 결과 보기"
+                                                    : "개념확인 문제풀이"}
                                         </button>
                                     </div>
                                 </div>

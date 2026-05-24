@@ -697,3 +697,49 @@
     font-size: 13px;
     font-weight: 600;
 }
+
+.tree-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.node-title {
+    flex: 1;
+    text-align: left;
+}
+
+.topic-status-badge {
+    margin-left: auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.topic-status-badge.not_started {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.topic-status-badge.in_progress {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.topic-status-badge.completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.completed-topic-notice {
+    margin-top: 24px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+    font-size: 14px;
+    font-weight: 700;
+}

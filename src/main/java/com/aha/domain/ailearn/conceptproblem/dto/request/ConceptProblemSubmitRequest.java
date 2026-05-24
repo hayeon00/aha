@@ -1,9 +1,8 @@
-package com.aha.domain.ailearn.session.dto.request;
+package com.aha.domain.ailearn.conceptproblem.dto.request;
 
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
