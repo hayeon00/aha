@@ -83,4 +83,25 @@ public class LearningSessionController {
         );
     }
 
+    @GetMapping("/{learningSessionId}/concept-problems/result")
+    public ApiResponse<ConceptProblemSubmitResponse> getSubmittedConceptProblemResult(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long learningSessionId
+    ) {
+
+        ConceptProblemSubmitResponse response =
+                conceptProblemService.getSubmittedConceptProblemResult(
+                        userDetails.getId(),
+                        learningSessionId
+                );
+
+        return ApiResponse.success(
+                HttpStatus.OK.value(),
+                "개념확인 문제 풀이 결과 조회에 성공했습니다.",
+                response
+        );
+    }
+
+
+
 }

@@ -54,7 +54,6 @@ function HomePage({ onLogout }) {
 
             setSyllabus(response.data.data || []);
             await fetchProgressSummary();
-
         } catch (error) {
             console.error(error);
             setErrorMessage("목차 조회에 실패했습니다.");
@@ -62,7 +61,6 @@ function HomePage({ onLogout }) {
             setSyllabusLoading(false);
         }
     };
-
 
     const handleSelectNode = async (node) => {
         console.log("선택한 node:", node);
@@ -131,13 +129,38 @@ function HomePage({ onLogout }) {
             setProblemLoading(true);
             setErrorMessage("");
             setConceptProblemResult(null);
+            setSelectedAnswers({});
 
-            const response = await axiosInstance.get(
+            // 1. 문제 조회
+            const problemResponse = await axiosInstance.get(
                 `/api/v1/learning/sessions/${learningSessionId}/concept-problems`
             );
 
-            setConceptProblems(response.data.data);
-            setSelectedAnswers({});
+            setConceptProblems(problemResponse.data.data);
+
+            // 2. 기존 풀이 결과 조회
+            // 기록이 없으면 400/404 등이 날 수 있으므로 내부 try-catch로 별도 처리
+            try {
+                const resultResponse = await axiosInstance.get(
+                    `/api/v1/learning/sessions/${learningSessionId}/concept-problems/result`
+                );
+
+                const resultData = resultResponse.data.data;
+
+                console.log("기존 개념문제 풀이 결과:", resultData);
+
+                setConceptProblemResult(resultData);
+
+                const restoredAnswers = {};
+
+                resultData.results.forEach((result) => {
+                    restoredAnswers[result.problemId] = result.selectedChoiceNo;
+                });
+
+                setSelectedAnswers(restoredAnswers);
+            } catch (resultError) {
+                console.log("기존 풀이 기록이 없습니다.");
+            }
         } catch (error) {
             console.error(error);
             setErrorMessage(
@@ -202,8 +225,6 @@ function HomePage({ onLogout }) {
 
             setConceptProblemResult(response.data.data);
             await fetchProgressSummary();
-
-            setConceptProblemResult(response.data.data);
         } catch (error) {
             console.error("답안 제출 실패:", error);
             console.error("응답 상태:", error.response?.status);
@@ -272,7 +293,9 @@ function HomePage({ onLogout }) {
                     </div>
 
                     {progressLoading && (
-                        <p className="progress-loading-text">학습 진도를 불러오는 중입니다...</p>
+                        <p className="progress-loading-text">
+                            학습 진도를 불러오는 중입니다...
+                        </p>
                     )}
 
                     {progressSummary && (
@@ -292,7 +315,9 @@ function HomePage({ onLogout }) {
                             <div className="progress-bar">
                                 <div
                                     className="progress-fill"
-                                    style={{ width: `${progressSummary.progressRate}%` }}
+                                    style={{
+                                        width: `${progressSummary.progressRate}%`,
+                                    }}
                                 />
                             </div>
                         </div>
@@ -327,7 +352,9 @@ function HomePage({ onLogout }) {
                             )}
 
                             {contentLoading && (
-                                <p className="info-text">개념 설명을 불러오는 중입니다...</p>
+                                <p className="info-text">
+                                    개념 설명을 불러오는 중입니다...
+                                </p>
                             )}
 
                             {learningContent && (
@@ -375,15 +402,21 @@ function HomePage({ onLogout }) {
                                     {conceptProblemResult && (
                                         <div className="concept-result-summary">
                                             <div>
-                                                <strong>{conceptProblemResult.correctCount}</strong>
+                                                <strong>
+                                                    {conceptProblemResult.correctCount}
+                                                </strong>
                                                 <span>정답</span>
                                             </div>
                                             <div>
-                                                <strong>{conceptProblemResult.wrongCount}</strong>
+                                                <strong>
+                                                    {conceptProblemResult.wrongCount}
+                                                </strong>
                                                 <span>오답</span>
                                             </div>
                                             <div>
-                                                <strong>{conceptProblemResult.correctRate}%</strong>
+                                                <strong>
+                                                    {conceptProblemResult.correctRate}%
+                                                </strong>
                                                 <span>정답률</span>
                                             </div>
                                         </div>
@@ -412,10 +445,13 @@ function HomePage({ onLogout }) {
                                                     <div className="choice-list">
                                                         {problem.choices.map((choice) => {
                                                             const isSelected =
-                                                                selectedAnswers[problem.problemId] === choice.choiceNo;
+                                                                selectedAnswers[
+                                                                    problem.problemId
+                                                                    ] === choice.choiceNo;
 
                                                             const isCorrectChoice =
-                                                                result?.correctChoiceNo === choice.choiceNo;
+                                                                result?.correctChoiceNo ===
+                                                                choice.choiceNo;
 
                                                             return (
                                                                 <label
@@ -423,8 +459,12 @@ function HomePage({ onLogout }) {
                                                                     className={[
                                                                         "choice-item",
                                                                         isSelected ? "selected" : "",
-                                                                        result && isCorrectChoice ? "correct-choice" : "",
-                                                                        result && isSelected && !result.correct
+                                                                        result && isCorrectChoice
+                                                                            ? "correct-choice"
+                                                                            : "",
+                                                                        result &&
+                                                                        isSelected &&
+                                                                        !result.correct
                                                                             ? "wrong-choice"
                                                                             : "",
                                                                     ]
@@ -445,7 +485,8 @@ function HomePage({ onLogout }) {
                                                                         }
                                                                     />
                                                                     <span>
-                                                                        {choice.choiceNo}. {choice.choiceText}
+                                                                        {choice.choiceNo}.{" "}
+                                                                        {choice.choiceText}
                                                                     </span>
                                                                 </label>
                                                             );
@@ -461,10 +502,13 @@ function HomePage({ onLogout }) {
                                                             }
                                                         >
                                                             <div className="result-label">
-                                                                {result.correct ? "정답입니다" : "오답입니다"}
+                                                                {result.correct
+                                                                    ? "정답입니다"
+                                                                    : "오답입니다"}
                                                             </div>
                                                             <p>
-                                                                선택한 답: {result.selectedChoiceNo}번 / 정답:{" "}
+                                                                선택한 답:{" "}
+                                                                {result.selectedChoiceNo}번 / 정답:{" "}
                                                                 {result.correctChoiceNo}번
                                                             </p>
                                                             <div className="explanation-box">

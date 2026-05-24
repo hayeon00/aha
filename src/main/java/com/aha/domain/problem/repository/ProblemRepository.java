@@ -34,4 +34,6 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
             @Param("examScopeNodeId") Long examScopeNodeId,
             @Param("problemIds") List<Long> problemIds
     );
+
+
 }
