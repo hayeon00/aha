@@ -21,4 +21,17 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     List<Problem> findActiveConceptProblemsWithChoices(
             @Param("examScopeNodeId") Long examScopeNodeId
     );
+
+    @Query("""
+    SELECT p
+    FROM Problem p
+    WHERE p.examScopeNode.id = :examScopeNodeId
+      AND p.id IN :problemIds
+      AND p.sourceType = 'SEED'
+      AND p.isActive = true
+""")
+    List<Problem> findActiveConceptProblemsByIds(
+            @Param("examScopeNodeId") Long examScopeNodeId,
+            @Param("problemIds") List<Long> problemIds
+    );
 }

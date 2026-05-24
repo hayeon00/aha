@@ -37,7 +37,9 @@ public class LearningSessionService {
 
         if (learningContentId == null) {
             LearningContent content = learningContentRepository
-                    .findFirstByExamScopeNodeIdAndIsActiveTrueOrderByDisplayOrderAsc(request.examScopeNodeId())
+                    .findFirstByExamScopeNodeIdAndIsActiveTrueOrderByDisplayOrderAsc(
+                            request.examScopeNodeId()
+                    )
                     .orElseThrow(() -> new IllegalArgumentException("해당 목차의 학습 콘텐츠가 없습니다."));
 
             learningContentId = content.getId();
@@ -46,14 +48,22 @@ public class LearningSessionService {
                     .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 학습 콘텐츠입니다."));
         }
 
-        LearningSession session = new LearningSession(
-                userId,
-                request.examScopeNodeId(),
-                learningContentId
-        );
+        final Long finalLearningContentId = learningContentId;
 
-        LearningSession savedSession = learningSessionRepository.save(session);
+        LearningSession session = learningSessionRepository
+                .findByUserIdAndExamScopeNodeId(userId, request.examScopeNodeId())
+                .map(existingSession -> {
+                    existingSession.touch();
+                    return existingSession;
+                })
+                .orElseGet(() -> learningSessionRepository.save(
+                        new LearningSession(
+                                userId,
+                                request.examScopeNodeId(),
+                                finalLearningContentId
+                        )
+                ));
 
-        return LearningSessionCreateResponse.from(savedSession);
+        return LearningSessionCreateResponse.from(session);
     }
 }

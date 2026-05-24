@@ -405,46 +405,28 @@ CREATE TABLE `learning_content_body` (
 
 
 CREATE TABLE `learning_session` (
-                                    `id`                 BIGINT   NOT NULL AUTO_INCREMENT,
-                                    `user_id`            BIGINT   NOT NULL,
-                                    `exam_scope_node_id` BIGINT   NOT NULL,
+                                    `id`                  BIGINT      NOT NULL AUTO_INCREMENT,
+                                    `user_id`             BIGINT      NOT NULL,
+                                    `exam_scope_node_id`  BIGINT      NOT NULL,
                                     `learning_content_id` BIGINT      NULL,
-                                    `started_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    `ended_at`           DATETIME     NULL,
-                                    `last_accessed_at`   DATETIME     NULL,
-                                    `created_at`         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    `updated_at`         DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+                                    `status`              VARCHAR(30) NOT NULL DEFAULT 'IN_PROGRESS',
+                                    `started_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `ended_at`            DATETIME    NULL,
+                                    `last_accessed_at`    DATETIME    NULL,
+                                    `created_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `updated_at`          DATETIME    NULL ON UPDATE CURRENT_TIMESTAMP,
+
                                     PRIMARY KEY (`id`),
+                                    UNIQUE KEY `uk_learning_session_user_node` (`user_id`, `exam_scope_node_id`),
+
                                     CONSTRAINT `fk_learning_session_user_id`
                                         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+
                                     CONSTRAINT `fk_learning_session_exam_scope_node_id`
                                         FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE,
+
                                     CONSTRAINT `fk_learning_session_learning_content_id`
                                         FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE SET NULL
-);
-
-
-CREATE TABLE `learning_progress` (
-                                     `id`                  BIGINT      NOT NULL AUTO_INCREMENT,
-                                     `user_id`             BIGINT      NOT NULL,
-                                     `exam_scope_node_id`  BIGINT      NOT NULL,
-                                     `learning_content_id` BIGINT          NULL,
-                                     `status`              VARCHAR(30) NOT NULL DEFAULT 'NOT_STARTED',
-                                     `view_count`          INT         NOT NULL DEFAULT 0,
-                                     `correct_count`       INT         NOT NULL DEFAULT 0,
-                                     `wrong_count`         INT         NOT NULL DEFAULT 0,
-                                     `completed_at`        DATETIME        NULL,
-                                     `last_studied_at`     DATETIME        NULL,
-                                     `created_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                     `updated_at`          DATETIME        NULL ON UPDATE CURRENT_TIMESTAMP,
-                                     PRIMARY KEY (`id`),
-                                     UNIQUE KEY `uk_learning_progress_user_scope` (`user_id`, `exam_scope_node_id`),
-                                     CONSTRAINT `fk_learning_progress_user_id`
-                                         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-                                     CONSTRAINT `fk_learning_progress_exam_scope_node_id`
-                                         FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE,
-                                     CONSTRAINT `fk_learning_progress_learning_content_id`
-                                         FOREIGN KEY (`learning_content_id`) REFERENCES `learning_content` (`id`) ON DELETE SET NULL
 );
 
 
@@ -527,9 +509,7 @@ CREATE INDEX `idx_learning_content_body_learning_content_id` ON `learning_conten
 
 CREATE INDEX `idx_learning_session_user_id` ON `learning_session` (`user_id`);
 CREATE INDEX `idx_learning_session_scope_node_id` ON `learning_session` (`exam_scope_node_id`);
-
-CREATE INDEX `idx_learning_progress_user_id` ON `learning_progress` (`user_id`);
-CREATE INDEX `idx_learning_progress_scope_node_id` ON `learning_progress` (`exam_scope_node_id`);
+CREATE INDEX idx_learning_session_user_status_node ON learning_session (user_id, status, exam_scope_node_id);
 
 CREATE INDEX `idx_learning_problem_attempt_user_id` ON `learning_problem_attempt` (`user_id`);
 CREATE INDEX `idx_learning_problem_attempt_problem_id` ON `learning_problem_attempt` (`problem_id`);

@@ -18,4 +18,8 @@ public interface ExamScopeNodeRepository extends JpaRepository<ExamScopeNode, Lo
         ORDER BY ep.displayOrder ASC, esn.depth ASC, esn.displayOrder ASC, esn.id ASC
     """)
     List<ExamScopeNode> findActiveNodesByExamVersionId(Long examVersionId);
+
+    long countByExamVersion_IdAndIsLeafTrueAndIsActiveTrue(Long examVersionId);
+
+
 }

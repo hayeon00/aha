@@ -9,12 +9,33 @@ function HomePage({ onLogout }) {
     const [learningContent, setLearningContent] = useState(null);
     const [learningSessionId, setLearningSessionId] = useState(null);
     const [conceptProblems, setConceptProblems] = useState(null);
+    const [conceptProblemResult, setConceptProblemResult] = useState(null);
     const [selectedAnswers, setSelectedAnswers] = useState({});
+
+    const [progressSummary, setProgressSummary] = useState(null);
+    const [progressLoading, setProgressLoading] = useState(false);
 
     const [syllabusLoading, setSyllabusLoading] = useState(false);
     const [contentLoading, setContentLoading] = useState(false);
     const [problemLoading, setProblemLoading] = useState(false);
+    const [submitLoading, setSubmitLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+
+    const fetchProgressSummary = async () => {
+        try {
+            setProgressLoading(true);
+
+            const response = await axiosInstance.get(
+                `/api/v1/learning/progress/summary?examVersionId=${examVersionId}`
+            );
+
+            setProgressSummary(response.data.data);
+        } catch (error) {
+            console.error("학습 진도 조회 실패:", error);
+        } finally {
+            setProgressLoading(false);
+        }
+    };
 
     const fetchSyllabus = async () => {
         try {
@@ -24,6 +45,7 @@ function HomePage({ onLogout }) {
             setLearningContent(null);
             setLearningSessionId(null);
             setConceptProblems(null);
+            setConceptProblemResult(null);
             setSelectedAnswers({});
 
             const response = await axiosInstance.get(
@@ -31,6 +53,8 @@ function HomePage({ onLogout }) {
             );
 
             setSyllabus(response.data.data || []);
+            await fetchProgressSummary();
+
         } catch (error) {
             console.error(error);
             setErrorMessage("목차 조회에 실패했습니다.");
@@ -39,6 +63,7 @@ function HomePage({ onLogout }) {
         }
     };
 
+
     const handleSelectNode = async (node) => {
         console.log("선택한 node:", node);
 
@@ -46,6 +71,7 @@ function HomePage({ onLogout }) {
         setLearningContent(null);
         setLearningSessionId(null);
         setConceptProblems(null);
+        setConceptProblemResult(null);
         setSelectedAnswers({});
         setErrorMessage("");
 
@@ -56,7 +82,6 @@ function HomePage({ onLogout }) {
         try {
             setContentLoading(true);
 
-            // 1. 개념설명 조회
             const contentResponse = await axiosInstance.get(
                 `/api/v1/learning/contents/${node.id}`
             );
@@ -64,8 +89,6 @@ function HomePage({ onLogout }) {
             const contentData = contentResponse.data.data;
             setLearningContent(contentData);
 
-            // 2. 학습세션 생성
-            // Postman에서 성공한 방식과 동일하게 examScopeNodeId만 전송
             const sessionRequestBody = {
                 examScopeNodeId: node.id,
             };
@@ -107,6 +130,7 @@ function HomePage({ onLogout }) {
         try {
             setProblemLoading(true);
             setErrorMessage("");
+            setConceptProblemResult(null);
 
             const response = await axiosInstance.get(
                 `/api/v1/learning/sessions/${learningSessionId}/concept-problems`
@@ -116,17 +140,91 @@ function HomePage({ onLogout }) {
             setSelectedAnswers({});
         } catch (error) {
             console.error(error);
-            setErrorMessage("개념확인 문제 조회에 실패했습니다.");
+            setErrorMessage(
+                error.response?.data?.message || "개념확인 문제 조회에 실패했습니다."
+            );
         } finally {
             setProblemLoading(false);
         }
     };
 
     const handleSelectAnswer = (problemId, choiceNo) => {
+        if (conceptProblemResult) {
+            return;
+        }
+
         setSelectedAnswers((prev) => ({
             ...prev,
             [problemId]: choiceNo,
         }));
+    };
+
+    const handleSubmitConceptProblems = async () => {
+        if (!learningSessionId) {
+            setErrorMessage("학습 세션 정보가 없습니다.");
+            return;
+        }
+
+        if (!conceptProblems || conceptProblems.problems.length === 0) {
+            setErrorMessage("제출할 문제가 없습니다.");
+            return;
+        }
+
+        const totalCount = conceptProblems.problems.length;
+        const answeredCount = Object.keys(selectedAnswers).length;
+
+        if (answeredCount < totalCount) {
+            alert("모든 문제의 답을 선택해주세요.");
+            return;
+        }
+
+        const answers = Object.entries(selectedAnswers).map(
+            ([problemId, selectedChoiceNo]) => ({
+                problemId: Number(problemId),
+                selectedChoiceNo: Number(selectedChoiceNo),
+            })
+        );
+
+        try {
+            setSubmitLoading(true);
+            setErrorMessage("");
+
+            console.log("답안 제출 요청 body:", { answers });
+
+            const response = await axiosInstance.post(
+                `/api/v1/learning/sessions/${learningSessionId}/concept-problems/submit`,
+                {
+                    answers,
+                }
+            );
+
+            console.log("채점 결과:", response.data.data);
+
+            setConceptProblemResult(response.data.data);
+            await fetchProgressSummary();
+
+            setConceptProblemResult(response.data.data);
+        } catch (error) {
+            console.error("답안 제출 실패:", error);
+            console.error("응답 상태:", error.response?.status);
+            console.error("응답 데이터:", error.response?.data);
+
+            setErrorMessage(
+                error.response?.data?.message || "답안 제출에 실패했습니다."
+            );
+        } finally {
+            setSubmitLoading(false);
+        }
+    };
+
+    const getProblemResult = (problemId) => {
+        if (!conceptProblemResult) {
+            return null;
+        }
+
+        return conceptProblemResult.results.find(
+            (result) => result.problemId === problemId
+        );
     };
 
     useEffect(() => {
@@ -172,6 +270,33 @@ function HomePage({ onLogout }) {
                         <h2>시험 목차</h2>
                         <span>{syllabus.length}개 상위 목차</span>
                     </div>
+
+                    {progressLoading && (
+                        <p className="progress-loading-text">학습 진도를 불러오는 중입니다...</p>
+                    )}
+
+                    {progressSummary && (
+                        <div className="learning-progress-box">
+                            <div className="progress-header">
+                                <div>
+                                    <strong>전체 학습 진도</strong>
+                                    <p>
+                                        {progressSummary.completedTopicCount} /{" "}
+                                        {progressSummary.totalTopicCount}개 소목차 완료
+                                    </p>
+                                </div>
+
+                                <span>{progressSummary.progressRate}%</span>
+                            </div>
+
+                            <div className="progress-bar">
+                                <div
+                                    className="progress-fill"
+                                    style={{ width: `${progressSummary.progressRate}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     <SyllabusTree
                         nodes={syllabus}
@@ -247,54 +372,122 @@ function HomePage({ onLogout }) {
                                         <span>총 {conceptProblems.totalCount}문제</span>
                                     </div>
 
-                                    <div className="problem-list">
-                                        {conceptProblems.problems.map((problem, index) => (
-                                            <article
-                                                key={problem.problemId}
-                                                className="problem-card"
-                                            >
-                                                <div className="problem-title">
-                                                    <span>문제 {index + 1}</span>
-                                                    <h4>{problem.questionText}</h4>
-                                                </div>
+                                    {conceptProblemResult && (
+                                        <div className="concept-result-summary">
+                                            <div>
+                                                <strong>{conceptProblemResult.correctCount}</strong>
+                                                <span>정답</span>
+                                            </div>
+                                            <div>
+                                                <strong>{conceptProblemResult.wrongCount}</strong>
+                                                <span>오답</span>
+                                            </div>
+                                            <div>
+                                                <strong>{conceptProblemResult.correctRate}%</strong>
+                                                <span>정답률</span>
+                                            </div>
+                                        </div>
+                                    )}
 
-                                                <div className="choice-list">
-                                                    {problem.choices.map((choice) => (
-                                                        <label
-                                                            key={choice.choiceId}
+                                    <div className="problem-list">
+                                        {conceptProblems.problems.map((problem, index) => {
+                                            const result = getProblemResult(problem.problemId);
+
+                                            return (
+                                                <article
+                                                    key={problem.problemId}
+                                                    className={
+                                                        result
+                                                            ? result.correct
+                                                                ? "problem-card correct"
+                                                                : "problem-card wrong"
+                                                            : "problem-card"
+                                                    }
+                                                >
+                                                    <div className="problem-title">
+                                                        <span>문제 {index + 1}</span>
+                                                        <h4>{problem.questionText}</h4>
+                                                    </div>
+
+                                                    <div className="choice-list">
+                                                        {problem.choices.map((choice) => {
+                                                            const isSelected =
+                                                                selectedAnswers[problem.problemId] === choice.choiceNo;
+
+                                                            const isCorrectChoice =
+                                                                result?.correctChoiceNo === choice.choiceNo;
+
+                                                            return (
+                                                                <label
+                                                                    key={choice.choiceId}
+                                                                    className={[
+                                                                        "choice-item",
+                                                                        isSelected ? "selected" : "",
+                                                                        result && isCorrectChoice ? "correct-choice" : "",
+                                                                        result && isSelected && !result.correct
+                                                                            ? "wrong-choice"
+                                                                            : "",
+                                                                    ]
+                                                                        .filter(Boolean)
+                                                                        .join(" ")}
+                                                                >
+                                                                    <input
+                                                                        type="radio"
+                                                                        name={`problem-${problem.problemId}`}
+                                                                        value={choice.choiceNo}
+                                                                        checked={isSelected}
+                                                                        disabled={!!conceptProblemResult}
+                                                                        onChange={() =>
+                                                                            handleSelectAnswer(
+                                                                                problem.problemId,
+                                                                                choice.choiceNo
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                    <span>
+                                                                        {choice.choiceNo}. {choice.choiceText}
+                                                                    </span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {result && (
+                                                        <div
                                                             className={
-                                                                selectedAnswers[problem.problemId] === choice.choiceNo
-                                                                    ? "choice-item selected"
-                                                                    : "choice-item"
+                                                                result.correct
+                                                                    ? "problem-result-box correct"
+                                                                    : "problem-result-box wrong"
                                                             }
                                                         >
-                                                            <input
-                                                                type="radio"
-                                                                name={`problem-${problem.problemId}`}
-                                                                value={choice.choiceNo}
-                                                                checked={
-                                                                    selectedAnswers[problem.problemId] === choice.choiceNo
-                                                                }
-                                                                onChange={() =>
-                                                                    handleSelectAnswer(
-                                                                        problem.problemId,
-                                                                        choice.choiceNo
-                                                                    )
-                                                                }
-                                                            />
-                                                            <span>
-                                                                {choice.choiceNo}. {choice.choiceText}
-                                                            </span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </article>
-                                        ))}
+                                                            <div className="result-label">
+                                                                {result.correct ? "정답입니다" : "오답입니다"}
+                                                            </div>
+                                                            <p>
+                                                                선택한 답: {result.selectedChoiceNo}번 / 정답:{" "}
+                                                                {result.correctChoiceNo}번
+                                                            </p>
+                                                            <div className="explanation-box">
+                                                                <strong>해설</strong>
+                                                                <p>{result.explanationText}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </article>
+                                            );
+                                        })}
                                     </div>
 
-                                    <button type="button" className="submit-problem-button">
-                                        답안 제출
-                                    </button>
+                                    {!conceptProblemResult && (
+                                        <button
+                                            type="button"
+                                            className="submit-problem-button"
+                                            onClick={handleSubmitConceptProblems}
+                                            disabled={submitLoading}
+                                        >
+                                            {submitLoading ? "채점 중..." : "답안 제출"}
+                                        </button>
+                                    )}
                                 </section>
                             )}
                         </>
