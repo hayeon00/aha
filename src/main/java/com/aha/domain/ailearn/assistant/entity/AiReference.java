@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.ai.entity;
+package com.aha.domain.ailearn.assistant.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -38,8 +38,17 @@ public class AiReference {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public AiReference(Long aiMessageId, Long learningContentId, Long learningContentBodyId,
-                       Long extractedContentId, Double similarityScore, Integer displayOrder) {
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public AiReference(
+            Long aiMessageId,
+            Long learningContentId,
+            Long learningContentBodyId,
+            Long extractedContentId,
+            Double similarityScore,
+            Integer displayOrder
+    ) {
         this.aiMessageId = aiMessageId;
         this.learningContentId = learningContentId;
         this.learningContentBodyId = learningContentBodyId;
@@ -51,5 +60,10 @@ public class AiReference {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

@@ -12,6 +12,17 @@ function HomePage({ onLogout }) {
     const [conceptProblemResult, setConceptProblemResult] = useState(null);
     const [selectedAnswers, setSelectedAnswers] = useState({});
 
+    const [assistantMessages, setAssistantMessages] = useState([
+        {
+            role: "ASSISTANT",
+            text: "안녕하세요! 현재 선택한 개념에 대해 쉽게 설명하거나, 시험 포인트를 정리해드릴게요.",
+        },
+    ]);
+
+    const [assistantQuestionType, setAssistantQuestionType] = useState("EASY_EXPLANATION");
+    const [assistantInput, setAssistantInput] = useState("");
+    const [assistantLoading, setAssistantLoading] = useState(false);
+
     const [progressSummary, setProgressSummary] = useState(null);
     const [progressLoading, setProgressLoading] = useState(false);
 
@@ -20,6 +31,15 @@ function HomePage({ onLogout }) {
     const [problemLoading, setProblemLoading] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
+
+    const assistantQuestionTypes = [
+        { value: "EASY_EXPLANATION", label: "쉽게 설명" },
+        { value: "COMPARISON", label: "비교 설명" },
+        { value: "EXAM_POINT", label: "시험 포인트" },
+        { value: "PROBLEM_HELP", label: "문제 풀이 도움" },
+        { value: "SUMMARY", label: "요약" },
+        { value: "FREE_QNA", label: "자유 질문" },
+    ];
 
     const fetchProgressSummary = async () => {
         try {
@@ -72,6 +92,15 @@ function HomePage({ onLogout }) {
         setConceptProblemResult(null);
         setSelectedAnswers({});
         setErrorMessage("");
+
+        setAssistantMessages([
+            {
+                role: "ASSISTANT",
+                text: "안녕하세요! 현재 선택한 개념에 대해 쉽게 설명하거나, 시험 포인트를 정리해드릴게요.",
+            },
+        ]);
+        setAssistantInput("");
+        setAssistantQuestionType("EASY_EXPLANATION");
 
         if (!node.isLeaf) {
             return;
@@ -237,6 +266,74 @@ function HomePage({ onLogout }) {
             setSubmitLoading(false);
         }
     };
+
+    const handleSendAssistantMessage = async () => {
+        if (!selectedNode || !selectedNode.isLeaf) {
+            alert("먼저 학습할 소목차를 선택해주세요.");
+            return;
+        }
+
+        if (!learningSessionId) {
+            alert("학습 세션 정보가 없습니다. 소목차를 다시 선택해주세요.");
+            return;
+        }
+
+        if (!assistantInput.trim()) {
+            alert("질문 내용을 입력해주세요.");
+            return;
+        }
+
+        const userText = assistantInput;
+
+        setAssistantMessages((prev) => [
+            ...prev,
+            {
+                role: "USER",
+                text: userText,
+            },
+        ]);
+
+        setAssistantInput("");
+        setAssistantLoading(true);
+
+        try {
+            const response = await axiosInstance.post(
+                `/api/v1/learning/sessions/${learningSessionId}/ai-messages`,
+                {
+                    questionType: assistantQuestionType,
+                    message: userText,
+                }
+            );
+
+            const data = response.data.data;
+
+            setAssistantMessages((prev) => [
+                ...prev,
+                {
+                    role: "ASSISTANT",
+                    text: data.assistantMessage,
+                },
+            ]);
+        } catch (error) {
+            console.error("AI 도우미 요청 실패:", error);
+            console.error("응답 상태:", error.response?.status);
+            console.error("응답 데이터:", error.response?.data);
+
+            setAssistantMessages((prev) => [
+                ...prev,
+                {
+                    role: "ASSISTANT",
+                    text:
+                        error.response?.data?.message ||
+                        "AI 도우미 응답 생성에 실패했습니다.",
+                },
+            ]);
+        } finally {
+            setAssistantLoading(false);
+        }
+    };
+
+
 
     const getProblemResult = (problemId) => {
         if (!conceptProblemResult) {
@@ -558,6 +655,72 @@ function HomePage({ onLogout }) {
                         </>
                     )}
                 </section>
+
+                <aside className="assistant-panel">
+                    <div className="assistant-header">
+                        <div>
+                            <p className="eyebrow">AI HELPER</p>
+                            <h2>AI 학습 도우미</h2>
+                        </div>
+                        <span className="assistant-status">
+                                {selectedNode?.isLeaf ? "사용 가능" : "소목차 선택 필요"}
+                            </span>
+                    </div>
+
+                    <div className="assistant-type-list">
+                        {assistantQuestionTypes.map((type) => (
+                            <button
+                                key={type.value}
+                                type="button"
+                                className={
+                                    assistantQuestionType === type.value
+                                        ? "assistant-type-button active"
+                                        : "assistant-type-button"
+                                }
+                                onClick={() => setAssistantQuestionType(type.value)}
+                            >
+                                {type.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="assistant-message-list">
+                        {assistantMessages.map((message, index) => (
+                            <div
+                                key={index}
+                                className={
+                                    message.role === "USER"
+                                        ? "assistant-message user"
+                                        : "assistant-message assistant"
+                                }
+                            >
+                                <span>{message.role === "USER" ? "나" : "AI"}</span>
+                                <p>{message.text}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="assistant-input-area">
+                            <textarea
+                                value={assistantInput}
+                                onChange={(event) => setAssistantInput(event.target.value)}
+                                placeholder={
+                                    selectedNode?.isLeaf
+                                        ? "현재 개념에 대해 궁금한 점을 입력하세요."
+                                        : "소목차를 먼저 선택해주세요."
+                                }
+                                disabled={!selectedNode?.isLeaf || !learningSessionId || assistantLoading}
+                            />
+
+                        <button
+                            type="button"
+                            onClick={handleSendAssistantMessage}
+                            disabled={!selectedNode?.isLeaf || !learningSessionId || assistantLoading}
+                        >
+                            {assistantLoading ? "답변 생성 중..." : "질문하기"}
+                        </button>
+                    </div>
+                </aside>
             </section>
         </main>
     );
