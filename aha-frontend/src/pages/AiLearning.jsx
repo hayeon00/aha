@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import axiosInstance from "../api/axiosInstance";
 import SyllabusTree from "../components/exam/SyllabusTree";
 
-function HomePage({ onLogout }) {
+function AiLearning({ onLogout }) {
     const [examVersionId, setExamVersionId] = useState(1);
     const [syllabus, setSyllabus] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -803,4 +803,4 @@ function convertBodyType(bodyType) {
     return labels[bodyType] || bodyType;
 }
 
-export default HomePage;
+export default AiLearning;
