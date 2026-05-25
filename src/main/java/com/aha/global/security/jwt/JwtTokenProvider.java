@@ -36,8 +36,24 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String createRefreshToken(Long userId) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());
+
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(secretKey)
+                .compact();
+    }
+
     public Long getAccessTokenExpirationSeconds() {
         return jwtProperties.getAccessTokenExpiration() / 1000;
+    }
+
+    public Long getRefreshTokenExpirationSeconds() {
+        return jwtProperties.getRefreshTokenExpiration() / 1000;
     }
 
     public boolean validateToken(String token) {
@@ -68,4 +84,7 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+
+
 }

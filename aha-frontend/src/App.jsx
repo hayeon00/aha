@@ -1,51 +1,57 @@
-import { useState } from "react";
-import AiLearning from "./pages/AiLearning.jsx";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-import "./App.css";
-
-function getStoredToken() {
-    try {
-        return window.localStorage.getItem("accessToken");
-    } catch (error) {
-        console.warn("localStorage 접근이 차단되었습니다.", error);
-        return null;
-    }
-}
-
-function removeStoredToken() {
-    try {
-        window.localStorage.removeItem("accessToken");
-    } catch (error) {
-        console.warn("localStorage 삭제가 차단되었습니다.", error);
-    }
-}
+import AiLearning from "./pages/AiLearning";
+import { logout } from "./api/authApi";
 
 function App() {
-    const [page, setPage] = useState(() => {
-        const token = getStoredToken();
-        return token ? "home" : "login";
-    });
+    const navigate = useNavigate();
 
-    const handleLogout = () => {
-        removeStoredToken();
-        setPage("login");
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error("로그아웃 실패:", error);
+        } finally {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            navigate("/login");
+        }
     };
 
-    if (page === "signup") {
-        return <SignupPage onMoveLogin={() => setPage("login")} />;
-    }
+    return (
+        <Routes>
+            <Route path="/" element={<Navigate to="/learning" replace />} />
 
-    if (page === "login") {
-        return (
-            <LoginPage
-                onLoginSuccess={() => setPage("home")}
-                onMoveSignup={() => setPage("signup")}
+            <Route
+                path="/login"
+                element={
+                    <LoginPage
+                        onLoginSuccess={() => navigate("/learning")}
+                        onMoveSignup={() => navigate("/signup")}
+                    />
+                }
             />
-        );
-    }
 
-    return <AiLearning onLogout={handleLogout} />;
+            <Route
+                path="/signup"
+                element={
+                    <SignupPage
+                        onMoveLogin={() => navigate("/login")}
+                    />
+                }
+            />
+
+            <Route
+                path="/learning"
+                element={
+                    <AiLearning onLogout={handleLogout} />
+                }
+            />
+
+            <Route path="*" element={<Navigate to="/learning" replace />} />
+        </Routes>
+    );
 }
 
 export default App;

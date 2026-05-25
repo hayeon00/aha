@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 import SyllabusTree from "../components/exam/SyllabusTree";
 
 function AiLearning({ onLogout }) {
+    const navigate = useNavigate();
+    const isLoggedIn = !!localStorage.getItem("accessToken");
+
     const [examVersionId, setExamVersionId] = useState(1);
     const [syllabus, setSyllabus] = useState([]);
     const [selectedNode, setSelectedNode] = useState(null);
@@ -46,6 +50,11 @@ function AiLearning({ onLogout }) {
     ];
 
     const fetchProgressSummary = async () => {
+        if (!localStorage.getItem("accessToken")) {
+            setProgressSummary(null);
+            return;
+        }
+
         try {
             setProgressLoading(true);
 
@@ -77,7 +86,12 @@ function AiLearning({ onLogout }) {
             );
 
             setSyllabus(response.data.data || []);
-            await fetchProgressSummary();
+
+            if (localStorage.getItem("accessToken")) {
+                await fetchProgressSummary();
+            } else {
+                setProgressSummary(null);
+            }
         } catch (error) {
             console.error(error);
             setErrorMessage("목차 조회에 실패했습니다.");
@@ -107,6 +121,11 @@ function AiLearning({ onLogout }) {
         setAssistantQuestionType("EASY_EXPLANATION");
 
         if (!node.isLeaf) {
+            return;
+        }
+
+        if (!localStorage.getItem("accessToken")) {
+            setErrorMessage("");
             return;
         }
 
@@ -153,6 +172,12 @@ function AiLearning({ onLogout }) {
     };
 
     const handleLoadConceptProblems = async () => {
+        if (!localStorage.getItem("accessToken")) {
+            alert("문제풀이를 하려면 로그인이 필요합니다.");
+            navigate("/login");
+            return;
+        }
+
         if (!learningSessionId) {
             setErrorMessage("학습 세션 정보가 없습니다. 소목차를 다시 선택해주세요.");
             return;
@@ -216,6 +241,12 @@ function AiLearning({ onLogout }) {
     };
 
     const handleSubmitConceptProblems = async () => {
+        if (!localStorage.getItem("accessToken")) {
+            alert("답안을 제출하려면 로그인이 필요합니다.");
+            navigate("/login");
+            return;
+        }
+
         if (!learningSessionId) {
             setErrorMessage("학습 세션 정보가 없습니다.");
             return;
@@ -272,6 +303,12 @@ function AiLearning({ onLogout }) {
     };
 
     const handleSendAssistantMessage = async () => {
+        if (!localStorage.getItem("accessToken")) {
+            alert("AI 학습 도우미를 사용하려면 로그인이 필요합니다.");
+            navigate("/login");
+            return;
+        }
+
         if (!selectedNode || !selectedNode.isLeaf) {
             alert("먼저 학습할 소목차를 선택해주세요.");
             return;
@@ -409,6 +446,21 @@ function AiLearning({ onLogout }) {
         return topicProgress?.status || "NOT_STARTED";
     };
 
+    const handleLoginClick = () => {
+        navigate("/login");
+    };
+
+    const handleLogoutClick = () => {
+        if (onLogout) {
+            onLogout();
+            return;
+        }
+
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        navigate("/login");
+    };
+
     useEffect(() => {
         fetchSyllabus();
     }, []);
@@ -422,9 +474,15 @@ function AiLearning({ onLogout }) {
                     목차를 클릭하면 해당 소목차의 개념 설명을 확인할 수 있습니다.
                 </p>
 
-                <button className="logout-button" type="button" onClick={onLogout}>
-                    로그아웃
-                </button>
+                {isLoggedIn ? (
+                    <button className="logout-button" type="button" onClick={handleLogoutClick}>
+                        로그아웃
+                    </button>
+                ) : (
+                    <button className="logout-button" type="button" onClick={handleLoginClick}>
+                        로그인
+                    </button>
+                )}
             </section>
 
             <section className="control-section">
@@ -459,13 +517,13 @@ function AiLearning({ onLogout }) {
                         <span>{syllabus.length}개 상위 목차</span>
                     </div>
 
-                    {progressLoading && (
+                    {isLoggedIn && progressLoading && (
                         <p className="progress-loading-text">
                             학습 진도를 불러오는 중입니다...
                         </p>
                     )}
 
-                    {progressSummary && (
+                    {isLoggedIn && progressSummary && (
                         <div className="learning-progress-box">
                             <div className="progress-header">
                                 <div>
@@ -494,7 +552,7 @@ function AiLearning({ onLogout }) {
                         nodes={syllabus}
                         selectedNodeId={selectedNode?.id}
                         onSelectNode={handleSelectNode}
-                        topicProgresses={progressSummary?.topics || []}
+                        topicProgresses={isLoggedIn ? progressSummary?.topics || [] : []}
                     />
                 </aside>
 
@@ -517,6 +575,19 @@ function AiLearning({ onLogout }) {
                                 <p className="empty-text">
                                     상위 목차입니다. 하위 소목차를 선택해주세요.
                                 </p>
+                            )}
+
+                            {selectedNode.isLeaf && !isLoggedIn && (
+                                <div className="login-required-box">
+                                    <h3>로그인 후 학습할 수 있습니다</h3>
+                                    <p>
+                                        목차는 누구나 볼 수 있습니다. 로그인하면 전체 개념 설명,
+                                        개념확인 문제풀이, 학습 진도 저장, AI 학습 도우미를 사용할 수 있습니다.
+                                    </p>
+                                    <button type="button" onClick={handleLoginClick}>
+                                        로그인하고 학습 시작하기
+                                    </button>
+                                </div>
                             )}
 
                             {contentLoading && (
@@ -555,7 +626,7 @@ function AiLearning({ onLogout }) {
                                             type="button"
                                             className="start-concept-problem-button"
                                             onClick={handleLoadConceptProblems}
-                                            disabled={!learningSessionId || problemLoading}
+                                            disabled={!isLoggedIn || !learningSessionId || problemLoading}
                                         >
                                             {problemLoading
                                                 ? "문제를 불러오는 중..."
@@ -728,7 +799,7 @@ function AiLearning({ onLogout }) {
                             <h2>AI 학습 도우미</h2>
                         </div>
                         <span className="assistant-status">
-                                {selectedNode?.isLeaf ? "사용 가능" : "소목차 선택 필요"}
+                                {!isLoggedIn ? "로그인 필요" : selectedNode?.isLeaf ? "사용 가능" : "소목차 선택 필요"}
                             </span>
                     </div>
 
@@ -770,17 +841,19 @@ function AiLearning({ onLogout }) {
                                 value={assistantInput}
                                 onChange={(event) => setAssistantInput(event.target.value)}
                                 placeholder={
-                                    selectedNode?.isLeaf
-                                        ? "현재 개념에 대해 궁금한 점을 입력하세요."
-                                        : "소목차를 먼저 선택해주세요."
+                                    !isLoggedIn
+                                        ? "로그인 후 AI 학습 도우미를 사용할 수 있습니다."
+                                        : selectedNode?.isLeaf
+                                            ? "현재 개념에 대해 궁금한 점을 입력하세요."
+                                            : "소목차를 먼저 선택해주세요."
                                 }
-                                disabled={!selectedNode?.isLeaf || !learningSessionId || assistantLoading}
+                                disabled={!isLoggedIn || !selectedNode?.isLeaf || !learningSessionId || assistantLoading}
                             />
 
                         <button
                             type="button"
                             onClick={handleSendAssistantMessage}
-                            disabled={!selectedNode?.isLeaf || !learningSessionId || assistantLoading}
+                            disabled={!isLoggedIn || !selectedNode?.isLeaf || !learningSessionId || assistantLoading}
                         >
                             {assistantLoading ? "답변 생성 중..." : "질문하기"}
                         </button>

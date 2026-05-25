@@ -28,7 +28,8 @@ function SignupPage({ onMoveLogin }) {
 
             await signup(form);
 
-            setMessage("회원가입이 완료되었습니다. 로그인해주세요.");
+            alert("회원가입이 완료되었습니다. 로그인해주세요.");
+            onMoveLogin();
         } catch (error) {
             console.error(error);
             setMessage("회원가입에 실패했습니다. 입력값이나 서버 응답을 확인해주세요.");

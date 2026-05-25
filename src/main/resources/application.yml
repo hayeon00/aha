@@ -14,5 +14,6 @@ spring:
     show-sql: true
 
 jwt:
-  secret: "this-is-a-very-long-secret-key-for-jwt-token-test-123456789"
-  access-token-expiration: 3600000
+  secret: your-secret-key-your-secret-key-your-secret-key
+  access-token-expiration: 1800000      # 30분
+  refresh-token-expiration: 1209600000  # 14일
