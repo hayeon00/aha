@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.ai.entity;
+package com.aha.domain.ailearn.assistant.entity;
 
 public enum AiQuestionType {
     EASY_EXPLANATION,

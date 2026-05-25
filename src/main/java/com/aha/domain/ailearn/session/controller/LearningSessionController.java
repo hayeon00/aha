@@ -1,8 +1,12 @@
 package com.aha.domain.ailearn.session.controller;
 
 
+import com.aha.domain.ailearn.conceptproblem.dto.request.ConceptProblemSubmitRequest;
 import com.aha.domain.ailearn.session.dto.request.LearningSessionCreateRequest;
+import com.aha.domain.ailearn.conceptproblem.dto.response.ConceptProblemListResponse;
+import com.aha.domain.ailearn.conceptproblem.dto.response.ConceptProblemSubmitResponse;
 import com.aha.domain.ailearn.session.dto.response.LearningSessionCreateResponse;
+import com.aha.domain.ailearn.conceptproblem.service.ConceptProblemService;
 import com.aha.domain.ailearn.session.service.LearningSessionService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class LearningSessionController {
 
     private final LearningSessionService learningSessionService;
+    private final ConceptProblemService conceptProblemService;
 
     @PostMapping
     public ApiResponse<LearningSessionCreateResponse> createSession(

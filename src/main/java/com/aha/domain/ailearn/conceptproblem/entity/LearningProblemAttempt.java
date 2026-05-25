@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.session.entity;
+package com.aha.domain.ailearn.conceptproblem.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -33,19 +33,49 @@ public class LearningProblemAttempt {
     private Long selectedChoiceId;
 
     @Column(name = "is_correct", nullable = false)
-    private Boolean isCorrect;
+    private boolean correct;
 
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
 
-    public LearningProblemAttempt(Long userId, Long learningSessionId, Long examScopeNodeId,
-                                  Long problemId, Long selectedChoiceId, Boolean isCorrect) {
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    public LearningProblemAttempt(
+            Long userId,
+            Long learningSessionId,
+            Long examScopeNodeId,
+            Long problemId,
+            Long selectedChoiceId,
+            boolean correct
+    ) {
         this.userId = userId;
         this.learningSessionId = learningSessionId;
         this.examScopeNodeId = examScopeNodeId;
         this.problemId = problemId;
         this.selectedChoiceId = selectedChoiceId;
-        this.isCorrect = isCorrect;
+        this.correct = correct;
         this.submittedAt = LocalDateTime.now();
+    }
+
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (this.submittedAt == null) {
+            this.submittedAt = now;
+        }
+
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

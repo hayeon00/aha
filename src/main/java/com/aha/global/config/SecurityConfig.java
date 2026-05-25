@@ -29,8 +29,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/signup",
                                 "/api/v1/auth/login",
                                 "/api/v1/exam-versions/*/syllabus",
-                                "/api/v1/learning/contents/*",
-                                "/api/v1/learning/sessions"
+                                "/api/v1/learning/**"
 
                         ).permitAll()
                         .anyRequest().authenticated()

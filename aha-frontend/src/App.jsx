@@ -1,5 +1,5 @@
 import { useState } from "react";
-import HomePage from "./pages/HomePage";
+import AiLearning from "./pages/AiLearning.jsx";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import "./App.css";
@@ -45,7 +45,7 @@ function App() {
         );
     }
 
-    return <HomePage onLogout={handleLogout} />;
+    return <AiLearning onLogout={handleLogout} />;
 }
 
 export default App;
