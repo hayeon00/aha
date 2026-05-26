@@ -25,16 +25,14 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
             setMessage("");
 
             const result = await login(form);
-            const accessToken = result.data.accessToken;
 
-            try {
-                window.localStorage.setItem("accessToken", accessToken);
-            } catch (error) {
-                console.warn("localStorage 저장이 차단되었습니다.", error);
-            }
+            const accessToken = result.data.accessToken;
+            const refreshToken = result.data.refreshToken;
+
+            localStorage.setItem("accessToken", accessToken);
+            localStorage.setItem("refreshToken", refreshToken);
 
             onLoginSuccess();
-
         } catch (error) {
             console.error(error);
             setMessage("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");

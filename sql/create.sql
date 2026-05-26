@@ -498,6 +498,23 @@ CREATE TABLE `ai_reference` (
                                     FOREIGN KEY (`extracted_content_id`) REFERENCES `extracted_content` (`id`) ON DELETE SET NULL
 );
 
+CREATE TABLE refresh_tokens (
+                                id BIGINT NOT NULL AUTO_INCREMENT,
+                                user_id BIGINT NOT NULL,
+                                token VARCHAR(500) NOT NULL,
+                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                PRIMARY KEY (id),
+
+                                CONSTRAINT uk_refresh_tokens_user_id UNIQUE (user_id),
+
+                                CONSTRAINT fk_refresh_tokens_user
+                                    FOREIGN KEY (user_id)
+                                        REFERENCES users (id)
+                                        ON DELETE CASCADE
+);
+
 
 CREATE INDEX `idx_document_processing_source_document_id` ON `document_processing` (`source_document_id`);
 
