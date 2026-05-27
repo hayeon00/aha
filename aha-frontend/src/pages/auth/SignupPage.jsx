@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getExams, signup } from "../api/authApi";
+import { getExams, signup } from "../../api/authApi.jsx";
 import "./SignupPage.css";
 
 function SignupPage({ onMoveLogin }) {
