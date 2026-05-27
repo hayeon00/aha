@@ -14,3 +14,8 @@ export const logout = async () => {
     const response = await axiosInstance.post("/api/v1/auth/logout");
     return response.data;
 };
+
+export const getExams = async () => {
+    const response = await axiosInstance.get("/api/v1/exams");
+    return response.data;
+};

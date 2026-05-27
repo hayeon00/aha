@@ -1,4 +1,4 @@
-package com.aha.domain.exam.dto;
+package com.aha.domain.exam.dto.response;
 
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.exam.entity.ScopeNodeType;

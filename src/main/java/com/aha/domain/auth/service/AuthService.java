@@ -7,8 +7,12 @@ import com.aha.domain.auth.dto.response.LoginResponseDto;
 import com.aha.domain.auth.dto.response.SignupResponseDto;
 import com.aha.domain.auth.entity.RefreshToken;
 import com.aha.domain.auth.repository.RefreshTokenRepository;
+import com.aha.domain.exam.entity.Exam;
+import com.aha.domain.exam.repository.ExamRepository;
 import com.aha.domain.user.entity.User;
+import com.aha.domain.user.entity.UserExam;
 import com.aha.domain.user.enums.UserRole;
+import com.aha.domain.user.repository.UserExamRepository;
 import com.aha.domain.user.repository.UserRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -24,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final UserExamRepository userExamRepository;
+    private final ExamRepository examRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -33,12 +39,20 @@ public class AuthService {
         validateDuplicateEmail(request.getEmail());
         validateDuplicateNickname(request.getNickname());
 
+        if (!request.getExams().contains(request.getMainExam())) {
+            throw new IllegalArgumentException("주 시험은 선택한 시험 목록에 포함되어야 합니다.");
+        }
+
         String encodedPassword = passwordEncoder.encode(request.getPassword());
+
+        String name = request.getName() != null && !request.getName().isBlank()
+                ? request.getName()
+                : request.getNickname();
 
         User user = User.builder()
                 .email(request.getEmail())
                 .password(encodedPassword)
-                .name(request.getName())
+                .name(name)
                 .nickname(request.getNickname())
                 .role(UserRole.USER)
                 .status("ACTIVE")
@@ -46,6 +60,21 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        for (String examCode : request.getExams()) {
+            Exam exam = examRepository.findByCode(examCode)
+                    .orElseThrow(() ->
+                            new IllegalArgumentException("존재하지 않는 시험입니다: " + examCode)
+                    );
+
+            UserExam userExam = UserExam.builder()
+                    .user(savedUser)
+                    .exam(exam)
+                    .isMain(examCode.equals(request.getMainExam()))
+                    .build();
+
+            userExamRepository.save(userExam);
+        }
 
         return new SignupResponseDto(savedUser);
     }
@@ -72,7 +101,6 @@ public class AuthService {
                         savedRefreshToken -> savedRefreshToken.updateToken(refreshToken),
                         () -> refreshTokenRepository.save(new RefreshToken(user, refreshToken))
                 );
-
 
         return new LoginResponseDto(
                 accessToken,

@@ -1,6 +1,6 @@
 package com.aha.domain.exam.controller;
 
-import com.aha.domain.exam.dto.ExamScopeNodeResponse;
+import com.aha.domain.exam.dto.response.ExamScopeNodeResponse;
 import com.aha.domain.exam.service.ExamScopeNodeService;
 import com.aha.global.response.ApiResponse;
 import java.util.List;

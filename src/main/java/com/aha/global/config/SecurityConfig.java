@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/signup",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/reissue",
+                                "/api/v1/exams",
                                 "/api/v1/exam-versions/*/syllabus"
                         ).permitAll()
 

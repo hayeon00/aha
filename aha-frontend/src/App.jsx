@@ -2,6 +2,8 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import AiLearning from "./pages/AiLearning";
+import MainPage from "./pages/MainPage";
+import MyPage from "./pages/MyPage";
 import { logout } from "./api/authApi";
 
 function App() {
@@ -21,13 +23,13 @@ function App() {
 
     return (
         <Routes>
-            <Route path="/" element={<Navigate to="/learning" replace />} />
+            <Route path="/" element={<Navigate to="/main" replace />} />
 
             <Route
                 path="/login"
                 element={
                     <LoginPage
-                        onLoginSuccess={() => navigate("/learning")}
+                        onLoginSuccess={() => navigate("/main")}
                         onMoveSignup={() => navigate("/signup")}
                     />
                 }
@@ -43,13 +45,21 @@ function App() {
             />
 
             <Route
-                path="/learning"
-                element={
-                    <AiLearning onLogout={handleLogout} />
-                }
+                path="/main"
+                element={<MainPage onLogout={handleLogout} />}
             />
 
-            <Route path="*" element={<Navigate to="/learning" replace />} />
+            <Route
+                path="/learning"
+                element={<AiLearning onLogout={handleLogout} />}
+            />
+
+            <Route
+                path="/mypage"
+                element={<MyPage onLogout={handleLogout} />}
+            />
+
+            <Route path="*" element={<Navigate to="/main" replace />} />
         </Routes>
     );
 }

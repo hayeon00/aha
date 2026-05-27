@@ -75,11 +75,12 @@ body {
     line-height: 1.6;
 }
 
+/* Stepper */
 .signup-stepper {
-    width: min(660px, 100%);
+    width: min(620px, 100%);
     margin: 48px auto 40px;
     display: grid;
-    grid-template-columns: 1fr 70px 1fr 70px 1fr;
+    grid-template-columns: 1fr 42px 1fr 42px 1fr 42px 1fr;
     align-items: center;
 }
 
@@ -132,6 +133,7 @@ body {
     background: #e5e7eb;
 }
 
+/* Form */
 .signup-form {
     width: min(820px, 100%);
     margin: 0 auto;
@@ -205,6 +207,7 @@ body {
     color: #a8b0be;
 }
 
+/* Exam Step */
 .exam-content {
     display: flex;
     flex-direction: column;
@@ -234,6 +237,19 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 18px;
+}
+
+.exam-state-box {
+    min-height: 220px;
+    border-radius: 26px;
+    border: 1px dashed #d8dee8;
+    background: rgba(255, 255, 255, 0.72);
+    color: #7b8494;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .exam-card {
@@ -331,98 +347,128 @@ body {
     color: #ffffff;
 }
 
-.terms-content {
-    display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 20px;
-    align-items: stretch;
+/* Terms Step - Clean Version */
+.clean-terms-content {
+    width: min(620px, 100%);
+    margin: 0 auto;
+    min-height: 330px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.summary-box {
-    padding: 34px;
+.terms-intro {
+    text-align: center;
+    padding: 34px 34px 30px;
     border-radius: 30px;
     background:
-            radial-gradient(circle at 86% 18%, rgba(255, 122, 24, 0.1), transparent 34%),
-            #fff8f2;
-    border: 1px solid rgba(255, 122, 24, 0.18);
+            radial-gradient(circle at 50% 0%, rgba(255, 122, 24, 0.09), transparent 42%),
+            #fffaf6;
+    border: 1px solid rgba(255, 122, 24, 0.14);
 }
 
-.summary-icon {
-    font-size: 36px;
+.terms-icon {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 18px;
+    border-radius: 20px;
+    background: rgba(255, 122, 24, 0.1);
+    color: #ff5a00;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
 }
 
-.summary-box strong {
-    display: block;
-    margin-top: 16px;
+.terms-intro h2 {
+    margin: 0;
     color: #111827;
     font-size: 24px;
     font-weight: 900;
     letter-spacing: -0.6px;
 }
 
-.summary-box p {
+.terms-intro p {
     margin: 12px 0 0;
     color: #667085;
     font-size: 15px;
     line-height: 1.65;
 }
 
-.summary-exams {
+.terms-selected-exams {
     margin-top: 22px;
     display: flex;
+    justify-content: center;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.summary-exams em {
-    padding: 7px 11px;
+.terms-selected-exams span {
+    padding: 8px 12px;
     border-radius: 999px;
     background: #ffffff;
     color: #64748b;
     font-size: 12px;
-    font-style: normal;
     font-weight: 900;
     border: 1px solid #e2e8f0;
 }
 
-.summary-exams em.main {
+.terms-selected-exams span.main {
     background: #ff6a00;
     color: #ffffff;
     border-color: #ff6a00;
 }
 
-.agree-list {
+.terms-agree-box {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    justify-content: center;
+    gap: 12px;
 }
 
-.agree-row {
-    min-height: 68px;
+.terms-agree-row {
+    height: 64px;
     padding: 0 20px;
     border: 1px solid #e2e8f0;
     border-radius: 22px;
+    background: #ffffff;
+    color: #4b5563;
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #4b5563;
-    background: #ffffff;
     font-size: 15px;
     font-weight: 700;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.032);
+    transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease,
+            transform 0.15s ease;
 }
 
-.agree-row input {
+.terms-agree-row:hover {
+    border-color: rgba(255, 122, 24, 0.32);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.terms-agree-row input {
     width: 19px;
     height: 19px;
     accent-color: #ff5a00;
+    flex-shrink: 0;
 }
 
-.agree-row b {
-    margin-left: 6px;
+.terms-agree-row span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.terms-agree-row b {
     color: #ff5a00;
+    font-size: 13px;
 }
 
+/* Message */
 .signup-message {
     width: min(620px, 100%);
     margin: 0 auto;
@@ -434,6 +480,7 @@ body {
     line-height: 1.5;
 }
 
+/* Actions */
 .signup-actions {
     width: min(620px, 100%);
     margin: 0 auto;
@@ -444,10 +491,10 @@ body {
 .signup-prev-button,
 .signup-next-button,
 .signup-submit-button {
-    height: 68px;
+    height: 64px;
     border: none;
-    border-radius: 22px;
-    font-size: 18px;
+    border-radius: 20px;
+    font-size: 17px;
     font-weight: 900;
     cursor: pointer;
     transition:
@@ -467,7 +514,7 @@ body {
     flex: 1;
     background: linear-gradient(90deg, #ff7a18 0%, #ff5a00 100%);
     color: #ffffff;
-    box-shadow: 0 18px 34px rgba(255, 90, 0, 0.22);
+    box-shadow: 0 16px 30px rgba(255, 90, 0, 0.2);
 }
 
 .signup-next-button:hover,
@@ -477,11 +524,7 @@ body {
     box-shadow: 0 22px 42px rgba(255, 90, 0, 0.28);
 }
 
-.signup-prev-button:hover {
-    transform: translateY(-1px);
-    filter: brightness(0.98);
-}
-
+.signup-next-button:disabled,
 .signup-submit-button:disabled {
     opacity: 0.65;
     cursor: not-allowed;
@@ -489,6 +532,12 @@ body {
     box-shadow: none;
 }
 
+.signup-prev-button:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.98);
+}
+
+/* Login Link */
 .signup-login-link {
     margin-top: 28px;
     display: flex;
@@ -507,6 +556,122 @@ body {
     padding: 0;
 }
 
+/* Complete Step */
+.signup-complete-content {
+    min-height: 430px;
+    padding-top: 26px;
+    text-align: center;
+}
+
+.complete-visual {
+    position: relative;
+    width: 180px;
+    height: 120px;
+    margin: 0 auto 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.complete-check {
+    width: 82px;
+    height: 82px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff7a18 0%, #ff5a00 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    font-weight: 900;
+    box-shadow:
+            0 20px 38px rgba(255, 90, 0, 0.24),
+            0 0 0 22px rgba(255, 122, 24, 0.08);
+}
+
+.complete-sparkle {
+    position: absolute;
+    color: #ff8a26;
+    font-size: 32px;
+}
+
+.complete-sparkle-left {
+    left: 12px;
+    top: 42px;
+}
+
+.complete-sparkle-right {
+    right: 10px;
+    top: 28px;
+}
+
+.signup-complete-content h2 {
+    margin: 0;
+    color: #111827;
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: -1px;
+}
+
+.signup-complete-content > p {
+    margin: 16px 0 0;
+    color: #667085;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.complete-selected-exams {
+    margin: 28px auto 34px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.complete-selected-exams span {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 900;
+    border: 1px solid #e2e8f0;
+}
+
+.complete-selected-exams span.main {
+    background: #ff6a00;
+    color: #ffffff;
+    border-color: #ff6a00;
+}
+
+.complete-start-button {
+    width: min(420px, 100%);
+    height: 68px;
+    border: none;
+    border-radius: 22px;
+    background: linear-gradient(90deg, #ff7a18 0%, #ff5a00 100%);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 18px 34px rgba(255, 90, 0, 0.22);
+    transition:
+            transform 0.15s ease,
+            filter 0.15s ease,
+            box-shadow 0.15s ease;
+}
+
+.complete-start-button:hover {
+    filter: brightness(0.98);
+    transform: translateY(-2px);
+    box-shadow: 0 22px 42px rgba(255, 90, 0, 0.28);
+}
+
+.complete-login-link {
+    margin-top: 24px;
+}
+
+/* Footer */
 .signup-footer {
     width: min(1180px, 100%);
     margin: 0 auto;
@@ -543,12 +708,13 @@ body {
         padding: 52px 44px 42px;
     }
 
-    .exam-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .signup-stepper {
+        width: min(620px, 100%);
+        grid-template-columns: 1fr 34px 1fr 34px 1fr 34px 1fr;
     }
 
-    .terms-content {
-        grid-template-columns: 1fr;
+    .exam-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .signup-footer {
