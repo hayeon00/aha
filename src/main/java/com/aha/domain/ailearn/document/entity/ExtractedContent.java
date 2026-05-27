@@ -1,16 +1,16 @@
 package com.aha.domain.ailearn.document.entity;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Getter
 @Entity
 @Table(name = "extracted_content")
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class ExtractedContent {
 
     @Id
@@ -37,26 +37,32 @@ public class ExtractedContent {
     private String contentText;
 
     @Column(name = "is_used_for_learning", nullable = false)
-    private Boolean isUsedForLearning = false;
+    private Boolean isUsedForLearning;
 
     @Column(name = "is_used_for_rag", nullable = false)
-    private Boolean isUsedForRag = true;
+    private Boolean isUsedForRag;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    public ExtractedContent(Long sourceDocumentId, Long processingId, Long examScopeNodeId,
-                            Integer chunkOrder, Integer pageNo, String contentText) {
-        this.sourceDocumentId = sourceDocumentId;
-        this.processingId = processingId;
-        this.examScopeNodeId = examScopeNodeId;
-        this.chunkOrder = chunkOrder;
-        this.pageNo = pageNo;
-        this.contentText = contentText;
-    }
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+    protected void onCreate() {
+        if (isUsedForLearning == null) {
+            isUsedForLearning = false;
+        }
+
+        if (isUsedForRag == null) {
+            isUsedForRag = true;
+        }
+
+        createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

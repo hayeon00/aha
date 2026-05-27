@@ -337,39 +337,57 @@ DROP TABLE IF EXISTS `learning_content`;
 DROP TABLE IF EXISTS `extracted_content`;
 DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `learning_source_document`;
+DROP TABLE IF EXISTS `ai_generated_learning_content_body`;
+DROP TABLE IF EXISTS `refresh_tokens`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
 
-CREATE TABLE `learning_source_document` (
-                                            `id`          BIGINT        NOT NULL AUTO_INCREMENT,
-                                            `title`       VARCHAR(200)  NOT NULL,
-                                            `source_type` VARCHAR(50)   NOT NULL,
-                                            `file_name`   VARCHAR(255)      NULL,
-                                            `file_path`   VARCHAR(500)      NULL,
-                                            `description` VARCHAR(500)      NULL,
-                                            `is_active`   BOOLEAN       NOT NULL DEFAULT TRUE,
-                                            `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                            `updated_at`  DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
-                                            PRIMARY KEY (`id`)
+CREATE TABLE learning_source_document (
+                                          id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+                                          exam_id BIGINT NOT NULL,
+                                          exam_part_id BIGINT NULL,
+                                          exam_scope_node_id BIGINT NULL,
+
+                                          title VARCHAR(200) NOT NULL,
+                                          source_type VARCHAR(50) NOT NULL,
+
+                                          original_file_name VARCHAR(255) NOT NULL,
+                                          stored_file_name VARCHAR(255) NOT NULL,
+                                          file_path VARCHAR(500) NOT NULL,
+                                          file_extension VARCHAR(20),
+                                          mime_type VARCHAR(100),
+                                          file_size BIGINT,
+
+                                          description VARCHAR(500),
+                                          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+                                          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          updated_at DATETIME
 );
 
 
-CREATE TABLE `document_processing` (
-                                       `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
-                                       `source_document_id` BIGINT        NOT NULL,
-                                       `status`             VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
-                                       `requested_by`       BIGINT            NULL,
-                                       `error_message`      VARCHAR(1000)     NULL,
-                                       `started_at`         DATETIME          NULL,
-                                       `completed_at`       DATETIME          NULL,
-                                       `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                       `updated_at`         DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
-                                       PRIMARY KEY (`id`),
-                                       CONSTRAINT `fk_document_processing_source_document_id`
-                                           FOREIGN KEY (`source_document_id`) REFERENCES `learning_source_document` (`id`) ON DELETE CASCADE,
-                                       CONSTRAINT `fk_document_processing_requested_by`
-                                           FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+CREATE TABLE document_processing (
+                                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+                                     source_document_id BIGINT NOT NULL,
+
+                                     processing_type VARCHAR(50) NOT NULL DEFAULT 'TEXT_EXTRACTION',
+                                     status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+
+                                     requested_by BIGINT,
+                                     error_message VARCHAR(1000),
+
+                                     started_at DATETIME,
+                                     completed_at DATETIME,
+
+                                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                     CONSTRAINT fk_document_processing_source_document
+                                         FOREIGN KEY (source_document_id)
+                                             REFERENCES learning_source_document(id)
 );
 
 
@@ -395,6 +413,7 @@ CREATE TABLE `extracted_content` (
 );
 
 
+
 CREATE TABLE `learning_content` (
                                     `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
                                     `exam_scope_node_id` BIGINT       NOT NULL,
@@ -410,6 +429,43 @@ CREATE TABLE `learning_content` (
                                     CONSTRAINT `fk_learning_content_exam_scope_node_id`
                                         FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE
 );
+
+
+CREATE TABLE ai_generated_learning_content_body (
+                                                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+                                                    source_document_id BIGINT NOT NULL,
+                                                    processing_id BIGINT NOT NULL,
+                                                    exam_scope_node_id BIGINT NOT NULL,
+                                                    learning_content_id BIGINT,
+
+                                                    body_type VARCHAR(50) NOT NULL,
+                                                    title VARCHAR(100),
+                                                    content LONGTEXT NOT NULL,
+
+                                                    review_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+                                                    rejection_reason VARCHAR(1000),
+
+                                                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                                    CONSTRAINT fk_ai_generated_body_source_document
+                                                        FOREIGN KEY (source_document_id)
+                                                            REFERENCES learning_source_document(id),
+
+                                                    CONSTRAINT fk_ai_generated_body_processing
+                                                        FOREIGN KEY (processing_id)
+                                                            REFERENCES document_processing(id),
+
+                                                    CONSTRAINT fk_ai_generated_body_scope_node
+                                                        FOREIGN KEY (exam_scope_node_id)
+                                                            REFERENCES exam_scope_node(id),
+
+                                                    CONSTRAINT fk_ai_generated_body_learning_content
+                                                        FOREIGN KEY (learning_content_id)
+                                                            REFERENCES learning_content(id)
+);
+
 
 
 CREATE TABLE `learning_content_body` (

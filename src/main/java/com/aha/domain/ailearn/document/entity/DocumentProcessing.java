@@ -1,16 +1,18 @@
 package com.aha.domain.ailearn.document.entity;
 
+import com.aha.domain.ailearn.document.type.ProcessingStatus;
+import com.aha.domain.ailearn.document.type.ProcessingType;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Getter
 @Entity
 @Table(name = "document_processing")
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class DocumentProcessing {
 
     @Id
@@ -21,8 +23,12 @@ public class DocumentProcessing {
     private Long sourceDocumentId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 30)
-    private ProcessingStatus status = ProcessingStatus.PENDING;
+    @Column(name = "processing_type", nullable = false, length = 50)
+    private ProcessingType processingType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ProcessingStatus status;
 
     @Column(name = "requested_by")
     private Long requestedBy;
@@ -39,6 +45,27 @@ public class DocumentProcessing {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (processingType == null) {
+            processingType = ProcessingType.TEXT_EXTRACTION;
+        }
+
+        if (status == null) {
+            status = ProcessingStatus.PENDING;
+        }
+
+        createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
     public void start() {
         this.status = ProcessingStatus.PROCESSING;
         this.startedAt = LocalDateTime.now();
@@ -53,10 +80,5 @@ public class DocumentProcessing {
         this.status = ProcessingStatus.FAILED;
         this.errorMessage = errorMessage;
         this.completedAt = LocalDateTime.now();
-    }
-
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
     }
 }
