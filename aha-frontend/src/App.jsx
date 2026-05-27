@@ -1,11 +1,16 @@
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import AiLearning from "./pages/AiLearning";
+import LoginPage from "./pages/auth/LoginPage.jsx";
+import SignupPage from "./pages/auth/SignupPage.jsx";
+import AiLearning from "./pages/ailearn/AiLearning.jsx";
+import MainPage from "./pages/MainPage";
+import MyPage from "./pages/user/MyPage.jsx";
+import MainLayout from "./layouts/MainLayout";
 import { logout } from "./api/authApi";
 
 function App() {
     const navigate = useNavigate();
+
+    const isLoggedIn = Boolean(localStorage.getItem("accessToken"));
 
     const handleLogout = async () => {
         try {
@@ -15,41 +20,76 @@ function App() {
         } finally {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
-            navigate("/login");
+            navigate("/login", { replace: true });
         }
     };
 
     return (
         <Routes>
-            <Route path="/" element={<Navigate to="/learning" replace />} />
+            <Route
+                path="/"
+                element={
+                    isLoggedIn ? (
+                        <Navigate to="/main" replace />
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                }
+            />
 
             <Route
                 path="/login"
                 element={
-                    <LoginPage
-                        onLoginSuccess={() => navigate("/learning")}
-                        onMoveSignup={() => navigate("/signup")}
-                    />
+                    isLoggedIn ? (
+                        <Navigate to="/main" replace />
+                    ) : (
+                        <LoginPage
+                            onLoginSuccess={() =>
+                                navigate("/main", { replace: true })
+                            }
+                            onMoveSignup={() => navigate("/signup")}
+                        />
+                    )
                 }
             />
 
             <Route
                 path="/signup"
                 element={
-                    <SignupPage
-                        onMoveLogin={() => navigate("/login")}
-                    />
+                    isLoggedIn ? (
+                        <Navigate to="/main" replace />
+                    ) : (
+                        <SignupPage
+                            onMoveLogin={() => navigate("/login")}
+                        />
+                    )
                 }
             />
 
             <Route
-                path="/learning"
                 element={
-                    <AiLearning onLogout={handleLogout} />
+                    isLoggedIn ? (
+                        <MainLayout onLogout={handleLogout} />
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
+                }
+            >
+                <Route path="/main" element={<MainPage />} />
+                <Route path="/learning" element={<AiLearning />} />
+                <Route path="/mypage" element={<MyPage />} />
+            </Route>
+
+            <Route
+                path="*"
+                element={
+                    isLoggedIn ? (
+                        <Navigate to="/main" replace />
+                    ) : (
+                        <Navigate to="/login" replace />
+                    )
                 }
             />
-
-            <Route path="*" element={<Navigate to="/learning" replace />} />
         </Routes>
     );
 }

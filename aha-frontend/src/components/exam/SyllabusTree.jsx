@@ -1,66 +1,145 @@
+import { useEffect, useMemo, useState } from "react";
+import "./SyllabusTree.css";
+
 function SyllabusTree({
-                          nodes,
-                          onSelectNode,
+                          nodes = [],
                           selectedNodeId,
+                          onSelectNode,
                           topicProgresses = [],
                       }) {
-    if (!nodes || nodes.length === 0) {
-        return <p className="empty-text">조회된 목차가 없습니다.</p>;
-    }
+    const [openNodeIds, setOpenNodeIds] = useState([]);
 
-    const progressMap = topicProgresses.reduce((acc, item) => {
-        acc[item.examScopeNodeId] = item.status;
-        return acc;
-    }, {});
+    const progressMap = useMemo(() => {
+        const map = new Map();
 
-    return (
-        <ul className="syllabus-tree">
-            {nodes.map((node) => {
-                const progressStatus = progressMap[node.id];
+        topicProgresses.forEach((progress) => {
+            map.set(progress.examScopeNodeId, progress.status);
+        });
 
-                return (
-                    <li key={node.id} className={`tree-item depth-${node.depth}`}>
-                        <button
-                            type="button"
-                            className={`tree-node ${selectedNodeId === node.id ? "selected" : ""}`}
-                            onClick={() => onSelectNode(node)}
-                        >
-                            <span className={`node-badge ${node.nodeType.toLowerCase()}`}>
-                                {node.nodeType}
-                            </span>
+        return map;
+    }, [topicProgresses]);
 
-                            <span className="node-title">{node.title}</span>
+    useEffect(() => {
+        const sectionIds = [];
 
-                            {node.isLeaf && progressStatus && (
-                                <span className={`topic-status-badge ${progressStatus.toLowerCase()}`}>
-                                    {convertProgressStatus(progressStatus)}
-                                </span>
-                            )}
-                        </button>
+        const collectSectionIds = (items) => {
+            items.forEach((node) => {
+                if (!node.isLeaf) {
+                    sectionIds.push(node.id);
+                }
 
-                        {node.children && node.children.length > 0 && (
-                            <SyllabusTree
-                                nodes={node.children}
-                                onSelectNode={onSelectNode}
-                                selectedNodeId={selectedNodeId}
-                                topicProgresses={topicProgresses}
-                            />
-                        )}
-                    </li>
-                );
-            })}
-        </ul>
-    );
-}
+                const children = node.children || node.childNodes || [];
 
-function convertProgressStatus(status) {
-    const labels = {
-        NOT_STARTED: "미완료",
-        IN_PROGRESS: "진행중",
-        COMPLETED: "완료",
+                if (children.length > 0) {
+                    collectSectionIds(children);
+                }
+            });
+        };
+
+        collectSectionIds(nodes);
+        setOpenNodeIds(sectionIds);
+    }, [nodes]);
+
+    const toggleNode = (nodeId) => {
+        setOpenNodeIds((prev) =>
+            prev.includes(nodeId)
+                ? prev.filter((id) => id !== nodeId)
+                : [...prev, nodeId]
+        );
     };
 
-    return labels[status] || status;
+    const getProgressStatus = (nodeId) => {
+        return progressMap.get(nodeId) || "NOT_STARTED";
+    };
+
+    const renderNodes = (items, depth = 0) => {
+        return (
+            <ul className={depth === 0 ? "syllabus-tree" : "syllabus-subtree"}>
+                {items.map((node) => {
+                    const children = node.children || node.childNodes || [];
+                    const hasChildren = children.length > 0;
+                    const isOpen = openNodeIds.includes(node.id);
+                    const isSelected = selectedNodeId === node.id;
+                    const status = getProgressStatus(node.id);
+                    const isCompleted = status === "COMPLETED";
+
+                    if (!node.isLeaf) {
+                        return (
+                            <li key={node.id} className="syllabus-group">
+                                <button
+                                    type="button"
+                                    className={
+                                        isOpen
+                                            ? "syllabus-section-button open"
+                                            : "syllabus-section-button"
+                                    }
+                                    onClick={() => toggleNode(node.id)}
+                                >
+                                    <span className="section-left">
+                                        <span className="section-mark" />
+
+                                        <span className="section-title">
+                                            {node.title}
+                                        </span>
+                                    </span>
+
+                                    <span className="section-arrow" />
+                                </button>
+
+                                {hasChildren &&
+                                    isOpen &&
+                                    renderNodes(children, depth + 1)}
+                            </li>
+                        );
+                    }
+
+                    return (
+                        <li key={node.id} className="syllabus-topic-item">
+                            <button
+                                type="button"
+                                className={
+                                    isSelected
+                                        ? "syllabus-topic-button selected"
+                                        : "syllabus-topic-button"
+                                }
+                                onClick={() => onSelectNode(node)}
+                            >
+                                <span
+                                    className={[
+                                        "topic-dot",
+                                        isCompleted ? "completed" : "",
+                                        isSelected ? "selected" : "",
+                                    ]
+                                        .filter(Boolean)
+                                        .join(" ")}
+                                />
+
+                                <span className="topic-title">
+                                    {node.title}
+                                </span>
+
+                                {isCompleted && (
+                                    <span className="topic-status completed">
+                                        완료
+                                    </span>
+                                )}
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        );
+    };
+
+    if (!nodes || nodes.length === 0) {
+        return (
+            <div className="syllabus-empty">
+                <p>표시할 목차가 없습니다.</p>
+            </div>
+        );
+    }
+
+    return renderNodes(nodes);
 }
 
 export default SyllabusTree;

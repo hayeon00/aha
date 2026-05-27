@@ -1,6 +1,6 @@
 package com.aha.domain.exam.service;
 
-import com.aha.domain.exam.dto.ExamScopeNodeResponse;
+import com.aha.domain.exam.dto.response.ExamScopeNodeResponse;
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.exam.repository.ExamScopeNodeRepository;
 import java.util.ArrayList;

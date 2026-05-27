@@ -1,0 +1,220 @@
+.syllabus-tree,
+.syllabus-subtree {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.syllabus-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.syllabus-subtree {
+    margin-top: 8px;
+    padding-left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    border-left: 1px solid #eef2f7;
+}
+
+.syllabus-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================
+   상위 목차
+========================= */
+
+.syllabus-section-button {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #fffaf5, #ffffff);
+    border: 1px solid #f3e4d7;
+    color: #111827;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 10px;
+    transition: 0.16s ease;
+}
+
+.syllabus-section-button:hover {
+    border-color: rgba(255, 107, 0, 0.28);
+    background: #fff7ed;
+}
+
+.syllabus-section-button.open {
+    border-color: rgba(255, 107, 0, 0.22);
+    background: #fff7ed;
+}
+
+.section-left {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.section-mark {
+    width: 7px;
+    height: 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ff9b45, #ff6b00);
+    flex-shrink: 0;
+}
+
+.section-title {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: -0.25px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* CSS로 그린 화살표 */
+.section-arrow {
+    width: 24px;
+    height: 24px;
+    border-radius: 9px;
+    background: #ffffff;
+    border: 1px solid #fde4cf;
+    color: #ff6b00;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+    transition: 0.18s ease;
+}
+
+.section-arrow::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transition: 0.18s ease;
+}
+
+/* 접힌 상태: 오른쪽 방향 */
+.syllabus-section-button:not(.open) .section-arrow::before {
+    transform: rotate(-45deg) translate(-1px, -1px);
+}
+
+/* 열린 상태: 아래 방향 */
+.syllabus-section-button.open .section-arrow {
+    background: #ff6b00;
+    border-color: #ff6b00;
+    color: #ffffff;
+}
+
+.syllabus-section-button.open .section-arrow::before {
+    transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* =========================
+   소목차
+========================= */
+
+.syllabus-topic-item {
+    display: flex;
+}
+
+.syllabus-topic-button {
+    width: 100%;
+    min-height: 38px;
+    padding: 0 9px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #334155;
+    display: grid;
+    grid-template-columns: 7px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    text-align: left;
+    transition: 0.16s ease;
+}
+
+.syllabus-topic-button:hover {
+    background: #f8fafc;
+    border-color: #edf0f4;
+}
+
+.syllabus-topic-button.selected {
+    background: #ffffff;
+    border-color: #ff6b00;
+    box-shadow: 0 8px 20px rgba(255, 107, 0, 0.08);
+}
+
+.topic-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #cbd5e1;
+}
+
+.topic-dot.selected {
+    background: #ff6b00;
+}
+
+.topic-dot.completed {
+    background: #22c55e;
+}
+
+.syllabus-topic-button.selected .topic-dot.completed {
+    background: #22c55e;
+}
+
+.topic-title {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.syllabus-topic-button.selected .topic-title {
+    color: #111827;
+    font-weight: 900;
+}
+
+.topic-status.completed {
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 10px;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.syllabus-empty {
+    padding: 24px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    text-align: center;
+}
+
+.syllabus-empty p {
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 700;
+}
