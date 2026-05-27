@@ -35,6 +35,32 @@ CREATE TABLE `exam` (
                         UNIQUE KEY `uk_exam_code` (`code`)
 );
 
+DROP TABLE IF EXISTS `user_exam`;
+CREATE TABLE `user_exam` (
+                             `id`         BIGINT   NOT NULL AUTO_INCREMENT,
+                             `user_id`    BIGINT   NOT NULL,
+                             `exam_id`    BIGINT   NOT NULL,
+                             `is_main`    BOOLEAN  NOT NULL DEFAULT FALSE,
+                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                             `updated_at` DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                             PRIMARY KEY (`id`),
+
+                             UNIQUE KEY `uk_user_exam_user_exam` (`user_id`, `exam_id`),
+
+                             INDEX `idx_user_exam_user_id` (`user_id`),
+                             INDEX `idx_user_exam_exam_id` (`exam_id`),
+                             INDEX `idx_user_exam_user_main` (`user_id`, `is_main`),
+
+                             CONSTRAINT `fk_user_exam_user_id`
+                                 FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+
+                             CONSTRAINT `fk_user_exam_exam_id`
+                                 FOREIGN KEY (`exam_id`) REFERENCES `exam` (`id`) ON DELETE CASCADE
+);
+
+
+
 DROP TABLE IF EXISTS `asset_file`;
 CREATE TABLE `asset_file` (
                               `id`          BIGINT        NOT NULL AUTO_INCREMENT,
