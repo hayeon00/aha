@@ -2,6 +2,7 @@ package com.aha.domain.ailearn.content.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -46,13 +47,15 @@ public class LearningContentBody {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Builder
     public LearningContentBody(
             Long learningContentId,
             ContentBodyType bodyType,
             String title,
             String bodyText,
             Integer displayOrder,
-            Integer ragChunkOrder
+            Integer ragChunkOrder,
+            Boolean isActive
     ) {
         this.learningContentId = learningContentId;
         this.bodyType = bodyType;
@@ -60,12 +63,24 @@ public class LearningContentBody {
         this.bodyText = bodyText;
         this.displayOrder = displayOrder != null ? displayOrder : 1;
         this.ragChunkOrder = ragChunkOrder;
-        this.isActive = true;
+        this.isActive = isActive != null ? isActive : true;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
     }
 
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+
+        if (this.isActive == null) {
+            this.isActive = true;
+        }
+
+        if (this.displayOrder == null) {
+            this.displayOrder = 1;
+        }
     }
 
     @PreUpdate

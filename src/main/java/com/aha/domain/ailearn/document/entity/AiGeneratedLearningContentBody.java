@@ -68,4 +68,8 @@ public class AiGeneratedLearningContentBody {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public void publish() {
+        this.reviewStatus = ReviewStatus.PUBLISHED;
+    }
 }

@@ -1,6 +1,6 @@
 package com.aha.domain.ailearn.document.service;
 
-import com.aha.domain.ailearn.document.dto.response.DocumentStructuringResponse;
+import com.aha.domain.ailearn.document.dto.response.DocumentStructuringResponseDto;
 import com.aha.domain.ailearn.document.entity.AiGeneratedLearningContentBody;
 import com.aha.domain.ailearn.document.entity.DocumentProcessing;
 import com.aha.domain.ailearn.document.entity.ExtractedContent;
@@ -30,7 +30,7 @@ public class DocumentStructuringService {
     private final AiGeneratedLearningContentBodyRepository generatedBodyRepository;
 
     @Transactional
-    public DocumentStructuringResponse structureContent(Long sourceDocumentId, Long requestedBy) {
+    public DocumentStructuringResponseDto structureContent(Long sourceDocumentId, Long requestedBy) {
         LearningSourceDocument sourceDocument = sourceDocumentRepository.findById(sourceDocumentId)
                 .orElseThrow(() -> new IllegalArgumentException("학습 원본문서를 찾을 수 없습니다. id=" + sourceDocumentId));
 
@@ -68,7 +68,7 @@ public class DocumentStructuringService {
 
             savedProcessing.complete();
 
-            return new DocumentStructuringResponse(
+            return new DocumentStructuringResponseDto(
                     sourceDocument.getId(),
                     savedProcessing.getId(),
                     generatedBodies.size(),

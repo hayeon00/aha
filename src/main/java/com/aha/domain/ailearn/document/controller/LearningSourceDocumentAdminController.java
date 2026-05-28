@@ -1,10 +1,9 @@
 package com.aha.domain.ailearn.document.controller;
 
-import com.aha.domain.ailearn.document.dto.response.DocumentExtractionResponseDto;
-import com.aha.domain.ailearn.document.dto.response.DocumentStructuringResponse;
-import com.aha.domain.ailearn.document.dto.response.LearningSourceDocumentUploadResponseDto;
+import com.aha.domain.ailearn.document.dto.response.*;
 import com.aha.domain.ailearn.document.service.DocumentExtractionService;
 import com.aha.domain.ailearn.document.service.DocumentStructuringService;
+import com.aha.domain.ailearn.document.service.GeneratedLearningContentService;
 import com.aha.domain.ailearn.document.service.LearningSourceDocumentService;
 import com.aha.domain.ailearn.document.type.SourceType;
 import com.aha.global.response.ApiResponse;
@@ -24,6 +23,7 @@ public class LearningSourceDocumentAdminController {
     private final LearningSourceDocumentService sourceDocumentService;
     private final DocumentExtractionService documentExtractionService;
     private final DocumentStructuringService documentStructuringService;
+    private final GeneratedLearningContentService generatedLearningContentService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<LearningSourceDocumentUploadResponseDto> uploadDocument(
@@ -83,7 +83,7 @@ public class LearningSourceDocumentAdminController {
 
 
     @PostMapping("/{sourceDocumentId}/structure")
-    public ApiResponse<DocumentStructuringResponse> structureDocumentContent(
+    public ApiResponse<DocumentStructuringResponseDto> structureDocumentContent(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long sourceDocumentId
     ) {
@@ -91,7 +91,7 @@ public class LearningSourceDocumentAdminController {
             throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
         }
 
-        DocumentStructuringResponse response =
+        DocumentStructuringResponseDto response =
                 documentStructuringService.structureContent(
                         sourceDocumentId,
                         userDetails.getId()
@@ -100,6 +100,44 @@ public class LearningSourceDocumentAdminController {
         return ApiResponse.success(
                 HttpStatus.OK.value(),
                 "학습 원본문서 구조화에 성공했습니다.",
+                response
+        );
+    }
+
+    @GetMapping("/{sourceDocumentId}/generated-bodies")
+    public ApiResponse<GeneratedLearningContentBodyListResponseDto> getGeneratedBodies(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long sourceDocumentId
+    ) {
+        if (userDetails == null) {
+            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
+        }
+
+        GeneratedLearningContentBodyListResponseDto response =
+                generatedLearningContentService.getGeneratedBodies(sourceDocumentId);
+
+        return ApiResponse.success(
+                HttpStatus.OK.value(),
+                "AI 구조화 본문 조회에 성공했습니다.",
+                response
+        );
+    }
+
+    @PostMapping("/{sourceDocumentId}/publish")
+    public ApiResponse<LearningContentPublishResponseDto> publishGeneratedBodies(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long sourceDocumentId
+    ) {
+        if (userDetails == null) {
+            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
+        }
+
+        LearningContentPublishResponseDto response =
+                generatedLearningContentService.publishGeneratedBodies(sourceDocumentId);
+
+        return ApiResponse.success(
+                HttpStatus.OK.value(),
+                "AI 구조화 본문 게시에 성공했습니다.",
                 response
         );
     }

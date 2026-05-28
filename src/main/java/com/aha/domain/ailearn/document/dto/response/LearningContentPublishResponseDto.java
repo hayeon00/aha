@@ -5,10 +5,9 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class DocumentStructuringResponse {
+public class LearningContentPublishResponseDto {
 
     private Long sourceDocumentId;
-    private Long processingId;
-    private int generatedBodyCount;
-    private String status;
+    private Long learningContentId;
+    private int publishedBodyCount;
 }
