@@ -1,5 +1,7 @@
 package com.aha.domain.ailearn.document.service;
 
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,13 +19,14 @@ public class FileStorageService {
     public StoredFileInfo store(MultipartFile file) {
         validateFile(file);
 
+        String originalFileName = file.getOriginalFilename();
+        String extension = getExtension(originalFileName);
+        validateSupportedExtension(extension);
+
         try {
             Files.createDirectories(uploadPath);
 
-            String originalFileName = file.getOriginalFilename();
-            String extension = getExtension(originalFileName);
             String storedFileName = UUID.randomUUID() + buildExtensionSuffix(extension);
-
             Path targetPath = uploadPath.resolve(storedFileName).normalize();
 
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
@@ -37,13 +40,19 @@ public class FileStorageService {
                     file.getSize()
             );
         } catch (IOException e) {
-            throw new IllegalStateException("파일 저장 중 오류가 발생했습니다.", e);
+            throw new BusinessException(ErrorCode.FILE_SAVE_FAILED);
         }
     }
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("업로드할 파일이 없습니다.");
+            throw new BusinessException(ErrorCode.FILE_EMPTY);
+        }
+    }
+
+    private void validateSupportedExtension(String extension) {
+        if (!"pdf".equals(extension)) {
+            throw new BusinessException(ErrorCode.UNSUPPORTED_DOCUMENT_TYPE);
         }
     }
 

@@ -13,6 +13,8 @@ import com.aha.domain.ailearn.document.type.LearningContentBodyType;
 import com.aha.domain.ailearn.document.type.ProcessingStatus;
 import com.aha.domain.ailearn.document.type.ProcessingType;
 import com.aha.domain.ailearn.document.type.ReviewStatus;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +34,7 @@ public class DocumentStructuringService {
     @Transactional
     public DocumentStructuringResponseDto structureContent(Long sourceDocumentId, Long requestedBy) {
         LearningSourceDocument sourceDocument = sourceDocumentRepository.findById(sourceDocumentId)
-                .orElseThrow(() -> new IllegalArgumentException("학습 원본문서를 찾을 수 없습니다. id=" + sourceDocumentId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
 
         List<ExtractedContent> extractedContents =
                 extractedContentRepository.findBySourceDocumentIdAndIsUsedForLearningTrueOrderByChunkOrderAsc(
@@ -40,7 +42,7 @@ public class DocumentStructuringService {
                 );
 
         if (extractedContents.isEmpty()) {
-            throw new IllegalStateException("구조화할 추출 원문이 없습니다. 먼저 텍스트 추출을 실행해주세요.");
+            throw new BusinessException(ErrorCode.EXTRACTED_CONTENT_NOT_FOUND);
         }
 
         DocumentProcessing processing = DocumentProcessing.builder()
@@ -75,9 +77,12 @@ public class DocumentStructuringService {
                     savedProcessing.getStatus().name()
             );
 
+        } catch (BusinessException e) {
+            savedProcessing.fail(e.getMessage());
+            throw e;
         } catch (Exception e) {
             savedProcessing.fail(e.getMessage());
-            throw new IllegalStateException("학습 원본문서 구조화에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.DOCUMENT_STRUCTURING_FAILED);
         }
     }
 
@@ -94,8 +99,8 @@ public class DocumentStructuringService {
     }
 
     /**
-     * 1차 구현용 임시 구조화 로직.
-     * 나중에 이 메서드 내부를 LLM 호출 결과로 교체하면 됨.
+     * TODO: 현재는 AI 구조화 API 연동 전 임시 생성 로직.
+     * 추후 LLM 호출 결과를 기반으로 body_type별 콘텐츠를 생성하도록 교체한다.
      */
     private List<AiGeneratedLearningContentBody> createTemporaryStructuredBodies(
             LearningSourceDocument sourceDocument,

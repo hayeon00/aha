@@ -9,8 +9,11 @@ import com.aha.domain.ailearn.document.repository.ExtractedContentRepository;
 import com.aha.domain.ailearn.document.repository.LearningSourceDocumentRepository;
 import com.aha.domain.ailearn.document.type.ProcessingStatus;
 import com.aha.domain.ailearn.document.type.ProcessingType;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -23,9 +26,10 @@ public class DocumentExtractionService {
     private final ExtractedContentRepository extractedContentRepository;
     private final PdfTextExtractionService pdfTextExtractionService;
 
+    @Transactional
     public DocumentExtractionResponseDto extractText(Long sourceDocumentId, Long requestedBy) {
         LearningSourceDocument sourceDocument = sourceDocumentRepository.findById(sourceDocumentId)
-                .orElseThrow(() -> new IllegalArgumentException("학습 원본문서를 찾을 수 없습니다. id=" + sourceDocumentId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
 
         DocumentProcessing processing = DocumentProcessing.builder()
                 .sourceDocumentId(sourceDocument.getId())
@@ -38,10 +42,13 @@ public class DocumentExtractionService {
 
         try {
             savedProcessing.start();
-            processingRepository.save(savedProcessing);
 
             List<PdfTextExtractionService.ExtractedPageText> pageTexts =
                     pdfTextExtractionService.extractByPage(sourceDocument.getFilePath());
+
+            if (pageTexts.isEmpty()) {
+                throw new BusinessException(ErrorCode.DOCUMENT_EXTRACTION_FAILED);
+            }
 
             int chunkOrder = 1;
 
@@ -61,7 +68,6 @@ public class DocumentExtractionService {
             }
 
             savedProcessing.complete();
-            processingRepository.save(savedProcessing);
 
             return new DocumentExtractionResponseDto(
                     sourceDocument.getId(),
@@ -70,11 +76,12 @@ public class DocumentExtractionService {
                     savedProcessing.getStatus().name()
             );
 
+        } catch (BusinessException e) {
+            savedProcessing.fail(e.getMessage());
+            throw e;
         } catch (Exception e) {
             savedProcessing.fail(e.getMessage());
-            processingRepository.save(savedProcessing);
-
-            throw new IllegalStateException("학습 원본문서 텍스트 추출에 실패했습니다.", e);
+            throw new BusinessException(ErrorCode.DOCUMENT_EXTRACTION_FAILED);
         }
     }
 }

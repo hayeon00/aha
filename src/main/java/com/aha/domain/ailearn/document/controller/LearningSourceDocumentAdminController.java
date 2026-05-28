@@ -6,6 +6,8 @@ import com.aha.domain.ailearn.document.service.DocumentStructuringService;
 import com.aha.domain.ailearn.document.service.GeneratedLearningContentService;
 import com.aha.domain.ailearn.document.service.LearningSourceDocumentService;
 import com.aha.domain.ailearn.document.type.SourceType;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +38,7 @@ public class LearningSourceDocumentAdminController {
             @RequestParam(required = false) String description,
             @RequestPart MultipartFile file
     ) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
-        }
+        Long userId = getLoginUserId(userDetails);
 
         LearningSourceDocumentUploadResponseDto response =
                 sourceDocumentService.uploadDocument(
@@ -49,7 +49,7 @@ public class LearningSourceDocumentAdminController {
                         sourceType,
                         description,
                         file,
-                        userDetails.getId()
+                        userId
                 );
 
         return ApiResponse.success(
@@ -64,14 +64,12 @@ public class LearningSourceDocumentAdminController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long sourceDocumentId
     ) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
-        }
+        Long userId = getLoginUserId(userDetails);
 
         DocumentExtractionResponseDto response =
                 documentExtractionService.extractText(
                         sourceDocumentId,
-                        userDetails.getId()
+                        userId
                 );
 
         return ApiResponse.success(
@@ -81,20 +79,17 @@ public class LearningSourceDocumentAdminController {
         );
     }
 
-
     @PostMapping("/{sourceDocumentId}/structure")
     public ApiResponse<DocumentStructuringResponseDto> structureDocumentContent(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long sourceDocumentId
     ) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
-        }
+        Long userId = getLoginUserId(userDetails);
 
         DocumentStructuringResponseDto response =
                 documentStructuringService.structureContent(
                         sourceDocumentId,
-                        userDetails.getId()
+                        userId
                 );
 
         return ApiResponse.success(
@@ -109,9 +104,7 @@ public class LearningSourceDocumentAdminController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long sourceDocumentId
     ) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
-        }
+        getLoginUserId(userDetails);
 
         GeneratedLearningContentBodyListResponseDto response =
                 generatedLearningContentService.getGeneratedBodies(sourceDocumentId);
@@ -128,9 +121,7 @@ public class LearningSourceDocumentAdminController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long sourceDocumentId
     ) {
-        if (userDetails == null) {
-            throw new IllegalArgumentException("로그인 사용자 정보가 없습니다. Authorization 헤더를 확인해주세요.");
-        }
+        getLoginUserId(userDetails);
 
         LearningContentPublishResponseDto response =
                 generatedLearningContentService.publishGeneratedBodies(sourceDocumentId);
@@ -145,4 +136,13 @@ public class LearningSourceDocumentAdminController {
 
 
 
+
+
+    private Long getLoginUserId(CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return userDetails.getId();
+    }
 }

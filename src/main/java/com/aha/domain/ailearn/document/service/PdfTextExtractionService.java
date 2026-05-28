@@ -1,5 +1,7 @@
 package com.aha.domain.ailearn.document.service;
 
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.pdfbox.Loader;
@@ -19,11 +21,11 @@ public class PdfTextExtractionService {
         File file = new File(filePath);
 
         if (!file.exists()) {
-            throw new IllegalArgumentException("파일을 찾을 수 없습니다. filePath=" + filePath);
+            throw new BusinessException(ErrorCode.STORED_FILE_NOT_FOUND);
         }
 
         if (!file.getName().toLowerCase().endsWith(".pdf")) {
-            throw new IllegalArgumentException("PDF 파일만 텍스트 추출을 지원합니다. fileName=" + file.getName());
+            throw new BusinessException(ErrorCode.UNSUPPORTED_DOCUMENT_TYPE);
         }
 
         try (PDDocument document = Loader.loadPDF(file)) {
@@ -47,7 +49,7 @@ public class PdfTextExtractionService {
 
             return extractedPageTexts;
         } catch (IOException e) {
-            throw new IllegalStateException("PDF 텍스트 추출 중 오류가 발생했습니다.", e);
+            throw new BusinessException(ErrorCode.DOCUMENT_EXTRACTION_FAILED);
         }
     }
 

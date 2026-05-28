@@ -12,6 +12,8 @@ import com.aha.domain.ailearn.document.entity.AiGeneratedLearningContentBody;
 import com.aha.domain.ailearn.document.entity.LearningSourceDocument;
 import com.aha.domain.ailearn.document.repository.AiGeneratedLearningContentBodyRepository;
 import com.aha.domain.ailearn.document.repository.LearningSourceDocumentRepository;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,9 @@ public class GeneratedLearningContentService {
 
     @Transactional(readOnly = true)
     public GeneratedLearningContentBodyListResponseDto getGeneratedBodies(Long sourceDocumentId) {
+        sourceDocumentRepository.findById(sourceDocumentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
+
         List<GeneratedLearningContentBodyResponseDto> bodies =
                 generatedBodyRepository.findBySourceDocumentIdOrderByIdAsc(sourceDocumentId)
                         .stream()
@@ -42,17 +47,17 @@ public class GeneratedLearningContentService {
     @Transactional
     public LearningContentPublishResponseDto publishGeneratedBodies(Long sourceDocumentId) {
         LearningSourceDocument sourceDocument = sourceDocumentRepository.findById(sourceDocumentId)
-                .orElseThrow(() -> new IllegalArgumentException("학습 원본문서를 찾을 수 없습니다. id=" + sourceDocumentId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
 
         if (sourceDocument.getExamScopeNodeId() == null) {
-            throw new IllegalStateException("목차가 연결되지 않은 문서는 게시할 수 없습니다.");
+            throw new BusinessException(ErrorCode.SOURCE_DOCUMENT_SCOPE_REQUIRED);
         }
 
         List<AiGeneratedLearningContentBody> generatedBodies =
                 generatedBodyRepository.findBySourceDocumentIdOrderByIdAsc(sourceDocumentId);
 
         if (generatedBodies.isEmpty()) {
-            throw new IllegalStateException("게시할 AI 구조화 본문이 없습니다.");
+            throw new BusinessException(ErrorCode.GENERATED_CONTENT_NOT_FOUND);
         }
 
         LearningContent learningContent = learningContentRepository

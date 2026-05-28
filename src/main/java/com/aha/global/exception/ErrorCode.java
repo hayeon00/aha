@@ -14,7 +14,20 @@ public enum ErrorCode {
     INVALID_TOKEN(401, "AUTH_005", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(401, "AUTH_006", "만료된 토큰입니다."),
 
-    USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다.");
+    USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
+
+    SOURCE_DOCUMENT_NOT_FOUND(404, "DOC_001", "학습 원본문서를 찾을 수 없습니다."),
+    SOURCE_DOCUMENT_SCOPE_REQUIRED(400, "DOC_002", "목차가 연결되지 않은 문서는 게시할 수 없습니다."),
+    FILE_EMPTY(400, "DOC_003", "업로드할 파일이 없습니다."),
+    FILE_SAVE_FAILED(500, "DOC_004", "파일 저장 중 오류가 발생했습니다."),
+    UNSUPPORTED_DOCUMENT_TYPE(400, "DOC_005", "지원하지 않는 문서 형식입니다."),
+    STORED_FILE_NOT_FOUND(404, "DOC_006", "저장된 파일을 찾을 수 없습니다."),
+
+    EXTRACTED_CONTENT_NOT_FOUND(404, "DOC_101", "구조화할 추출 원문이 없습니다. 먼저 텍스트 추출을 실행해주세요."),
+    GENERATED_CONTENT_NOT_FOUND(404, "DOC_102", "게시할 AI 구조화 본문이 없습니다."),
+    DOCUMENT_EXTRACTION_FAILED(500, "DOC_103", "학습 원본문서 텍스트 추출에 실패했습니다."),
+    DOCUMENT_STRUCTURING_FAILED(500, "DOC_104", "학습 원본문서 구조화에 실패했습니다."),
+    DOCUMENT_PUBLISH_FAILED(500, "DOC_105", "학습 콘텐츠 게시에 실패했습니다.");
 
     private final int status;
     private final String code;
