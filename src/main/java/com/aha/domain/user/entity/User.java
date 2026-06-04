@@ -96,8 +96,12 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
-    public void updateProfile(String nickname, String profileImageUrl) {
+    public void updateProfileInfo(String name, String nickname) {
+        this.name = name;
         this.nickname = nickname;
+    }
+
+    public void updateProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
     }
 

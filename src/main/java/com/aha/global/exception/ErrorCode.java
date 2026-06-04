@@ -17,43 +17,11 @@ public enum ErrorCode {
 
     // USER
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
+    PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
+    INVALID_PROFILE_IMAGE(400, "USER_003", "지원하지 않는 프로필 이미지 형식입니다."),
 
-    // EXAM
-    EXAM_NOT_FOUND(404, "EXAM_001", "시험 정보를 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_FOUND(404, "EXAM_002", "시험 버전 정보를 찾을 수 없습니다."),
-    EXAM_PART_NOT_FOUND(404, "EXAM_003", "시험 과목 정보를 찾을 수 없습니다."),
-    EXAM_SCOPE_NODE_NOT_FOUND(404, "EXAM_004", "시험 목차를 찾을 수 없습니다."),
-
-    // LEARNING CONTENT
-    LEARNING_CONTENT_UNIT_NOT_FOUND(404, "LEARN_001", "학습 콘텐츠 단위를 찾을 수 없습니다."),
-    LEARNING_CONTENT_UNIT_ITEM_NOT_FOUND(404, "LEARN_002", "학습 콘텐츠 단위에 연결된 세부 개념이 없습니다."),
-    LEARNING_CONTENT_NOT_FOUND(404, "LEARN_003", "학습 콘텐츠를 찾을 수 없습니다."),
-    PUBLISHED_LEARNING_CONTENT_NOT_FOUND(404, "LEARN_004", "공개된 학습 콘텐츠가 없습니다."),
-    INVALID_LEARNING_CONTENT_UNIT(400, "LEARN_005", "잘못된 학습 콘텐츠 단위입니다."),
-
-    // DOCUMENT
-    SOURCE_DOCUMENT_NOT_FOUND(404, "DOC_001", "학습 원본문서를 찾을 수 없습니다."),
-    SOURCE_DOCUMENT_SCOPE_REQUIRED(400, "DOC_002", "목차가 연결되지 않은 문서는 게시할 수 없습니다."),
-    FILE_EMPTY(400, "DOC_003", "업로드할 파일이 없습니다."),
-    FILE_SAVE_FAILED(500, "DOC_004", "파일 저장 중 오류가 발생했습니다."),
-    UNSUPPORTED_DOCUMENT_TYPE(400, "DOC_005", "지원하지 않는 문서 형식입니다."),
-    STORED_FILE_NOT_FOUND(404, "DOC_006", "저장된 파일을 찾을 수 없습니다."),
-    EXTRACTED_CONTENT_NOT_FOUND(404, "DOC_101", "구조화할 추출 원문이 없습니다. 먼저 텍스트 추출을 실행해주세요."),
-    DOCUMENT_EXTRACTION_FAILED(500, "DOC_102", "학습 원본문서 텍스트 추출에 실패했습니다."),
-    DOCUMENT_STRUCTURING_FAILED(500, "DOC_103", "학습 원본문서 구조화에 실패했습니다."),
-    DOCUMENT_PUBLISH_FAILED(500, "DOC_104", "학습 콘텐츠 게시에 실패했습니다."),
-
-    // AI GENERATION
-    GENERATED_CONTENT_NOT_FOUND(404, "GEN_001", "생성된 AI 학습 콘텐츠 초안이 없습니다."),
-    UNSUPPORTED_GENERATION_TYPE(400, "GEN_002", "지원하지 않는 콘텐츠 생성 방식입니다."),
-    INVALID_GENERATION_REQUEST(400, "GEN_003", "잘못된 콘텐츠 생성 요청입니다."),
-    AI_RESPONSE_EMPTY(502, "GEN_004", "AI 응답이 비어 있습니다."),
-    AI_CONTENT_GENERATION_FAILED(500, "GEN_005", "AI 학습 콘텐츠 생성에 실패했습니다."),
-    AI_RESPONSE_PARSE_FAILED(500, "GEN_006", "AI 응답을 해석하는 중 오류가 발생했습니다."),
-    GENERATED_CONTENT_ALREADY_PUBLISHED(409, "GEN_007", "이미 게시된 AI 학습 콘텐츠입니다."),
-    GENERATED_CONTENT_REJECTED(400, "GEN_008", "반려된 AI 학습 콘텐츠는 게시할 수 없습니다."),
-    AI_GENERATED_CONTENT_TOO_SHORT(500, "GEN_009", "AI가 생성한 학습 콘텐츠가 너무 짧습니다."),
-    INVALID_GENERATION_TARGET_CONTENT_UNIT(400, "GEN_010", "AI 초안 생성 대상 학습 콘텐츠 단위가 올바르지 않습니다.");
+    // USER_EXAM
+    USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다.");
 
     private final int status;
     private final String code;

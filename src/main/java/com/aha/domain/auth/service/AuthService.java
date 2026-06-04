@@ -10,6 +10,7 @@ import com.aha.domain.auth.repository.RefreshTokenRepository;
 import com.aha.domain.user.entity.User;
 import com.aha.domain.user.enums.UserRole;
 import com.aha.domain.user.repository.UserRepository;
+import com.aha.domain.user.service.UserExamService;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.security.jwt.JwtTokenProvider;
@@ -27,6 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserExamService userExamService;
 
     @Transactional
     public SignupResponseDto signup(SignupRequestDto request) {
@@ -62,6 +64,8 @@ public class AuthService {
         validatePassword(request.getPassword(), user.getPassword());
 
         user.updateLastLoginAt();
+
+        userExamService.syncSupportedExamsForUser(user.getId());
 
         String accessToken = jwtTokenProvider.createAccessToken(
                 user.getId(),
