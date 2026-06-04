@@ -6,7 +6,7 @@ import com.aha.domain.exam.entity.ScopeNodeType;
 import java.util.ArrayList;
 import java.util.List;
 
-public record ExamScopeNodeResponse(
+public record ExamScopeNodeResponseDto(
         Long id,
         String code,
         Long parentId,
@@ -15,11 +15,11 @@ public record ExamScopeNodeResponse(
         String title,
         boolean isLeaf,
         Integer displayOrder,
-        List<ExamScopeNodeResponse> children
+        List<ExamScopeNodeResponseDto> children
 ) {
 
-    public static ExamScopeNodeResponse from(ExamScopeNode node) {
-        return new ExamScopeNodeResponse(
+    public static ExamScopeNodeResponseDto from(ExamScopeNode node) {
+        return new ExamScopeNodeResponseDto(
                 node.getId(),
                 node.getCode(),
                 node.getParent() != null ? node.getParent().getId() : null,

@@ -5,7 +5,7 @@ import AiLearning from "./pages/ailearn/AiLearning.jsx";
 import MainPage from "./pages/MainPage";
 import MyPage from "./pages/user/MyPage.jsx";
 import MainLayout from "./layouts/MainLayout";
-import { logout } from "./api/authApi";
+import { logout } from "./api/auth/authApi.jsx";
 
 function App() {
     const navigate = useNavigate();

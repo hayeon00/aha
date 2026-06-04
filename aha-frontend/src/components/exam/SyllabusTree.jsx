@@ -20,24 +20,21 @@ function SyllabusTree({
     }, [topicProgresses]);
 
     useEffect(() => {
-        const sectionIds = [];
+        const openedIds = [];
 
-        const collectSectionIds = (items) => {
+        const collectOpenIds = (items) => {
             items.forEach((node) => {
-                if (!node.isLeaf) {
-                    sectionIds.push(node.id);
-                }
-
                 const children = node.children || node.childNodes || [];
 
                 if (children.length > 0) {
-                    collectSectionIds(children);
+                    openedIds.push(node.id);
+                    collectOpenIds(children);
                 }
             });
         };
 
-        collectSectionIds(nodes);
-        setOpenNodeIds(sectionIds);
+        collectOpenIds(nodes);
+        setOpenNodeIds(openedIds);
     }, [nodes]);
 
     const toggleNode = (nodeId) => {
@@ -52,6 +49,18 @@ function SyllabusTree({
         return progressMap.get(nodeId) || "NOT_STARTED";
     };
 
+    const getNodeType = (node) => {
+        return node.nodeType || node.type || node.scopeNodeType || node.level;
+    };
+
+    const isSectionNode = (node) => {
+        return getNodeType(node) === "SECTION";
+    };
+
+    const isTopicNode = (node) => {
+        return getNodeType(node) === "TOPIC";
+    };
+
     const renderNodes = (items, depth = 0) => {
         return (
             <ul className={depth === 0 ? "syllabus-tree" : "syllabus-subtree"}>
@@ -63,7 +72,7 @@ function SyllabusTree({
                     const status = getProgressStatus(node.id);
                     const isCompleted = status === "COMPLETED";
 
-                    if (!node.isLeaf) {
+                    if (isSectionNode(node)) {
                         return (
                             <li key={node.id} className="syllabus-group">
                                 <button
@@ -93,39 +102,43 @@ function SyllabusTree({
                         );
                     }
 
-                    return (
-                        <li key={node.id} className="syllabus-topic-item">
-                            <button
-                                type="button"
-                                className={
-                                    isSelected
-                                        ? "syllabus-topic-button selected"
-                                        : "syllabus-topic-button"
-                                }
-                                onClick={() => onSelectNode(node)}
-                            >
-                                <span
-                                    className={[
-                                        "topic-dot",
-                                        isCompleted ? "completed" : "",
-                                        isSelected ? "selected" : "",
-                                    ]
-                                        .filter(Boolean)
-                                        .join(" ")}
-                                />
+                    if (isTopicNode(node)) {
+                        return (
+                            <li key={node.id} className="syllabus-topic-item">
+                                <button
+                                    type="button"
+                                    className={
+                                        isSelected
+                                            ? "syllabus-topic-button selected"
+                                            : "syllabus-topic-button"
+                                    }
+                                    onClick={() => onSelectNode(node)}
+                                >
+                                    <span
+                                        className={[
+                                            "topic-dot",
+                                            isCompleted ? "completed" : "",
+                                            isSelected ? "selected" : "",
+                                        ]
+                                            .filter(Boolean)
+                                            .join(" ")}
+                                    />
 
-                                <span className="topic-title">
-                                    {node.title}
-                                </span>
-
-                                {isCompleted && (
-                                    <span className="topic-status completed">
-                                        완료
+                                    <span className="topic-title">
+                                        {node.title}
                                     </span>
-                                )}
-                            </button>
-                        </li>
-                    );
+
+                                    {isCompleted && (
+                                        <span className="topic-status completed">
+                                            완료
+                                        </span>
+                                    )}
+                                </button>
+                            </li>
+                        );
+                    }
+
+                    return null;
                 })}
             </ul>
         );

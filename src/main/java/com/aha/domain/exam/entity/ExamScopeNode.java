@@ -139,6 +139,7 @@ public class ExamScopeNode {
         }
     }
 
+
     public void activate() {
         this.isActive = true;
     }
