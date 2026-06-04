@@ -33,3 +33,4 @@ openai:
 
 file:
   profile-upload-dir: uploads/profile
+  document-upload-dir: uploads/documents
