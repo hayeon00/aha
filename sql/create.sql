@@ -47,8 +47,6 @@ DROP TABLE IF EXISTS `user_exam`;
 DROP TABLE IF EXISTS `exam`;
 DROP TABLE IF EXISTS `users`;
 
-DROP TABLE IF EXISTS `workbook_type`;
-
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -747,4 +745,226 @@ CREATE TABLE `refresh_tokens` (
                                   CONSTRAINT `fk_refresh_tokens_user`
                                       FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
                                           ON DELETE CASCADE
+);
+
+
+
+/* =================================================== */
+
+DROP TABLE IF EXISTS `workbook_item_result`;
+DROP TABLE IF EXISTS `workbook_part_result`;
+DROP TABLE IF EXISTS `workbook_result`;
+DROP TABLE IF EXISTS `workbook_answer`;
+
+DROP TABLE IF EXISTS `workbook_item`;
+DROP TABLE IF EXISTS `workbook_attempt`;
+
+DROP TABLE IF EXISTS `workbook`;
+DROP TABLE IF EXISTS `exam_workbook_type`;
+DROP TABLE IF EXISTS `workbook_type`;
+
+CREATE TABLE workbook_type (
+                               id BIGINT NOT NULL AUTO_INCREMENT,
+                               code VARCHAR(50) NOT NULL,
+                               name VARCHAR(50) NOT NULL,
+                               display_order INT NOT NULL DEFAULT 0,
+                               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                               updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                               PRIMARY KEY (id),
+                               UNIQUE KEY uk_workbook_type_code (code)
+);
+
+CREATE TABLE exam_workbook_type (
+                                    id BIGINT NOT NULL AUTO_INCREMENT,
+                                    exam_id BIGINT NOT NULL,
+                                    workbook_type_id BIGINT NOT NULL,
+                                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                    PRIMARY KEY (id),
+                                    UNIQUE KEY uk_exam_workbook_type_exam_id_workbook_type_id (exam_id, workbook_type_id),
+
+                                    CONSTRAINT fk_exam_workbook_type_exam_id
+                                        FOREIGN KEY (exam_id)
+                                            REFERENCES exam (id)
+                                            ON DELETE CASCADE,
+
+                                    CONSTRAINT fk_exam_workbook_type_workbook_type_id
+                                        FOREIGN KEY (workbook_type_id)
+                                            REFERENCES workbook_type (id)
+                                            ON DELETE CASCADE
+);
+
+
+CREATE TABLE workbook (
+                          id BIGINT NOT NULL AUTO_INCREMENT,
+                          exam_workbook_type_id BIGINT NOT NULL,
+                          no INT NOT NULL,
+                          exam_year INT NULL,
+                          total_question_count INT NOT NULL,
+                          time_limit INT NULL,
+                          status VARCHAR(30) NOT NULL,
+                          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                          PRIMARY KEY (id),
+                          UNIQUE KEY uk_workbook_exam_version_type_id_no (exam_workbook_type_id, no),
+
+                          CONSTRAINT fk_workbook_exam_workbook_type_id
+                              FOREIGN KEY (exam_workbook_type_id)
+                                  REFERENCES exam_workbook_type (id)
+                                  ON DELETE CASCADE
+);
+
+
+CREATE TABLE workbook_item (
+                               id BIGINT NOT NULL AUTO_INCREMENT,
+                               workbook_id BIGINT NOT NULL,
+                               problem_id BIGINT NOT NULL,
+                               item_no INT NOT NULL,
+                               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                               PRIMARY KEY (id),
+                               UNIQUE KEY uk_workbook_item_workbook_id_problem_id (workbook_id, problem_id),
+                               UNIQUE KEY uk_workbook_item_workbook_id_item_no (workbook_id, item_no),
+
+                               CONSTRAINT fk_workbook_item_workbook_id
+                                   FOREIGN KEY (workbook_id)
+                                       REFERENCES workbook (id)
+                                       ON DELETE CASCADE,
+
+                               CONSTRAINT fk_workbook_item_problem_id
+                                   FOREIGN KEY (problem_id)
+                                       REFERENCES problem (id)
+                                       ON DELETE CASCADE
+);
+
+CREATE TABLE workbook_attempt (
+                                  id BIGINT NOT NULL AUTO_INCREMENT,
+                                  user_id BIGINT NOT NULL,
+                                  workbook_id BIGINT NOT NULL,
+                                  workbook_result_id BIGINT  NULL,
+                                  active_workbook_id BIGINT NULL,
+                                  status VARCHAR(30) NOT NULL,
+                                  due_at DATETIME NULL,
+                                  submitted_at DATETIME NULL,
+                                  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                  PRIMARY KEY (id),
+                                  UNIQUE KEY uk_workbook_attempt_workbook_result_id (workbook_result_id),
+                                  UNIQUE KEY uk_workbook_attempt_user_id_active_workbook_id (user_id, active_workbook_id),
+
+                                  CONSTRAINT fk_workbook_attempt_user_id
+                                      FOREIGN KEY (user_id)
+                                          REFERENCES `users` (id)
+                                          ON DELETE CASCADE,
+
+                                  CONSTRAINT fk_workbook_attempt_workbook_result_id
+                                      FOREIGN KEY (user_id)
+                                          REFERENCES `users` (id)
+                                          ON DELETE CASCADE,
+
+                                  CONSTRAINT fk_workbook_attempt_workbook_id
+                                      FOREIGN KEY (workbook_id)
+                                          REFERENCES workbook (id)
+                                          ON DELETE CASCADE,
+
+                                  CONSTRAINT fk_workbook_attempt_active_workbook_id
+                                      FOREIGN KEY (active_workbook_id)
+                                          REFERENCES workbook (id)
+                                          ON DELETE SET NULL
+);
+
+
+CREATE TABLE workbook_answer (
+                                 id BIGINT NOT NULL AUTO_INCREMENT,
+                                 workbook_attempt_id BIGINT NOT NULL,
+                                 workbook_item_id BIGINT NOT NULL,
+                                 problem_choice_id BIGINT NULL,
+                                 answer_content_json JSON NULL,
+                                 is_answered BOOLEAN NOT NULL DEFAULT FALSE,
+                                 is_marked BOOLEAN NOT NULL DEFAULT FALSE,
+                                 is_uncertain BOOLEAN NOT NULL DEFAULT FALSE,
+                                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                 PRIMARY KEY (id),
+                                 UNIQUE KEY uk_workbook_answer_attempt_item (workbook_attempt_id, workbook_item_id),
+
+                                 CONSTRAINT fk_workbook_answer_attempt_id
+                                     FOREIGN KEY (workbook_attempt_id)
+                                         REFERENCES workbook_attempt (id)
+                                         ON DELETE CASCADE,
+
+                                 CONSTRAINT fk_workbook_answer_item_id
+                                     FOREIGN KEY (workbook_item_id)
+                                         REFERENCES workbook_item (id)
+                                         ON DELETE CASCADE,
+
+                                 CONSTRAINT fk_workbook_answer_problem_choice_id
+                                     FOREIGN KEY (problem_choice_id)
+                                         REFERENCES problem_choice (id)
+                                         ON DELETE SET NULL
+);
+
+CREATE TABLE workbook_result (
+                                 id BIGINT NOT NULL AUTO_INCREMENT,
+                                 is_passed BOOLEAN NOT NULL,
+                                 fail_reason_code VARCHAR(100) NULL,
+                                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                 PRIMARY KEY (id)
+
+);
+
+
+CREATE TABLE workbook_part_result (
+                                      id BIGINT NOT NULL AUTO_INCREMENT,
+                                      workbook_result_id BIGINT NOT NULL,
+                                      exam_part_id BIGINT NOT NULL,
+                                      problem_count INT NOT NULL,
+                                      correct_count INT NOT NULL,
+                                      answered_count INT NOT NULL,
+                                      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                      updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                      PRIMARY KEY (id),
+                                      UNIQUE KEY uk_workbook_part_result_result_part (workbook_result_id, exam_part_id),
+
+                                      CONSTRAINT fk_workbook_part_result_result_id
+                                          FOREIGN KEY (workbook_result_id)
+                                              REFERENCES workbook_result (id)
+                                              ON DELETE CASCADE,
+
+                                      CONSTRAINT fk_workbook_part_result_exam_part_id
+                                          FOREIGN KEY (exam_part_id)
+                                              REFERENCES exam_part (id)
+                                              ON DELETE CASCADE
+);
+
+CREATE TABLE workbook_item_result (
+                                      id BIGINT NOT NULL AUTO_INCREMENT,
+                                      workbook_result_id BIGINT NOT NULL,
+                                      workbook_item_id BIGINT NOT NULL,
+                                      is_correct BOOLEAN NOT NULL,
+                                      score DECIMAL(5,2) NOT NULL,
+                                      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                      updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                      PRIMARY KEY (id),
+                                      UNIQUE KEY uk_workbook_item_result_result_item (workbook_result_id, workbook_item_id),
+
+                                      CONSTRAINT fk_workbook_item_result_result_id
+                                          FOREIGN KEY (workbook_result_id)
+                                              REFERENCES workbook_result (id)
+                                              ON DELETE CASCADE,
+
+                                      CONSTRAINT fk_workbook_item_result_workbook_item_id
+                                          FOREIGN KEY (workbook_item_id)
+                                              REFERENCES workbook_item (id)
+                                              ON DELETE CASCADE
 );
