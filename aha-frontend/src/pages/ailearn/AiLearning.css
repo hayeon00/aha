@@ -210,9 +210,6 @@
     box-shadow: 0 8px 18px rgba(255, 106, 0, 0.08);
 }
 
-/* =========================
-   TOC
-========================= */
 
 .toc-select {
     width: 100%;
@@ -537,6 +534,17 @@
     transform: translateY(-2px);
     filter: brightness(0.98);
     box-shadow: 0 22px 40px rgba(255, 90, 0, 0.3);
+}
+
+.main-upload-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    transform: none;
+    box-shadow: none;
+}
+
+.upload-file-input {
+    display: none;
 }
 
 

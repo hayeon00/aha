@@ -25,9 +25,6 @@
     flex-direction: column;
 }
 
-/* =========================
-   상위 목차
-========================= */
 
 .syllabus-section-button {
     width: 100%;
@@ -120,9 +117,6 @@
     transform: rotate(45deg) translate(-1px, -1px);
 }
 
-/* =========================
-   소목차
-========================= */
 
 .syllabus-topic-item {
     display: flex;

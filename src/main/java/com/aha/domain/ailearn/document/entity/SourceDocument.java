@@ -1,5 +1,6 @@
 package com.aha.domain.ailearn.document.entity;
 
+import com.aha.domain.ailearn.document.enums.SourceDocumentStatus;
 import com.aha.domain.user.entity.UserExam;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -43,9 +44,13 @@ public class SourceDocument {
     @Column(name = "file_size", nullable = false)
     private Long fileSize;
 
-    @Column(nullable = false, length = 30)
-    private String status;
+    @OneToOne(mappedBy = "sourceDocument", fetch = FetchType.LAZY)
+    private DocumentProcessing processing;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private SourceDocumentStatus status;
+    
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
@@ -66,7 +71,7 @@ public class SourceDocument {
             String fileExtension,
             String mimeType,
             Long fileSize,
-            String status,
+            SourceDocumentStatus status,
             Boolean isActive
     ) {
         this.userExam = userExam;
@@ -76,11 +81,16 @@ public class SourceDocument {
         this.fileExtension = fileExtension;
         this.mimeType = mimeType;
         this.fileSize = fileSize;
-        this.status = status != null ? status : "UPLOADED";
+        this.status = status != null ? status : SourceDocumentStatus.UPLOADED;
         this.isActive = isActive != null ? isActive : true;
     }
 
-    public void updateStatus(String status) {
+    public void updateStatus(SourceDocumentStatus status) {
         this.status = status;
+    }
+
+    public void deactivate() {
+        this.isActive = false;
+        this.status = SourceDocumentStatus.DELETED;
     }
 }

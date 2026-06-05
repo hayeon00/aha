@@ -3,34 +3,28 @@ package com.aha.domain.ailearn.document.dto.response;
 import com.aha.domain.ailearn.document.entity.DocumentProcessing;
 import com.aha.domain.ailearn.document.entity.SourceDocument;
 
-public record DocumentUploadResponseDto(
+public record UploadedDocumentResponseDto(
         Long sourceDocumentId,
         Long processingId,
-        Long userExamId,
         String originalFileName,
         String fileExtension,
         Long fileSize,
         String documentStatus,
-        String processingStatus,
-        String currentStep,
-        Integer progressRate
+        String processingStatus
 ) {
 
-    public static DocumentUploadResponseDto of(
+    public static UploadedDocumentResponseDto of(
             SourceDocument sourceDocument,
             DocumentProcessing documentProcessing
     ) {
-        return new DocumentUploadResponseDto(
+        return new UploadedDocumentResponseDto(
                 sourceDocument.getId(),
                 documentProcessing.getId(),
-                sourceDocument.getUserExam().getId(),
                 sourceDocument.getOriginalFileName(),
                 sourceDocument.getFileExtension(),
                 sourceDocument.getFileSize(),
-                sourceDocument.getStatus(),
-                documentProcessing.getStatus(),
-                documentProcessing.getCurrentStep(),
-                documentProcessing.getProgressRate()
+                sourceDocument.getStatus().name(),
+                documentProcessing.getStatus().name()
         );
     }
 }

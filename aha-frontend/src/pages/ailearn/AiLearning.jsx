@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import UploadProgressModal from "../../components/ailearn/UploadProgressModal";
+import {
+    getDocumentProcessingStatus,
+    uploadLearningDocuments,
+} from "../../api/ailearn/documentApi";
 import { getExamScopeNodes } from "../../api/exam/examApi";
 import { getVisibleUserExams } from "../../api/exam/userExamApi";
 import "./AiLearning.css";
@@ -32,6 +37,7 @@ const coachFeatures = [
 ];
 
 function AiLearning() {
+    const fileInputRef = useRef(null);
     const [userExams, setUserExams] = useState([]);
     const [selectedUserExamId, setSelectedUserExamId] = useState(null);
 
@@ -41,6 +47,11 @@ function AiLearning() {
 
     const [isExamLoading, setIsExamLoading] = useState(true);
     const [isScopeLoading, setIsScopeLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [processingId, setProcessingId] = useState(null);
+    const [processingStatus, setProcessingStatus] = useState(null);
+    const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+    const [uploadErrorMessage, setUploadErrorMessage] = useState("");
     const [message, setMessage] = useState("");
 
     const selectedUserExam = useMemo(() => {
@@ -65,6 +76,50 @@ function AiLearning() {
 
         fetchScopeNodes(selectedExamVersionId);
     }, [selectedExamVersionId]);
+
+    useEffect(() => {
+        if (!processingId || !isProgressModalOpen) {
+            return undefined;
+        }
+
+        const pollProcessingStatus = async () => {
+            try {
+                const response = await getDocumentProcessingStatus(processingId);
+                const statusData = getApiData(response);
+
+                if (!statusData) {
+                    return;
+                }
+
+                setProcessingStatus(statusData);
+
+                if (statusData.status === "COMPLETED") {
+                    setIsProgressModalOpen(false);
+                    setProcessingId(null);
+                    setProcessingStatus(null);
+                    setMessage("문서 처리가 완료되었습니다.");
+                }
+
+                if (
+                    statusData.status === "FAILED" ||
+                    statusData.status === "PARTIAL_FAILED"
+                ) {
+                    setUploadErrorMessage(
+                        statusData.errorMessage || "문서 처리 중 오류가 발생했습니다."
+                    );
+                    setProcessingId(null);
+                }
+            } catch (error) {
+                console.error("문서 처리 상태 조회 실패:", error);
+                setUploadErrorMessage("문서 처리 상태를 조회하지 못했습니다.");
+            }
+        };
+
+        pollProcessingStatus();
+        const intervalId = window.setInterval(pollProcessingStatus, 2000);
+
+        return () => window.clearInterval(intervalId);
+    }, [processingId, isProgressModalOpen]);
 
     const getApiData = (response) => {
         if (!response) return null;
@@ -174,7 +229,54 @@ function AiLearning() {
     };
 
     const handleUploadClick = () => {
-        alert("학습 문서 업로드 기능은 다음 단계에서 연결하면 됩니다.");
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event) => {
+        const files = Array.from(event.target.files || []);
+        event.target.value = "";
+
+        if (!selectedUserExamId || files.length === 0) {
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            setMessage("");
+            setUploadErrorMessage("");
+
+            const response = await uploadLearningDocuments(selectedUserExamId, files);
+            const uploadData = getApiData(response);
+            const nextProcessingId =
+                uploadData?.processingId || uploadData?.processingGroupId;
+
+            if (!nextProcessingId) {
+                throw new Error("processingId not found");
+            }
+
+            setProcessingId(nextProcessingId);
+            setProcessingStatus(uploadData);
+            setIsProgressModalOpen(true);
+        } catch (error) {
+            console.error("문서 업로드 실패:", error);
+            setUploadErrorMessage("문서 업로드에 실패했습니다.");
+            setProcessingStatus({
+                status: "FAILED",
+                currentStep: "FAILED",
+                progressRate: 0,
+                totalFileCount: files.length,
+                completedFileCount: 0,
+                errorMessage: "문서 업로드에 실패했습니다.",
+            });
+            setIsProgressModalOpen(true);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleCloseProgressModal = () => {
+        setIsProgressModalOpen(false);
+        setProcessingId(null);
     };
 
     if (isExamLoading) {
@@ -383,6 +485,7 @@ function AiLearning() {
                                     type="button"
                                     className="main-upload-button"
                                     onClick={handleUploadClick}
+                                    disabled={isUploading || !selectedUserExamId}
                                 >
                                     <svg
                                         width="18"
@@ -413,6 +516,14 @@ function AiLearning() {
                                     </svg>
                                     <span>학습 문서 업로드</span>
                                 </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    multiple
+                                    className="upload-file-input"
+                                    onChange={handleFileChange}
+                                />
                             </div>
                         </div>
 
@@ -495,6 +606,13 @@ function AiLearning() {
                     </aside>
                 </section>
             )}
+
+            <UploadProgressModal
+                open={isProgressModalOpen}
+                status={processingStatus}
+                errorMessage={uploadErrorMessage}
+                onClose={handleCloseProgressModal}
+            />
         </main>
     );
 }

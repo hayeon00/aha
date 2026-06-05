@@ -24,6 +24,7 @@ DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `extracted_content`;
 DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `source_document`;
+DROP TABLE IF EXISTS `document_processing_group`;
 
 DROP TABLE IF EXISTS `refresh_tokens`;
 
@@ -197,6 +198,46 @@ CREATE TABLE `user_exam` (
                                      ON DELETE CASCADE
 );
 
+
+
+CREATE TABLE `document_processing_group` (
+                                             `id`                   BIGINT        NOT NULL AUTO_INCREMENT,
+                                             `user_exam_id`         BIGINT        NOT NULL,
+                                             `status`               VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
+                                             `current_step`         VARCHAR(50)   NOT NULL DEFAULT 'FILE_UPLOADED',
+                                             `progress_rate`        INT           NOT NULL DEFAULT 0,
+                                             `total_file_count`     INT           NOT NULL DEFAULT 0,
+                                             `completed_file_count` INT           NOT NULL DEFAULT 0,
+                                             `failed_file_count`    INT           NOT NULL DEFAULT 0,
+                                             `error_message`        VARCHAR(1000)     NULL,
+                                             `started_at`           DATETIME          NULL,
+                                             `completed_at`         DATETIME          NULL,
+                                             `created_at`           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                             `updated_at`           DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                             PRIMARY KEY (`id`),
+
+                                             INDEX `idx_dpg_user_exam_id` (`user_exam_id`),
+                                             INDEX `idx_dpg_status` (`status`),
+                                             INDEX `idx_dpg_current_step` (`current_step`),
+                                             INDEX `idx_dpg_created_at` (`created_at`),
+
+                                             CONSTRAINT `fk_dpg_user_exam_id`
+                                                 FOREIGN KEY (`user_exam_id`) REFERENCES `user_exam` (`id`)
+                                                     ON DELETE CASCADE,
+
+                                             CONSTRAINT `chk_dpg_progress_rate`
+                                                 CHECK (`progress_rate` BETWEEN 0 AND 100),
+
+                                             CONSTRAINT `chk_dpg_total_file_count`
+                                                 CHECK (`total_file_count` >= 0),
+
+                                             CONSTRAINT `chk_dpg_completed_file_count`
+                                                 CHECK (`completed_file_count` >= 0),
+
+                                             CONSTRAINT `chk_dpg_failed_file_count`
+                                                 CHECK (`failed_file_count` >= 0)
+);
 
 
 CREATE TABLE `asset_file` (
@@ -523,28 +564,29 @@ CREATE TABLE `source_document` (
 
 
 CREATE TABLE `document_processing` (
-                                       `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
-                                       `source_document_id` BIGINT        NOT NULL,
-                                       `status`             VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
-                                       `current_step`       VARCHAR(50)       NULL,
-                                       `progress_rate`      INT           NOT NULL DEFAULT 0,
-                                       `error_message`      VARCHAR(1000)     NULL,
-                                       `started_at`         DATETIME          NULL,
-                                       `completed_at`       DATETIME          NULL,
-                                       `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                       `updated_at`         DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+                                       `id`                  BIGINT        NOT NULL AUTO_INCREMENT,
+                                       `processing_group_id` BIGINT        NOT NULL,
+                                       `source_document_id`  BIGINT        NOT NULL,
+                                       `status`              VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
+                                       `error_message`       VARCHAR(1000)     NULL,
+                                       `started_at`          DATETIME          NULL,
+                                       `completed_at`        DATETIME          NULL,
+                                       `created_at`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       `updated_at`          DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
 
                                        PRIMARY KEY (`id`),
 
+                                       INDEX `idx_document_processing_group_id` (`processing_group_id`),
                                        INDEX `idx_document_processing_source_document_id` (`source_document_id`),
                                        INDEX `idx_document_processing_status` (`status`),
 
-                                       CONSTRAINT `fk_document_processing_source_document_id`
-                                           FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
+                                       CONSTRAINT `fk_document_processing_group_id`
+                                           FOREIGN KEY (`processing_group_id`) REFERENCES `document_processing_group` (`id`)
                                                ON DELETE CASCADE,
 
-                                       CONSTRAINT `chk_document_processing_progress_rate`
-                                           CHECK (`progress_rate` BETWEEN 0 AND 100)
+                                       CONSTRAINT `fk_document_processing_source_document_id`
+                                           FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
+                                               ON DELETE CASCADE
 );
 
 

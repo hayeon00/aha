@@ -1,5 +1,6 @@
 package com.aha.domain.ailearn.document.entity;
 
+import com.aha.domain.ailearn.document.enums.DocumentProcessingStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,18 +21,17 @@ public class DocumentProcessing {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "processing_group_id", nullable = false)
+    private DocumentProcessingGroup processingGroup;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_document_id", nullable = false)
     private SourceDocument sourceDocument;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private String status;
-
-    @Column(name = "current_step", nullable = false, length = 50)
-    private String currentStep;
-
-    @Column(name = "progress_rate", nullable = false)
-    private Integer progressRate;
+    private DocumentProcessingStatus status;
 
     @Column(name = "error_message", length = 1000)
     private String errorMessage;
@@ -52,20 +52,34 @@ public class DocumentProcessing {
 
     @Builder
     private DocumentProcessing(
+            DocumentProcessingGroup processingGroup,
             SourceDocument sourceDocument,
-            String status,
-            String currentStep,
-            Integer progressRate,
+            DocumentProcessingStatus status,
             String errorMessage,
             LocalDateTime startedAt,
             LocalDateTime completedAt
     ) {
+        this.processingGroup = processingGroup;
         this.sourceDocument = sourceDocument;
-        this.status = status != null ? status : "PENDING";
-        this.currentStep = currentStep != null ? currentStep : "FILE_UPLOADED";
-        this.progressRate = progressRate != null ? progressRate : 0;
+        this.status = status != null ? status : DocumentProcessingStatus.PENDING;
         this.errorMessage = errorMessage;
         this.startedAt = startedAt;
         this.completedAt = completedAt;
+    }
+
+    public void startProcessing() {
+        this.status = DocumentProcessingStatus.PROCESSING;
+        this.startedAt = LocalDateTime.now();
+    }
+
+    public void complete() {
+        this.status = DocumentProcessingStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
+    }
+
+    public void fail(String errorMessage) {
+        this.status = DocumentProcessingStatus.FAILED;
+        this.errorMessage = errorMessage;
+        this.completedAt = LocalDateTime.now();
     }
 }
