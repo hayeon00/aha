@@ -3,8 +3,10 @@ package com.aha.global.exception;
 import com.aha.global.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -45,6 +47,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getBindingResult()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameterException(
+        MissingServletRequestParameterException e,
+        HttpServletRequest request
+    ) {
+      log.warn("Missing/Invalid RequestParameter. parameterName={}, uri={}", e.getParameterName(), request.getRequestURI());
+      return ResponseEntity
+          .status(HttpStatus.BAD_REQUEST)
+          .body(ErrorResponse.of(ErrorCode.INVALID_REQUEST_FORMAT));
     }
 
     @ExceptionHandler(Exception.class)
