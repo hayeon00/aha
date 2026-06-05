@@ -1,6 +1,7 @@
 package com.aha.domain.workbook.service;
 
 import com.aha.domain.exam.entity.Exam;
+import com.aha.domain.exam.enums.ExamStatus;
 import com.aha.domain.exam.repository.ExamRepository;
 import com.aha.domain.workbook.dto.response.WorkbookGroupResponseDto;
 import com.aha.domain.workbook.dto.response.WorkbookGroupResponseDto.WorkbookData;
@@ -43,7 +44,7 @@ public class WorkbookService {
 
     Exam exam = examRepository.findByCode(examCode)
         .orElseThrow(() -> new BusinessException(ErrorCode.EXAM_NOT_FOUND));
-    if (!exam.isActive()) {
+    if (exam.getStatus()!= ExamStatus.ACTIVE) {
       throw new BusinessException(ErrorCode.EXAM_INACTIVE);
     }
 
