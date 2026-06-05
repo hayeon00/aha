@@ -5,6 +5,7 @@ public enum ErrorCode {
     // COMMON
     INVALID_INPUT_VALUE(400, "COMMON_001", "잘못된 입력값입니다."),
     ENTITY_NOT_FOUND(404, "COMMON_002", "대상을 찾을 수 없습니다."),
+    INVALID_REQUEST_FORMAT(400, "COMMON_003", "잘못된 요청 형식입니다."),
     INTERNAL_SERVER_ERROR(500, "COMMON_999", "서버 내부 오류입니다."),
 
     // AUTH
@@ -26,8 +27,18 @@ public enum ErrorCode {
     // AILEARN DOCUMENT
     DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_001", "문서 업로드에 실패했습니다."),
     INVALID_DOCUMENT_FILE(400, "DOCUMENT_002", "지원하지 않는 문서 파일입니다."),
-    DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다.");
+    DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
 
+    //EXAM
+    EXAM_NOT_FOUND(404, "EXAM_NOT_FOUND", "해당 시험이 존재하지 않습니다."),
+    EXAM_INACTIVE(400, "EXAM_INACTIVE", "해당 시험은 비활성화 상태입니다."),
+
+    //WORKBOOK
+    WORKBOOK_TYPE_NOT_FOUND(404, "WORKBOOK_TYPE_NOT_FOUND", "문제집 유형을 찾을 수 없습니다."),
+    WORKBOOK_NOT_FOUND(404, "WORKBOOK_NOT_FOUND", "해당 워크북이 존재하지 않습니다."),
+    WORKBOOK_TYPE_UNSUPPORTED_EXAM(422,"WORKBOOK_TYPE_UNSUPPORTED_EXAM","해당 워크북 유형은 선택하신 시험을 지원하지 않습니다."),
+    WORKBOOK_ATTEMPT_ALREADY_EXIST(422,"WORKBOOK_ATTEMPT_ALREADY_EXIST","이미 해당 워크북 풀이 중입니다."),
+    WORKBOOK_ARCHIVED(422,"WORKBOOK_ARCHIVED" ,"해당 워크북은 서버 보관 중입니다." );
 
     private final int status;
     private final String code;

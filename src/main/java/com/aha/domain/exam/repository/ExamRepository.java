@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface ExamRepository extends JpaRepository<Exam, Long> {
 
     List<Exam> findAllByStatusOrderByIdAsc(ExamStatus status);
+
+    Optional<Exam> findByCode(String examCode);
 }
