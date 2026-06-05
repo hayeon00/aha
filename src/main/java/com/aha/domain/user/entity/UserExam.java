@@ -1,32 +1,25 @@
 package com.aha.domain.user.entity;
 
-import com.aha.domain.exam.entity.Exam;
+import com.aha.domain.exam.entity.ExamVersion;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+@Getter
 @Entity
 @Table(
         name = "user_exam",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_user_exam_user_exam",
-                        columnNames = {"user_id", "exam_id"}
+                        name = "uk_user_exam_user_exam_version",
+                        columnNames = {"user_id", "exam_version_id"}
                 )
-        },
-        indexes = {
-                @Index(name = "idx_user_exam_user_id", columnList = "user_id"),
-                @Index(name = "idx_user_exam_exam_id", columnList = "exam_id"),
-                @Index(name = "idx_user_exam_user_main", columnList = "user_id, is_main")
         }
 )
-@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserExam {
 
@@ -34,43 +27,52 @@ public class UserExam {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "user_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_user_exam_user_id")
-    )
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "exam_version_id", nullable = false)
+    private ExamVersion examVersion;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "exam_id",
-            nullable = false,
-            foreignKey = @ForeignKey(name = "fk_user_exam_exam_id")
-    )
-    private Exam exam;
+    @Column(name = "is_hidden", nullable = false)
+    private Boolean isHidden;
 
+    @Column(name = "last_studied_at")
+    private LocalDateTime lastStudiedAt;
 
-    @Column(name = "is_main", nullable = false)
-    private boolean isMain;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false)
     private LocalDateTime updatedAt;
 
     @Builder
-    public UserExam(User user, Exam exam, boolean isMain) {
+    private UserExam(
+            User user,
+            ExamVersion examVersion,
+            Boolean isHidden,
+            LocalDateTime lastStudiedAt
+    ) {
         this.user = user;
-        this.exam = exam;
-        this.isMain = isMain;
+        this.examVersion = examVersion;
+        this.isHidden = isHidden != null ? isHidden : false;
+        this.lastStudiedAt = lastStudiedAt;
     }
 
-    public void changeMain(boolean main) {
-        this.isMain = main;
+    public void hide() {
+        this.isHidden = true;
+    }
+
+    public void show() {
+        this.isHidden = false;
+    }
+
+    public void updateHidden(Boolean hidden) {
+        this.isHidden = hidden;
+    }
+
+    public void updateLastStudiedAt() {
+        this.lastStudiedAt = LocalDateTime.now();
     }
 }

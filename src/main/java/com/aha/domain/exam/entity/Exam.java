@@ -1,5 +1,6 @@
 package com.aha.domain.exam.entity;
 
+import com.aha.domain.exam.enums.ExamStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -33,8 +34,9 @@ public class Exam {
   @Column(nullable = false, length = 100)
   private String name;
 
-  @Column(name = "is_active", nullable = false)
-  private boolean isActive;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ExamStatus status;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -47,15 +49,4 @@ public class Exam {
   @OneToMany(mappedBy = "exam", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ExamVersion> versions = new ArrayList<>();
 
-  @Builder
-  public Exam(String code, String name, boolean isActive) {
-    this.code = code;
-    this.name = name;
-    this.isActive = isActive;
-  }
-
-  public void updateInfo(String name, boolean isActive) {
-    this.name = name;
-    this.isActive = isActive;
-  }
 }

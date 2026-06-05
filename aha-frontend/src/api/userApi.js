@@ -1,13 +1,32 @@
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 
-const API_BASE_URL = "http://localhost:8080";
+export const getMyInfo = async () => {
+    const response = await axiosInstance.get("/api/v1/users/me");
+    return response.data;
+};
 
-export const getMyInfo = () => {
-    const accessToken = localStorage.getItem("accessToken");
+export const updateProfile = async (profileData) => {
+    const response = await axiosInstance.patch(
+        "/api/v1/users/me/profile",
+        profileData
+    );
 
-    return axios.get(`${API_BASE_URL}/api/users/me`, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
-    });
+    return response.data;
+};
+
+export const updateProfileImage = async (profileImage) => {
+    const formData = new FormData();
+    formData.append("profileImage", profileImage);
+
+    const response = await axiosInstance.patch(
+        "/api/v1/users/me/profile-image",
+        formData,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        }
+    );
+
+    return response.data;
 };
