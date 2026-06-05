@@ -4,12 +4,23 @@ import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.exam.entity.ExamVersion;
 import com.aha.domain.problem.entity.DomainType;
 import com.aha.domain.user.entity.User;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -17,7 +28,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "problem_set_generation_job")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA용 기본 생성자 통제
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProblemSetGenerationJob {
 
   @Id
@@ -26,21 +37,24 @@ public class ProblemSetGenerationJob {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false, foreignKey = @ForeignKey(name = "fk_psgj_user_id"))
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private User user;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_version_id", nullable = false, foreignKey = @ForeignKey(name = "fk_psgj_exam_version_id"))
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private ExamVersion examVersion;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_scope_node_id", foreignKey = @ForeignKey(name = "fk_psgj_exam_scope_node_id"))
+  @OnDelete(action = OnDeleteAction.SET_NULL)
   private ExamScopeNode examScopeNode;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "domain_type_id", foreignKey = @ForeignKey(name = "fk_psgj_domain_type_id"))
+  @OnDelete(action = OnDeleteAction.SET_NULL)
   private DomainType domainType;
 
-  // 현재 스키마 상 FK 제약조건이 없으므로 기본 Long 타입으로 매핑합니다.
   @Column(name = "workbook_type_id")
   private Long workbookTypeId;
 
@@ -54,7 +68,7 @@ public class ProblemSetGenerationJob {
   private Integer requestedCount;
 
   @Column(nullable = false, length = 30)
-  private String status; // PENDING, PROCESSING, SUCCESS, FAIL 등
+  private String status;
 
   @Column(name = "current_step", length = 50)
   private String currentStep;
@@ -88,13 +102,10 @@ public class ProblemSetGenerationJob {
     this.workbookId = workbookId;
     this.requestedCount = requestedCount;
     this.currentStep = currentStep;
-
-    // 자바 레벨 초기값(Default) 방어 설계
     this.retryCount = (retryCount != null) ? retryCount : 0;
     this.status = (status != null) ? status : "PENDING";
   }
 
-  // 💡 비동기 상태 변화를 제어할 도메인 비즈니스 메서드 (핵심 수정자)
   public void startJob(String initialStep) {
     this.status = "PROCESSING";
     this.currentStep = initialStep;
