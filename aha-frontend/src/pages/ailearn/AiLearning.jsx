@@ -1,978 +1,678 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axiosInstance from "../../api/axiosInstance.js";
-import SyllabusTree from "../../components/exam/SyllabusTree.jsx";
+import { useEffect, useMemo, useRef, useState } from "react";
+import UploadProgressModal from "../../components/ailearn/UploadProgressModal";
+import {
+    getDocumentProcessingStatus,
+    uploadLearningDocuments,
+} from "../../api/ailearn/documentApi";
+import { getExamScopeNodes } from "../../api/exam/examApi";
+import { getVisibleUserExams } from "../../api/exam/userExamApi";
 import "./AiLearning.css";
 
+const coachFeatures = [
+    {
+        icon: "summary",
+        title: "쉬운 설명",
+        description: "복잡한 개념을 쉽게 풀어드려요.",
+    },
+    {
+        icon: "list",
+        title: "핵심 요약",
+        description: "중요한 내용을 빠르게 요약해요.",
+    },
+    {
+        icon: "target",
+        title: "출제 포인트",
+        description: "시험에 자주 나오는 포인트를 짚어드려요.",
+    },
+    {
+        icon: "compare",
+        title: "헷갈리는 개념 비교",
+        description: "유사한 개념을 비교해드립니다.",
+    },
+    {
+        icon: "question",
+        title: "예상 질문 만들기",
+        description: "스스로 점검할 수 있는 문제를 만들어요.",
+    },
+];
+
 function AiLearning() {
-    const navigate = useNavigate();
-    const isLoggedIn = !!localStorage.getItem("accessToken");
+    const fileInputRef = useRef(null);
+    const [userExams, setUserExams] = useState([]);
+    const [selectedUserExamId, setSelectedUserExamId] = useState(null);
 
-    const [examVersionId] = useState(1);
-    const [syllabus, setSyllabus] = useState([]);
-    const [selectedNode, setSelectedNode] = useState(null);
-    const [learningContent, setLearningContent] = useState(null);
-    const [learningSessionId, setLearningSessionId] = useState(null);
-    const [conceptProblems, setConceptProblems] = useState(null);
-    const [conceptProblemResult, setConceptProblemResult] = useState(null);
-    const [selectedAnswers, setSelectedAnswers] = useState({});
+    const [scopeNodes, setScopeNodes] = useState([]);
+    const [expandedNodeIds, setExpandedNodeIds] = useState([]);
+    const [selectedNodeId, setSelectedNodeId] = useState(null);
 
-    const [assistantMessages, setAssistantMessages] = useState([
-        {
-            role: "ASSISTANT",
-            text: "안녕하세요! 현재 선택한 개념에 대해 쉽게 설명하거나, 시험 포인트를 정리해드릴게요.",
-        },
-    ]);
+    const [isExamLoading, setIsExamLoading] = useState(true);
+    const [isScopeLoading, setIsScopeLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [processingId, setProcessingId] = useState(null);
+    const [processingStatus, setProcessingStatus] = useState(null);
+    const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+    const [uploadErrorMessage, setUploadErrorMessage] = useState("");
+    const [message, setMessage] = useState("");
 
-    const [assistantQuestionType, setAssistantQuestionType] =
-        useState("EASY_EXPLANATION");
-    const [assistantInput, setAssistantInput] = useState("");
-    const [assistantLoading, setAssistantLoading] = useState(false);
+    const selectedUserExam = useMemo(() => {
+        return userExams.find(
+            (userExam) => userExam.userExamId === selectedUserExamId
+        );
+    }, [userExams, selectedUserExamId]);
 
-    const [assistantWidth, setAssistantWidth] = useState(360);
-    const [isResizingAssistant, setIsResizingAssistant] = useState(false);
-    const contentLayoutRef = useRef(null);
+    const selectedExamVersionId = selectedUserExam?.examVersionId ?? null;
 
-    const [progressSummary, setProgressSummary] = useState(null);
-    const [progressLoading, setProgressLoading] = useState(false);
+    useEffect(() => {
+        fetchVisibleUserExams();
+    }, []);
 
-    const [syllabusLoading, setSyllabusLoading] = useState(false);
-    const [contentLoading, setContentLoading] = useState(false);
-    const [problemLoading, setProblemLoading] = useState(false);
-    const [submitLoading, setSubmitLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
+    useEffect(() => {
+        if (!selectedExamVersionId) {
+            setScopeNodes([]);
+            setExpandedNodeIds([]);
+            setSelectedNodeId(null);
+            return;
+        }
 
-    const assistantQuestionTypes = [
-        { value: "EASY_EXPLANATION", label: "쉽게 설명" },
-        { value: "COMPARISON", label: "비교 설명" },
-        { value: "EXAM_POINT", label: "시험 포인트" },
-        { value: "PROBLEM_HELP", label: "문제 풀이 도움" },
-        { value: "SUMMARY", label: "요약" },
-        { value: "FREE_QNA", label: "자유 질문" },
-    ];
+        fetchScopeNodes(selectedExamVersionId);
+    }, [selectedExamVersionId]);
 
-    const findFirstLeafNode = (nodes = []) => {
-        for (const node of nodes) {
-            if (node.isLeaf) {
-                return node;
+    useEffect(() => {
+        if (!processingId || !isProgressModalOpen) {
+            return undefined;
+        }
+
+        const pollProcessingStatus = async () => {
+            try {
+                const response = await getDocumentProcessingStatus(processingId);
+                const statusData = getApiData(response);
+
+                if (!statusData) {
+                    return;
+                }
+
+                setProcessingStatus(statusData);
+
+                if (statusData.status === "COMPLETED") {
+                    setIsProgressModalOpen(false);
+                    setProcessingId(null);
+                    setProcessingStatus(null);
+                    setMessage("문서 처리가 완료되었습니다.");
+                }
+
+                if (
+                    statusData.status === "FAILED" ||
+                    statusData.status === "PARTIAL_FAILED"
+                ) {
+                    setUploadErrorMessage(
+                        statusData.errorMessage || "문서 처리 중 오류가 발생했습니다."
+                    );
+                    setProcessingId(null);
+                }
+            } catch (error) {
+                console.error("문서 처리 상태 조회 실패:", error);
+                setUploadErrorMessage("문서 처리 상태를 조회하지 못했습니다.");
+            }
+        };
+
+        pollProcessingStatus();
+        const intervalId = window.setInterval(pollProcessingStatus, 2000);
+
+        return () => window.clearInterval(intervalId);
+    }, [processingId, isProgressModalOpen]);
+
+    const getApiData = (response) => {
+        if (!response) return null;
+
+        if (response.data?.data !== undefined) {
+            return response.data.data;
+        }
+
+        if (response.data !== undefined) {
+            return response.data;
+        }
+
+        return response;
+    };
+
+    const fetchVisibleUserExams = async () => {
+        try {
+            setIsExamLoading(true);
+            setMessage("");
+
+            const response = await getVisibleUserExams();
+            const visibleUserExams = getApiData(response) || [];
+
+            setUserExams(Array.isArray(visibleUserExams) ? visibleUserExams : []);
+            setSelectedUserExamId(visibleUserExams[0]?.userExamId ?? null);
+        } catch (error) {
+            console.error("표시 시험 조회 실패:", error);
+            setUserExams([]);
+            setSelectedUserExamId(null);
+            setMessage("표시 중인 시험 목록을 불러오지 못했습니다.");
+        } finally {
+            setIsExamLoading(false);
+        }
+    };
+
+    const fetchScopeNodes = async (examVersionId) => {
+        try {
+            setIsScopeLoading(true);
+            setMessage("");
+
+            const response = await getExamScopeNodes(examVersionId);
+            const nodes = getApiData(response) || [];
+
+            setScopeNodes(Array.isArray(nodes) ? nodes : []);
+            setExpandedNodeIds(getDefaultExpandedNodeIds(nodes));
+            setSelectedNodeId(findFirstSelectableNodeId(nodes));
+        } catch (error) {
+            console.error("시험 목차 조회 실패:", error);
+            setScopeNodes([]);
+            setExpandedNodeIds([]);
+            setSelectedNodeId(null);
+            setMessage("시험 목차를 불러오지 못했습니다.");
+        } finally {
+            setIsScopeLoading(false);
+        }
+    };
+
+    const getDefaultExpandedNodeIds = (nodes) => {
+        const ids = [];
+
+        const traverse = (items) => {
+            items.forEach((item) => {
+                ids.push(item.id);
+
+                if (item.children?.length > 0) {
+                    traverse(item.children);
+                }
+            });
+        };
+
+        traverse(nodes || []);
+        return ids;
+    };
+
+    const findFirstSelectableNodeId = (nodes) => {
+        for (const node of nodes || []) {
+            if (node.children?.length > 0) {
+                return node.children[0].id;
             }
 
-            const children = node.children || node.childNodes || [];
-            const leafNode = findFirstLeafNode(children);
-
-            if (leafNode) {
-                return leafNode;
-            }
+            return node.id;
         }
 
         return null;
     };
 
-    const fetchProgressSummary = async () => {
-        if (!localStorage.getItem("accessToken")) {
-            setProgressSummary(null);
+    const toggleNode = (nodeId) => {
+        setExpandedNodeIds((prev) => {
+            if (prev.includes(nodeId)) {
+                return prev.filter((id) => id !== nodeId);
+            }
+
+            return [...prev, nodeId];
+        });
+    };
+
+    const handleSelectNode = (node) => {
+        setSelectedNodeId(node.id);
+
+        if (node.children?.length > 0) {
+            toggleNode(node.id);
+        }
+    };
+
+    const handleUserExamChange = (userExamId) => {
+        setSelectedUserExamId(userExamId);
+    };
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event) => {
+        const files = Array.from(event.target.files || []);
+        event.target.value = "";
+
+        if (!selectedUserExamId || files.length === 0) {
             return;
         }
 
         try {
-            setProgressLoading(true);
+            setIsUploading(true);
+            setMessage("");
+            setUploadErrorMessage("");
 
-            const response = await axiosInstance.get(
-                `/api/v1/learning/progress/summary?examVersionId=${examVersionId}`
-            );
+            const response = await uploadLearningDocuments(selectedUserExamId, files);
+            const uploadData = getApiData(response);
+            const nextProcessingId =
+                uploadData?.processingId || uploadData?.processingGroupId;
 
-            setProgressSummary(response.data.data);
-        } catch (error) {
-            console.error("학습 진도 조회 실패:", error);
-        } finally {
-            setProgressLoading(false);
-        }
-    };
-
-    const handleSelectNode = async (node) => {
-        setSelectedNode(node);
-        setLearningContent(null);
-        setLearningSessionId(null);
-        setConceptProblems(null);
-        setConceptProblemResult(null);
-        setSelectedAnswers({});
-        setErrorMessage("");
-
-        setAssistantMessages([
-            {
-                role: "ASSISTANT",
-                text: "안녕하세요! 현재 선택한 개념에 대해 쉽게 설명하거나, 시험 포인트를 정리해드릴게요.",
-            },
-        ]);
-        setAssistantInput("");
-        setAssistantQuestionType("EASY_EXPLANATION");
-
-        if (!node.isLeaf) {
-            return;
-        }
-
-        if (!localStorage.getItem("accessToken")) {
-            return;
-        }
-
-        try {
-            setContentLoading(true);
-
-            const contentResponse = await axiosInstance.get(
-                `/api/v1/learning/contents/${node.id}`
-            );
-
-            const contentData = contentResponse.data.data;
-            setLearningContent(contentData);
-
-            try {
-                const sessionResponse = await axiosInstance.post(
-                    "/api/v1/learning/sessions",
-                    {
-                        examScopeNodeId: node.id,
-                    }
-                );
-
-                const sessionData = sessionResponse.data.data;
-
-                setLearningSessionId(
-                    sessionData.learningSessionId ?? sessionData.id
-                );
-            } catch (sessionError) {
-                console.error("학습 세션 생성 실패:", sessionError);
-                console.error("응답 상태:", sessionError.response?.status);
-                console.error("응답 데이터:", sessionError.response?.data);
-
-                setLearningSessionId(null);
-                setErrorMessage(
-                    sessionError.response?.data?.message ||
-                    "개념 설명은 조회되었지만 학습 세션 생성에 실패했습니다."
-                );
-            }
-        } catch (error) {
-            console.error("개념 설명 조회 실패:", error);
-            console.error("응답 상태:", error.response?.status);
-            console.error("응답 데이터:", error.response?.data);
-
-            setErrorMessage(
-                error.response?.data?.message ||
-                "개념 설명 조회에 실패했습니다. 해당 소목차 데이터를 확인해주세요."
-            );
-        } finally {
-            setContentLoading(false);
-        }
-    };
-
-    const fetchSyllabus = async () => {
-        try {
-            setSyllabusLoading(true);
-            setErrorMessage("");
-            setSelectedNode(null);
-            setLearningContent(null);
-            setLearningSessionId(null);
-            setConceptProblems(null);
-            setConceptProblemResult(null);
-            setSelectedAnswers({});
-
-            const response = await axiosInstance.get(
-                `/api/v1/exam-versions/${examVersionId}/syllabus`
-            );
-
-            const syllabusData = response.data.data || [];
-            setSyllabus(syllabusData);
-
-            if (localStorage.getItem("accessToken")) {
-                await fetchProgressSummary();
-            } else {
-                setProgressSummary(null);
+            if (!nextProcessingId) {
+                throw new Error("processingId not found");
             }
 
-            const firstLeafNode = findFirstLeafNode(syllabusData);
-
-            if (firstLeafNode) {
-                await handleSelectNode(firstLeafNode);
-            }
+            setProcessingId(nextProcessingId);
+            setProcessingStatus(uploadData);
+            setIsProgressModalOpen(true);
         } catch (error) {
-            console.error(error);
-            setErrorMessage("목차 조회에 실패했습니다.");
+            console.error("문서 업로드 실패:", error);
+            setUploadErrorMessage("문서 업로드에 실패했습니다.");
+            setProcessingStatus({
+                status: "FAILED",
+                currentStep: "FAILED",
+                progressRate: 0,
+                totalFileCount: files.length,
+                completedFileCount: 0,
+                errorMessage: "문서 업로드에 실패했습니다.",
+            });
+            setIsProgressModalOpen(true);
         } finally {
-            setSyllabusLoading(false);
+            setIsUploading(false);
         }
     };
 
-    const handleLoadConceptProblems = async () => {
-        if (!localStorage.getItem("accessToken")) {
-            alert("문제풀이를 하려면 로그인이 필요합니다.");
-            navigate("/login");
-            return;
-        }
-
-        if (!learningSessionId) {
-            setErrorMessage("학습 세션 정보가 없습니다. 소목차를 다시 선택해주세요.");
-            return;
-        }
-
-        try {
-            setProblemLoading(true);
-            setErrorMessage("");
-            setConceptProblemResult(null);
-            setSelectedAnswers({});
-
-            const problemResponse = await axiosInstance.get(
-                `/api/v1/learning/sessions/${learningSessionId}/concept-problems`
-            );
-
-            setConceptProblems(problemResponse.data.data);
-
-            try {
-                const resultResponse = await axiosInstance.get(
-                    `/api/v1/learning/sessions/${learningSessionId}/concept-problems/result`
-                );
-
-                const resultData = resultResponse.data.data;
-                setConceptProblemResult(resultData);
-
-                const restoredAnswers = {};
-
-                resultData.results.forEach((result) => {
-                    restoredAnswers[result.problemId] = result.selectedChoiceNo;
-                });
-
-                setSelectedAnswers(restoredAnswers);
-            } catch (resultError) {
-                console.log("기존 풀이 기록이 없습니다.");
-            }
-        } catch (error) {
-            console.error(error);
-            setErrorMessage(
-                error.response?.data?.message ||
-                "개념확인 문제 조회에 실패했습니다."
-            );
-        } finally {
-            setProblemLoading(false);
-        }
+    const handleCloseProgressModal = () => {
+        setIsProgressModalOpen(false);
+        setProcessingId(null);
     };
 
-    const handleSelectAnswer = (problemId, choiceNo) => {
-        if (conceptProblemResult) {
-            return;
-        }
-
-        setSelectedAnswers((prev) => ({
-            ...prev,
-            [problemId]: choiceNo,
-        }));
-    };
-
-    const handleSubmitConceptProblems = async () => {
-        if (!localStorage.getItem("accessToken")) {
-            alert("답안을 제출하려면 로그인이 필요합니다.");
-            navigate("/login");
-            return;
-        }
-
-        if (!learningSessionId) {
-            setErrorMessage("학습 세션 정보가 없습니다.");
-            return;
-        }
-
-        if (!conceptProblems || conceptProblems.problems.length === 0) {
-            setErrorMessage("제출할 문제가 없습니다.");
-            return;
-        }
-
-        const totalCount = conceptProblems.problems.length;
-        const answeredCount = Object.keys(selectedAnswers).length;
-
-        if (answeredCount < totalCount) {
-            alert("모든 문제의 답을 선택해주세요.");
-            return;
-        }
-
-        const answers = Object.entries(selectedAnswers).map(
-            ([problemId, selectedChoiceNo]) => ({
-                problemId: Number(problemId),
-                selectedChoiceNo: Number(selectedChoiceNo),
-            })
+    if (isExamLoading) {
+        return (
+            <main className="concept-page">
+                <div className="concept-loading-card">
+                    <div className="concept-loading-spinner" />
+                    <p>표시 중인 시험을 불러오는 중입니다...</p>
+                </div>
+            </main>
         );
-
-        try {
-            setSubmitLoading(true);
-            setErrorMessage("");
-
-            const response = await axiosInstance.post(
-                `/api/v1/learning/sessions/${learningSessionId}/concept-problems/submit`,
-                {
-                    answers,
-                }
-            );
-
-            setConceptProblemResult(response.data.data);
-            await fetchProgressSummary();
-        } catch (error) {
-            console.error("답안 제출 실패:", error);
-            console.error("응답 상태:", error.response?.status);
-            console.error("응답 데이터:", error.response?.data);
-
-            setErrorMessage(
-                error.response?.data?.message || "답안 제출에 실패했습니다."
-            );
-        } finally {
-            setSubmitLoading(false);
-        }
-    };
-
-    const handleSendAssistantMessage = async () => {
-        if (!localStorage.getItem("accessToken")) {
-            alert("AI 학습 도우미를 사용하려면 로그인이 필요합니다.");
-            navigate("/login");
-            return;
-        }
-
-        if (!selectedNode || !selectedNode.isLeaf) {
-            alert("먼저 학습할 소목차를 선택해주세요.");
-            return;
-        }
-
-        if (!learningSessionId) {
-            alert("학습 세션 정보가 없습니다. 소목차를 다시 선택해주세요.");
-            return;
-        }
-
-        if (!assistantInput.trim()) {
-            alert("질문 내용을 입력해주세요.");
-            return;
-        }
-
-        const userText = assistantInput;
-
-        setAssistantMessages((prev) => [
-            ...prev,
-            {
-                role: "USER",
-                text: userText,
-            },
-        ]);
-
-        setAssistantInput("");
-        setAssistantLoading(true);
-
-        try {
-            const response = await axiosInstance.post(
-                `/api/v1/learning/sessions/${learningSessionId}/ai-messages`,
-                {
-                    questionType: assistantQuestionType,
-                    message: userText,
-                }
-            );
-
-            const data = response.data.data;
-
-            setAssistantMessages((prev) => [
-                ...prev,
-                {
-                    role: "ASSISTANT",
-                    text: data.assistantMessage,
-                },
-            ]);
-        } catch (error) {
-            console.error("AI 도우미 요청 실패:", error);
-            console.error("응답 상태:", error.response?.status);
-            console.error("응답 데이터:", error.response?.data);
-
-            setAssistantMessages((prev) => [
-                ...prev,
-                {
-                    role: "ASSISTANT",
-                    text:
-                        error.response?.data?.message ||
-                        "AI 도우미 응답 생성에 실패했습니다.",
-                },
-            ]);
-        } finally {
-            setAssistantLoading(false);
-        }
-    };
-
-    const handleAssistantResizeStart = () => {
-        setIsResizingAssistant(true);
-    };
-
-    useEffect(() => {
-        if (!isResizingAssistant) {
-            return;
-        }
-
-        const handleMouseMove = (event) => {
-            if (!contentLayoutRef.current) {
-                return;
-            }
-
-            const layoutRect = contentLayoutRef.current.getBoundingClientRect();
-            const newAssistantWidth = layoutRect.right - event.clientX;
-
-            const minWidth = 280;
-            const maxWidth = 620;
-
-            const limitedWidth = Math.min(
-                Math.max(newAssistantWidth, minWidth),
-                maxWidth
-            );
-
-            setAssistantWidth(limitedWidth);
-        };
-
-        const handleMouseUp = () => {
-            setIsResizingAssistant(false);
-        };
-
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", handleMouseUp);
-
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-
-        return () => {
-            window.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("mouseup", handleMouseUp);
-
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-        };
-    }, [isResizingAssistant]);
-
-    const getProblemResult = (problemId) => {
-        if (!conceptProblemResult) {
-            return null;
-        }
-
-        return conceptProblemResult.results.find(
-            (result) => result.problemId === problemId
-        );
-    };
-
-    const getSelectedNodeProgressStatus = () => {
-        if (!selectedNode || !progressSummary?.topics) {
-            return null;
-        }
-
-        const topicProgress = progressSummary.topics.find(
-            (topic) => topic.examScopeNodeId === selectedNode.id
-        );
-
-        return topicProgress?.status || "NOT_STARTED";
-    };
-
-    const handleLoginClick = () => {
-        navigate("/login");
-    };
-
-    useEffect(() => {
-        fetchSyllabus();
-    }, []);
+    }
 
     return (
-        <main className="ai-learning-page">
-            {syllabusLoading && (
-                <p className="learning-info-text">
-                    목차를 불러오는 중입니다...
-                </p>
-            )}
-
-            {errorMessage && (
-                <p className="learning-error-text">{errorMessage}</p>
-            )}
-
-            <section
-                ref={contentLayoutRef}
-                className="learning-content-layout"
-                style={{
-                    gridTemplateColumns: `300px minmax(420px, 1fr) 8px ${assistantWidth}px`,
-                }}
-            >
-                <aside className="learning-syllabus-panel">
-                    <div className="learning-panel-header">
-                        <div>
-                            <p className="learning-panel-kicker">SYLLABUS</p>
-                            <h2>시험 목차</h2>
-                        </div>
-                        <span>{syllabus.length}개</span>
+        <main className="concept-page">
+            <header className="concept-topbar">
+                <div className="concept-topbar-left">
+                    <div className="exam-dropdown-wrap">
+                        <select
+                            className="exam-select-control"
+                            value={selectedUserExamId ?? ""}
+                            onChange={(event) =>
+                                handleUserExamChange(Number(event.target.value))
+                            }
+                            disabled={userExams.length === 0}
+                        >
+                            {userExams.length === 0 ? (
+                                <option value="">표시 시험 없음</option>
+                            ) : (
+                                userExams.map((userExam) => (
+                                    <option
+                                        key={userExam.userExamId}
+                                        value={userExam.userExamId}
+                                    >
+                                        {userExam.examCode}
+                                    </option>
+                                ))
+                            )}
+                        </select>
                     </div>
 
-                    {isLoggedIn && progressLoading && (
-                        <p className="learning-progress-loading-text">
-                            학습 진도를 불러오는 중입니다...
-                        </p>
-                    )}
+                    <div className="concept-title-wrap">
+                        <h1>개념 학습</h1>
+                        <span>문서 업로드 전</span>
+                    </div>
+                </div>
+            </header>
 
-                    {isLoggedIn && progressSummary && (
-                        <div className="learning-progress-box">
-                            <div className="progress-header">
-                                <div>
-                                    <strong>전체 학습 진도</strong>
-                                    <p>
-                                        {progressSummary.completedTopicCount} /{" "}
-                                        {progressSummary.totalTopicCount}개
-                                        소목차 완료
-                                    </p>
-                                </div>
+            {message && <p className="concept-message">{message}</p>}
 
-                                <span>{progressSummary.progressRate}%</span>
+            {userExams.length === 0 ? (
+                <section className="concept-empty-state">
+                    <h2>표시 중인 시험이 없습니다</h2>
+                    <p>
+                        마이페이지에서 학습할 시험의 표시 설정을 켜면
+                        개념학습 화면에서 확인할 수 있습니다.
+                    </p>
+                </section>
+            ) : (
+                <section className="concept-workspace">
+                    <aside className="toc-panel">
+                        <div className="panel-header">
+                            <div className="panel-title">
+                                <h2>학습 목차</h2>
+                                <span className="info-dot">i</span>
                             </div>
 
-                            <div className="progress-bar">
-                                <div
-                                    className="progress-fill"
-                                    style={{
-                                        width: `${progressSummary.progressRate}%`,
-                                    }}
+                            <button
+                                type="button"
+                                className="icon-button"
+                                aria-label="목차 설정"
+                            >
+                                ⚙
+                            </button>
+                        </div>
+
+                        <button type="button" className="toc-select">
+                            {selectedUserExam?.examName || "시험 목차"}
+                            <span>⌄</span>
+                        </button>
+
+                        <div className="toc-list">
+                            {isScopeLoading ? (
+                                <div className="toc-loading">
+                                    목차를 불러오는 중입니다...
+                                </div>
+                            ) : scopeNodes.length === 0 ? (
+                                <div className="toc-empty">
+                                    등록된 목차가 없습니다.
+                                </div>
+                            ) : (
+                                scopeNodes.map((node, index) => (
+                                    <ScopeTreeNode
+                                        key={node.id}
+                                        node={node}
+                                        numberPrefix={`${index + 1}`}
+                                        level={1}
+                                        selectedNodeId={selectedNodeId}
+                                        expandedNodeIds={expandedNodeIds}
+                                        onToggle={toggleNode}
+                                        onSelect={handleSelectNode}
+                                    />
+                                ))
+                            )}
+                        </div>
+
+                        <div className="toc-guide-card">
+                            <span className="guide-file-icon">▣</span>
+                            <p>
+                                문서를 업로드하면 목차별
+                                <br />
+                                개념 설명이 자동으로 연결됩니다.
+                            </p>
+                        </div>
+                    </aside>
+
+                    <section className="concept-main-panel">
+                        <div className="panel-header">
+                            <div className="panel-title">
+                                <h2>개념 설명</h2>
+                                <span className="status-pill">문서 업로드 전</span>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="icon-button"
+                                aria-label="확대"
+                            >
+                                ↗
+                            </button>
+                        </div>
+
+                        <div className="upload-dropzone">
+                            <div className="upload-empty-content">
+                                <div className="upload-doc-icon" aria-hidden="true">
+                                    <svg
+                                        width="100"
+                                        height="100"
+                                        viewBox="0 0 100 100"
+                                        fill="none"
+                                    >
+                                        <path
+                                            d="M33 18H58L74 34V72C74 76.4183 70.4183 80 66 80H33C28.5817 80 25 76.4183 25 72V26C25 21.5817 28.5817 18 33 18Z"
+                                            stroke="#C8D2DF"
+                                            strokeWidth="2.4"
+                                            fill="white"
+                                        />
+                                        <path
+                                            d="M58 18V30C58 34.4183 61.5817 38 66 38H74"
+                                            stroke="#F7B182"
+                                            strokeWidth="2.4"
+                                        />
+                                        <path
+                                            d="M38 46H60"
+                                            stroke="#C8D2DF"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                        />
+                                        <path
+                                            d="M38 56H60"
+                                            stroke="#C8D2DF"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                        />
+                                    </svg>
+                                </div>
+
+                                <h3>
+                                    개념 설명을 보려면
+                                    <br />
+                                    먼저 문서를 업로드해 주세요.
+                                </h3>
+
+                                <p className="upload-description">
+                                    업로드한 문서를 AI가 분석한 뒤,
+                                    <br />
+                                    선택한 시험의 목차와 연결해 개념 설명으로 정리해드려요.
+                                </p>
+
+                                <div className="upload-process">
+                                    <div className="upload-process-item">
+                                        <span className="process-icon">📄</span>
+                                        <strong>문서 업로드</strong>
+                                    </div>
+                                    <span className="process-arrow">→</span>
+
+                                    <div className="upload-process-item">
+                                        <span className="process-icon">AI</span>
+                                        <strong>AI 분석</strong>
+                                    </div>
+                                    <span className="process-arrow">→</span>
+
+                                    <div className="upload-process-item">
+                                        <span className="process-icon">🔗</span>
+                                        <strong>목차 매핑</strong>
+                                    </div>
+                                    <span className="process-arrow">→</span>
+
+                                    <div className="upload-process-item">
+                                        <span className="process-icon">📘</span>
+                                        <strong>개념 설명 생성</strong>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="main-upload-button"
+                                    onClick={handleUploadClick}
+                                    disabled={isUploading || !selectedUserExamId}
+                                >
+                                    <svg
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            d="M12 15.5V4.5"
+                                            stroke="currentColor"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                        />
+                                        <path
+                                            d="M7.5 9L12 4.5L16.5 9"
+                                            stroke="currentColor"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                        <path
+                                            d="M5 19.5H19"
+                                            stroke="currentColor"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                        />
+                                    </svg>
+                                    <span>학습 문서 업로드</span>
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    multiple
+                                    className="upload-file-input"
+                                    onChange={handleFileChange}
                                 />
                             </div>
                         </div>
-                    )}
 
-                    <SyllabusTree
-                        nodes={syllabus}
-                        selectedNodeId={selectedNode?.id}
-                        onSelectNode={handleSelectNode}
-                        topicProgresses={
-                            isLoggedIn ? progressSummary?.topics || [] : []
-                        }
-                    />
-                </aside>
+                        <footer className="concept-safe-box">
+                            <div>
+                                <span className="shield-icon">♡</span>
+                                업로드한 파일은 안전하게 보호되며, 학습 분석 목적으로만 활용됩니다.
+                            </div>
 
-                <section className="learning-detail-panel">
-                    {!selectedNode && (
-                        <div className="learning-empty-state">
-                            <span>📘</span>
-                            <h3>학습할 소목차를 불러오는 중입니다</h3>
+                            <button type="button">
+                                자세히 보기
+                                <span>›</span>
+                            </button>
+                        </footer>
+                    </section>
+
+                    <aside className="coach-panel">
+                        <div className="panel-header">
+                            <div className="panel-title">
+                                <h2>AI 코치</h2>
+                                <span className="disabled-pill">비활성</span>
+                            </div>
+                        </div>
+
+                        <div className="coach-empty">
+                            <div className="coach-robot">
+                                <div className="robot-antenna" />
+                                <div className="robot-head">
+                                    <span />
+                                    <span />
+                                </div>
+                                <div className="robot-ear left" />
+                                <div className="robot-ear right" />
+                                <div className="robot-bubble" />
+                            </div>
+
+                            <h3>
+                                학습 문서를 업로드하면
+                                <br />
+                                AI 코치가 함께 학습을 도와드려요!
+                            </h3>
+                        </div>
+
+                        <div className="coach-divider">
+                            <span />
+                            AI 코치가 도와드릴 수 있어요
+                            <span />
+                        </div>
+
+                        <div className="coach-feature-list">
+                            {coachFeatures.map((feature) => (
+                                <div
+                                    className="coach-feature"
+                                    key={feature.title + feature.description}
+                                >
+                                    <span className={`coach-feature-icon ${feature.icon}`}>
+                                        {feature.icon === "summary" && "▤"}
+                                        {feature.icon === "list" && "☰"}
+                                        {feature.icon === "target" && "◎"}
+                                        {feature.icon === "compare" && "⌘"}
+                                        {feature.icon === "question" && "?"}
+                                    </span>
+
+                                    <div>
+                                        <strong>{feature.title}</strong>
+                                        <p>{feature.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="coach-bottom-card">
+                            <span>▣</span>
                             <p>
-                                첫 번째 소목차가 자동으로 선택되면 개념 설명이
-                                표시됩니다.
+                                문서 업로드 후 모든 AI 코치 기능을
+                                <br />
+                                활용할 수 있습니다.
                             </p>
                         </div>
-                    )}
-
-                    {selectedNode && (
-                        <>
-                            {!selectedNode.isLeaf && (
-                                <div className="learning-empty-state small">
-                                    <h3>상위 목차입니다</h3>
-                                    <p>하위 소목차를 선택해주세요.</p>
-                                </div>
-                            )}
-
-                            {selectedNode.isLeaf && !isLoggedIn && (
-                                <div className="login-required-box">
-                                    <h3>로그인 후 학습할 수 있습니다</h3>
-                                    <p>
-                                        목차는 누구나 볼 수 있습니다. 로그인하면
-                                        전체 개념 설명, 개념확인 문제풀이, 학습
-                                        진도 저장, AI 학습 도우미를 사용할 수
-                                        있습니다.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={handleLoginClick}
-                                    >
-                                        로그인하고 학습 시작하기
-                                    </button>
-                                </div>
-                            )}
-
-                            {contentLoading && (
-                                <p className="learning-info-text">
-                                    개념 설명을 불러오는 중입니다...
-                                </p>
-                            )}
-
-                            {learningContent && (
-                                <div className="learning-content">
-                                    <div className="learning-content-header">
-                                        <p className="learning-eyebrow">
-                                            CONCEPT CONTENT
-                                        </p>
-                                        <h3>{learningContent.title}</h3>
-                                        <p className="summary">
-                                            {learningContent.summary}
-                                        </p>
-                                    </div>
-
-                                    <div className="body-list">
-                                        {learningContent.bodies.map((body) => (
-                                            <article
-                                                key={body.id}
-                                                className="body-card"
-                                            >
-                                                <span
-                                                    className={`body-type ${body.bodyType.toLowerCase()}`}
-                                                >
-                                                    {convertBodyType(
-                                                        body.bodyType
-                                                    )}
-                                                </span>
-                                                <h4>{body.title}</h4>
-                                                <p>{body.bodyText}</p>
-                                            </article>
-                                        ))}
-                                    </div>
-
-                                    {getSelectedNodeProgressStatus() ===
-                                        "COMPLETED" && (
-                                            <p className="completed-topic-notice">
-                                                이미 개념확인 문제를 완료한
-                                                소목차입니다. 풀이 결과를 다시 확인할
-                                                수 있습니다.
-                                            </p>
-                                        )}
-
-                                    <div className="concept-problem-button-area">
-                                        <button
-                                            type="button"
-                                            className="start-concept-problem-button"
-                                            onClick={handleLoadConceptProblems}
-                                            disabled={
-                                                !isLoggedIn ||
-                                                !learningSessionId ||
-                                                problemLoading
-                                            }
-                                        >
-                                            {problemLoading
-                                                ? "문제를 불러오는 중..."
-                                                : getSelectedNodeProgressStatus() ===
-                                                "COMPLETED"
-                                                    ? "풀이 결과 보기"
-                                                    : "개념확인 문제풀이"}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {conceptProblems && (
-                                <section className="concept-problem-section">
-                                    <div className="concept-problem-header">
-                                        <p className="learning-eyebrow">
-                                            CONCEPT CHECK
-                                        </p>
-                                        <h3>
-                                            {
-                                                conceptProblems.examScopeNodeTitle
-                                            }
-                                        </h3>
-                                        <span>
-                                            총 {conceptProblems.totalCount}문제
-                                        </span>
-                                    </div>
-
-                                    {conceptProblemResult && (
-                                        <div className="concept-result-summary">
-                                            <div>
-                                                <strong>
-                                                    {
-                                                        conceptProblemResult.correctCount
-                                                    }
-                                                </strong>
-                                                <span>정답</span>
-                                            </div>
-                                            <div>
-                                                <strong>
-                                                    {
-                                                        conceptProblemResult.wrongCount
-                                                    }
-                                                </strong>
-                                                <span>오답</span>
-                                            </div>
-                                            <div>
-                                                <strong>
-                                                    {
-                                                        conceptProblemResult.correctRate
-                                                    }
-                                                    %
-                                                </strong>
-                                                <span>정답률</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="concept-problem-list">
-                                        {conceptProblems.problems.map(
-                                            (problem, index) => {
-                                                const result = getProblemResult(
-                                                    problem.problemId
-                                                );
-
-                                                return (
-                                                    <article
-                                                        key={
-                                                            problem.problemId
-                                                        }
-                                                        className={
-                                                            result
-                                                                ? result.correct
-                                                                    ? "concept-problem-card correct"
-                                                                    : "concept-problem-card wrong"
-                                                                : "concept-problem-card"
-                                                        }
-                                                    >
-                                                        <div className="problem-title">
-                                                            <span>
-                                                                문제 {index + 1}
-                                                            </span>
-                                                            <h4>
-                                                                {
-                                                                    problem.questionText
-                                                                }
-                                                            </h4>
-                                                        </div>
-
-                                                        <div className="choice-list">
-                                                            {problem.choices.map(
-                                                                (choice) => {
-                                                                    const isSelected =
-                                                                        selectedAnswers[
-                                                                            problem
-                                                                                .problemId
-                                                                            ] ===
-                                                                        choice.choiceNo;
-
-                                                                    const isCorrectChoice =
-                                                                        result?.correctChoiceNo ===
-                                                                        choice.choiceNo;
-
-                                                                    return (
-                                                                        <label
-                                                                            key={
-                                                                                choice.choiceId
-                                                                            }
-                                                                            className={[
-                                                                                "choice-item",
-                                                                                isSelected
-                                                                                    ? "selected"
-                                                                                    : "",
-                                                                                result &&
-                                                                                isCorrectChoice
-                                                                                    ? "correct-choice"
-                                                                                    : "",
-                                                                                result &&
-                                                                                isSelected &&
-                                                                                !result.correct
-                                                                                    ? "wrong-choice"
-                                                                                    : "",
-                                                                            ]
-                                                                                .filter(
-                                                                                    Boolean
-                                                                                )
-                                                                                .join(
-                                                                                    " "
-                                                                                )}
-                                                                        >
-                                                                            <input
-                                                                                type="radio"
-                                                                                name={`problem-${problem.problemId}`}
-                                                                                value={
-                                                                                    choice.choiceNo
-                                                                                }
-                                                                                checked={
-                                                                                    isSelected
-                                                                                }
-                                                                                disabled={
-                                                                                    !!conceptProblemResult
-                                                                                }
-                                                                                onChange={() =>
-                                                                                    handleSelectAnswer(
-                                                                                        problem.problemId,
-                                                                                        choice.choiceNo
-                                                                                    )
-                                                                                }
-                                                                            />
-                                                                            <span>
-                                                                                {
-                                                                                    choice.choiceNo
-                                                                                }
-                                                                                .{" "}
-                                                                                {
-                                                                                    choice.choiceText
-                                                                                }
-                                                                            </span>
-                                                                        </label>
-                                                                    );
-                                                                }
-                                                            )}
-                                                        </div>
-
-                                                        {result && (
-                                                            <div
-                                                                className={
-                                                                    result.correct
-                                                                        ? "problem-result-box correct"
-                                                                        : "problem-result-box wrong"
-                                                                }
-                                                            >
-                                                                <div className="result-label">
-                                                                    {result.correct
-                                                                        ? "정답입니다"
-                                                                        : "오답입니다"}
-                                                                </div>
-                                                                <p>
-                                                                    선택한 답:{" "}
-                                                                    {
-                                                                        result.selectedChoiceNo
-                                                                    }
-                                                                    번 / 정답:{" "}
-                                                                    {
-                                                                        result.correctChoiceNo
-                                                                    }
-                                                                    번
-                                                                </p>
-                                                                <div className="explanation-box">
-                                                                    <strong>
-                                                                        해설
-                                                                    </strong>
-                                                                    <p>
-                                                                        {
-                                                                            result.explanationText
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </article>
-                                                );
-                                            }
-                                        )}
-                                    </div>
-
-                                    {!conceptProblemResult && (
-                                        <button
-                                            type="button"
-                                            className="submit-problem-button"
-                                            onClick={
-                                                handleSubmitConceptProblems
-                                            }
-                                            disabled={submitLoading}
-                                        >
-                                            {submitLoading
-                                                ? "채점 중..."
-                                                : "답안 제출"}
-                                        </button>
-                                    )}
-                                </section>
-                            )}
-                        </>
-                    )}
+                    </aside>
                 </section>
+            )}
 
-                <div
-                    className={`assistant-resizer ${
-                        isResizingAssistant ? "active" : ""
-                    }`}
-                    onMouseDown={handleAssistantResizeStart}
-                    role="separator"
-                    aria-orientation="vertical"
-                />
-
-                <aside className="learning-assistant-panel dark-assistant">
-                    <div className="assistant-header">
-                        <div>
-                            <p className="assistant-kicker">AI HELPER</p>
-                            <h2>AI 학습 도우미</h2>
-                        </div>
-                        <span className="assistant-status">
-                            {!isLoggedIn
-                                ? "로그인 필요"
-                                : selectedNode?.isLeaf
-                                    ? "사용 가능"
-                                    : "소목차 선택 필요"}
-                        </span>
-                    </div>
-
-                    <div className="assistant-type-list">
-                        {assistantQuestionTypes.map((type) => (
-                            <button
-                                key={type.value}
-                                type="button"
-                                className={
-                                    assistantQuestionType === type.value
-                                        ? "assistant-type-button active"
-                                        : "assistant-type-button"
-                                }
-                                onClick={() =>
-                                    setAssistantQuestionType(type.value)
-                                }
-                            >
-                                {type.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="assistant-message-list">
-                        {assistantMessages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={
-                                    message.role === "USER"
-                                        ? "assistant-message user"
-                                        : "assistant-message assistant"
-                                }
-                            >
-                                <span>
-                                    {message.role === "USER" ? "나" : "AI"}
-                                </span>
-                                <p>{message.text}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="assistant-input-area">
-                        <textarea
-                            value={assistantInput}
-                            onChange={(event) =>
-                                setAssistantInput(event.target.value)
-                            }
-                            placeholder={
-                                !isLoggedIn
-                                    ? "로그인 후 AI 학습 도우미를 사용할 수 있습니다."
-                                    : selectedNode?.isLeaf
-                                        ? "현재 개념에 대해 궁금한 점을 입력하세요."
-                                        : "소목차를 먼저 선택해주세요."
-                            }
-                            disabled={
-                                !isLoggedIn ||
-                                !selectedNode?.isLeaf ||
-                                !learningSessionId ||
-                                assistantLoading
-                            }
-                        />
-
-                        <button
-                            type="button"
-                            onClick={handleSendAssistantMessage}
-                            disabled={
-                                !isLoggedIn ||
-                                !selectedNode?.isLeaf ||
-                                !learningSessionId ||
-                                assistantLoading
-                            }
-                        >
-                            {assistantLoading ? "답변 생성 중..." : "질문하기"}
-                        </button>
-                    </div>
-                </aside>
-            </section>
+            <UploadProgressModal
+                open={isProgressModalOpen}
+                status={processingStatus}
+                errorMessage={uploadErrorMessage}
+                onClose={handleCloseProgressModal}
+            />
         </main>
     );
 }
 
-function convertBodyType(bodyType) {
-    const labels = {
-        BASE_EXPLANATION: "기본 설명",
-        CORE_POINT: "핵심 포인트",
-        EXAMPLE: "예시",
-        CONFUSION_NOTE: "헷갈리는 개념",
-        EXAM_POINT: "출제 포인트",
-    };
+function ScopeTreeNode({
+                           node,
+                           numberPrefix,
+                           level,
+                           selectedNodeId,
+                           expandedNodeIds,
+                           onToggle,
+                           onSelect,
+                       }) {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedNodeIds.includes(node.id);
+    const isSelected = selectedNodeId === node.id;
 
-    return labels[bodyType] || bodyType;
+    return (
+        <div className={`toc-node toc-node-level-${level}`}>
+            <button
+                type="button"
+                className={isSelected ? "toc-node-row active" : "toc-node-row"}
+                onClick={() => onSelect(node)}
+            >
+                <span className="toc-dot" />
+                <span className="toc-node-title">
+                    {numberPrefix}. {node.title}
+                </span>
+
+                {hasChildren && (
+                    <span
+                        className={isExpanded ? "toc-arrow open" : "toc-arrow"}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onToggle(node.id);
+                        }}
+                    >
+                        ⌄
+                    </span>
+                )}
+            </button>
+
+            {hasChildren && isExpanded && (
+                <div className="toc-children">
+                    {node.children.map((child, index) => (
+                        <ScopeTreeNode
+                            key={child.id}
+                            node={child}
+                            numberPrefix={`${numberPrefix}.${index + 1}`}
+                            level={level + 1}
+                            selectedNodeId={selectedNodeId}
+                            expandedNodeIds={expandedNodeIds}
+                            onToggle={onToggle}
+                            onSelect={onSelect}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default AiLearning;

@@ -2,11 +2,13 @@ package com.aha.global.exception;
 
 public enum ErrorCode {
 
+    // COMMON
     INVALID_INPUT_VALUE(400, "COMMON_001", "잘못된 입력값입니다."),
     ENTITY_NOT_FOUND(404, "COMMON_002", "대상을 찾을 수 없습니다."),
     INVALID_REQUEST_FORMAT(400, "COMMON_003", "잘못된 요청 형식입니다."),
     INTERNAL_SERVER_ERROR(500, "COMMON_999", "서버 내부 오류입니다."),
 
+    // AUTH
     UNAUTHORIZED(401, "AUTH_001", "로그인이 필요합니다."),
     EMAIL_ALREADY_EXISTS(409, "AUTH_002", "이미 사용 중인 이메일입니다."),
     NICKNAME_ALREADY_EXISTS(409, "AUTH_003", "이미 사용 중인 닉네임입니다."),
@@ -14,11 +16,24 @@ public enum ErrorCode {
     INVALID_TOKEN(401, "AUTH_005", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(401, "AUTH_006", "만료된 토큰입니다."),
 
+    // USER
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
+    PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
+    INVALID_PROFILE_IMAGE(400, "USER_003", "지원하지 않는 프로필 이미지 형식입니다."),
 
+    // USER_EXAM
+    USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다."),
+
+    // AILEARN DOCUMENT
+    DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_001", "문서 업로드에 실패했습니다."),
+    INVALID_DOCUMENT_FILE(400, "DOCUMENT_002", "지원하지 않는 문서 파일입니다."),
+    DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
+
+    //EXAM
     EXAM_NOT_FOUND(404, "EXAM_NOT_FOUND", "해당 시험이 존재하지 않습니다."),
     EXAM_INACTIVE(400, "EXAM_INACTIVE", "해당 시험은 비활성화 상태입니다."),
 
+    //WORKBOOK
     WORKBOOK_TYPE_NOT_FOUND(404, "WORKBOOK_TYPE_NOT_FOUND", "문제집 유형을 찾을 수 없습니다."),
     WORKBOOK_NOT_FOUND(404, "WORKBOOK_NOT_FOUND", "해당 워크북이 존재하지 않습니다."),
     WORKBOOK_TYPE_UNSUPPORTED_EXAM(422,"WORKBOOK_TYPE_UNSUPPORTED_EXAM","해당 워크북 유형은 선택하신 시험을 지원하지 않습니다."),

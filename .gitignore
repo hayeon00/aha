@@ -70,3 +70,5 @@ aha-frontend/npm-debug.log*
 aha-frontend/yarn-debug.log*
 aha-frontend/yarn-error.log*
 aha-frontend/pnpm-debug.log*
+
+uploads/

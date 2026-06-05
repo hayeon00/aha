@@ -1,18 +1,25 @@
 package com.aha.domain.exam.dto.response;
 
 import com.aha.domain.exam.entity.Exam;
-import lombok.Getter;
+import com.aha.domain.exam.entity.ExamVersion;
 
-@Getter
-public class ExamResponseDto {
+public record ExamResponseDto(
+        Long id,
+        String code,
+        String name,
+        String status,
+        Long activeVersionId,
+        String versionName
+) {
 
-    private final Long id;
-    private final String code;
-    private final String name;
-
-    public ExamResponseDto(Exam exam) {
-        this.id = exam.getId();
-        this.code = exam.getCode();
-        this.name = exam.getName();
+    public static ExamResponseDto from(Exam exam, ExamVersion activeVersion) {
+        return new ExamResponseDto(
+                exam.getId(),
+                exam.getCode(),
+                exam.getName(),
+                exam.getStatus().name(),
+                activeVersion != null ? activeVersion.getId() : null,
+                activeVersion != null ? activeVersion.getVersionName() : null
+        );
     }
 }

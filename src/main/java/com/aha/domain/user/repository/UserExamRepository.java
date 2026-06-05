@@ -1,19 +1,45 @@
 package com.aha.domain.user.repository;
 
-import com.aha.domain.user.entity.User;
 import com.aha.domain.user.entity.UserExam;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface UserExamRepository extends JpaRepository<UserExam, Long> {
 
-    List<UserExam> findByUser(User user);
+    boolean existsByUser_IdAndExamVersion_Id(Long userId, Long examVersionId);
 
-    Optional<UserExam> findByUserAndIsMainTrue(User user);
+    Optional<UserExam> findByUser_IdAndExamVersion_Id(Long userId, Long examVersionId);
 
-    boolean existsByUserAndExam_Id(User user, Long examId);
+    @Query("""
+        SELECT ue
+        FROM UserExam ue
+        JOIN FETCH ue.examVersion ev
+        JOIN FETCH ev.exam e
+        WHERE ue.user.id = :userId
+        ORDER BY e.id ASC, ev.versionNo DESC
+    """)
+    List<UserExam> findAllWithExamByUserId(Long userId);
 
-    void deleteByUser(User user);
+    @Query("""
+        SELECT ue
+        FROM UserExam ue
+        JOIN FETCH ue.examVersion ev
+        JOIN FETCH ev.exam e
+        WHERE ue.user.id = :userId
+          AND ue.isHidden = false
+        ORDER BY e.id ASC, ev.versionNo DESC
+    """)
+    List<UserExam> findVisibleWithExamByUserId(Long userId);
+
+    Optional<UserExam> findByIdAndUser_Id(Long userExamId, Long userId);
+
+
+    List<UserExam> findAllByUser_IdOrderByIdAsc(Long userId);
+
+    List<UserExam> findAllByUser_IdAndIsHiddenFalseOrderByIdAsc(Long userId);
+
+
 }
