@@ -1,5 +1,6 @@
 package com.aha.domain.exam.entity;
 
+import com.aha.domain.exam.enums.ExamScopeNodeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -81,7 +82,7 @@ public class ExamScopeNode {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "node_type", nullable = false, length = 30)
-    private ScopeNodeType nodeType;
+    private ExamScopeNodeType nodeType;
 
     @Column(nullable = false)
     private Integer depth;
@@ -112,7 +113,7 @@ public class ExamScopeNode {
             ExamPart examPart,
             ExamScopeNode parent,
             String code,
-            ScopeNodeType nodeType,
+            ExamScopeNodeType nodeType,
             Integer depth,
             String title,
             boolean isLeaf,

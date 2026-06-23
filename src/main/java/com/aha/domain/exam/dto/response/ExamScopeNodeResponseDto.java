@@ -1,7 +1,7 @@
 package com.aha.domain.exam.dto.response;
 
 import com.aha.domain.exam.entity.ExamScopeNode;
-import com.aha.domain.exam.entity.ScopeNodeType;
+import com.aha.domain.exam.enums.ExamScopeNodeType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +10,7 @@ public record ExamScopeNodeResponseDto(
         Long id,
         String code,
         Long parentId,
-        ScopeNodeType nodeType,
+        ExamScopeNodeType nodeType,
         Integer depth,
         String title,
         boolean isLeaf,

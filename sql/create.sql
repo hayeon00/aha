@@ -21,12 +21,24 @@ DROP TABLE IF EXISTS `learning_memo`;
 DROP TABLE IF EXISTS `learning_content_reference`;
 DROP TABLE IF EXISTS `user_learning_content`;
 DROP TABLE IF EXISTS `document_scope_mapping`;
-DROP TABLE IF EXISTS `extracted_content`;
+DROP TABLE IF EXISTS `document_chunk`;
 DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `document_processing_group`;
+DROP TABLE IF EXISTS `extracted_content`;
+
 
 DROP TABLE IF EXISTS `refresh_tokens`;
+
+DROP TABLE IF EXISTS `workbook_item_result`;
+DROP TABLE IF EXISTS `workbook_part_result`;
+DROP TABLE IF EXISTS `workbook_answer`;
+DROP TABLE IF EXISTS `workbook_attempt`;
+DROP TABLE IF EXISTS `workbook_result`;
+DROP TABLE IF EXISTS `workbook_item`;
+DROP TABLE IF EXISTS `workbook`;
+DROP TABLE IF EXISTS `exam_workbook_type`;
+DROP TABLE IF EXISTS `workbook_type`;
 
 DROP TABLE IF EXISTS `problem_available_usage_type`;
 DROP TABLE IF EXISTS `problem_choice`;
@@ -453,7 +465,6 @@ CREATE TABLE `problem_review_detail` (
 
 
 
-DROP TABLE IF EXISTS `problem`;
 CREATE TABLE `problem` (
                            `id`                       BIGINT       NOT NULL AUTO_INCREMENT,
                            `exam_id`                  BIGINT       NOT NULL,
@@ -547,62 +558,69 @@ CREATE TABLE `document_processing` (
 );
 
 
-CREATE TABLE `extracted_content` (
-                                     `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
-                                     `source_document_id` BIGINT       NOT NULL,
-                                     `processing_id`      BIGINT           NULL,
-                                     `chunk_order`        INT          NOT NULL,
-                                     `page_no`            INT              NULL,
-                                     `section_title`      VARCHAR(255)     NULL,
-                                     `content_type`       VARCHAR(30)  NOT NULL DEFAULT 'UNKNOWN',
-                                     `content_text`       LONGTEXT     NOT NULL,
-                                     `raw_text`           LONGTEXT         NULL,
-                                     `structure_json`     JSON             NULL,
-                                     `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                     `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `document_chunk` (
+                                  `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+                                  `source_document_id` BIGINT       NOT NULL,
+                                  `processing_id`      BIGINT           NULL,
+                                  `chunk_order`        INT          NOT NULL,
+                                  `page_no`            INT              NULL,
+                                  `section_title`      VARCHAR(255)     NULL,
+                                  `content_type`       VARCHAR(30)  NOT NULL DEFAULT 'TEXT',
+                                  `content_text`       LONGTEXT     NOT NULL,
+                                  `raw_text`           LONGTEXT         NULL,
+                                  `summary`            TEXT             NULL,
+                                  `keywords_json`      JSON             NULL,
+                                  `structure_json`     JSON             NULL,
+                                  `token_count`        INT              NULL,
+                                  `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                     PRIMARY KEY (`id`),
+                                  PRIMARY KEY (`id`),
+                                  UNIQUE KEY `uk_document_chunk_document_order` (`source_document_id`, `chunk_order`),
 
-                                     INDEX `idx_extracted_content_source_document_id` (`source_document_id`),
-                                     INDEX `idx_extracted_content_processing_id` (`processing_id`),
-                                     INDEX `idx_extracted_content_document_order` (`source_document_id`, `chunk_order`),
-                                     INDEX `idx_extracted_content_page_no` (`source_document_id`, `page_no`),
-                                     INDEX `idx_extracted_content_content_type` (`content_type`),
+                                  INDEX `idx_document_chunk_source_document_id` (`source_document_id`),
+                                  INDEX `idx_document_chunk_processing_id` (`processing_id`),
+                                  INDEX `idx_document_chunk_page_no` (`source_document_id`, `page_no`),
+                                  INDEX `idx_document_chunk_content_type` (`content_type`),
 
-                                     CONSTRAINT `fk_extracted_content_source_document_id`
-                                         FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
-                                             ON DELETE CASCADE,
+                                  CONSTRAINT `fk_document_chunk_source_document_id`
+                                      FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
+                                          ON DELETE CASCADE,
 
-                                     CONSTRAINT `fk_extracted_content_processing_id`
-                                         FOREIGN KEY (`processing_id`) REFERENCES `document_processing` (`id`)
-                                             ON DELETE SET NULL,
+                                  CONSTRAINT `fk_document_chunk_processing_id`
+                                      FOREIGN KEY (`processing_id`) REFERENCES `document_processing` (`id`)
+                                          ON DELETE SET NULL,
 
-                                     CONSTRAINT `chk_extracted_content_chunk_order`
-                                         CHECK (`chunk_order` >= 1),
+                                  CONSTRAINT `chk_document_chunk_order`
+                                      CHECK (`chunk_order` >= 1),
 
-                                     CONSTRAINT `chk_extracted_content_page_no`
-                                         CHECK (`page_no` IS NULL OR `page_no` >= 1)
+                                  CONSTRAINT `chk_document_chunk_page_no`
+                                      CHECK (`page_no` IS NULL OR `page_no` >= 1),
+
+                                  CONSTRAINT `chk_document_chunk_token_count`
+                                      CHECK (`token_count` IS NULL OR `token_count` >= 0)
 );
 
 
 CREATE TABLE `document_scope_mapping` (
-                                          `id`                   BIGINT      NOT NULL AUTO_INCREMENT,
-                                          `extracted_content_id` BIGINT      NOT NULL,
-                                          `exam_scope_node_id`   BIGINT      NOT NULL,
-                                          `confidence_score`     DOUBLE          NULL,
-                                          `status`               VARCHAR(30) NOT NULL DEFAULT 'NOT_MAPPED',
-                                          `created_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                          `updated_at`           DATETIME        NULL ON UPDATE CURRENT_TIMESTAMP,
+                                          `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
+                                          `document_chunk_id`  BIGINT        NOT NULL,
+                                          `exam_scope_node_id` BIGINT        NOT NULL,
+                                          `confidence_score`   DECIMAL(5,4)      NULL,
+                                          `mapping_reason`     VARCHAR(1000)     NULL,
+                                          `status`             VARCHAR(30)   NOT NULL DEFAULT 'NOT_MAPPED',
+                                          `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          `updated_at`         DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
 
                                           PRIMARY KEY (`id`),
-                                          UNIQUE KEY `uk_dsm_content_scope` (`extracted_content_id`, `exam_scope_node_id`),
+                                          UNIQUE KEY `uk_dsm_chunk_scope` (`document_chunk_id`, `exam_scope_node_id`),
 
-                                          INDEX `idx_dsm_extracted_content_id` (`extracted_content_id`),
+                                          INDEX `idx_dsm_document_chunk_id` (`document_chunk_id`),
                                           INDEX `idx_dsm_exam_scope_node_id` (`exam_scope_node_id`),
                                           INDEX `idx_dsm_status` (`status`),
 
-                                          CONSTRAINT `fk_dsm_extracted_content_id`
-                                              FOREIGN KEY (`extracted_content_id`) REFERENCES `extracted_content` (`id`)
+                                          CONSTRAINT `fk_dsm_document_chunk_id`
+                                              FOREIGN KEY (`document_chunk_id`) REFERENCES `document_chunk` (`id`)
                                                   ON DELETE CASCADE,
 
                                           CONSTRAINT `fk_dsm_exam_scope_node_id`
@@ -610,7 +628,10 @@ CREATE TABLE `document_scope_mapping` (
                                                   ON DELETE CASCADE,
 
                                           CONSTRAINT `chk_dsm_confidence_score`
-                                              CHECK (`confidence_score` IS NULL OR (`confidence_score` >= 0 AND `confidence_score` <= 1))
+                                              CHECK (
+                                                  `confidence_score` IS NULL
+                                                      OR (`confidence_score` >= 0 AND `confidence_score` <= 1)
+                                                  )
 );
 
 
@@ -660,10 +681,6 @@ CREATE TABLE `learning_content_reference` (
 
                                               CONSTRAINT `fk_lcr_user_learning_content_id`
                                                   FOREIGN KEY (`user_learning_content_id`) REFERENCES `user_learning_content` (`id`)
-                                                      ON DELETE CASCADE,
-
-                                              CONSTRAINT `fk_lcr_extracted_content_id`
-                                                  FOREIGN KEY (`extracted_content_id`) REFERENCES `extracted_content` (`id`)
                                                       ON DELETE CASCADE,
 
                                               CONSTRAINT `chk_lcr_page_no`
@@ -751,18 +768,6 @@ CREATE TABLE `refresh_tokens` (
 
 /* =================================================== */
 
-DROP TABLE IF EXISTS `workbook_item_result`;
-DROP TABLE IF EXISTS `workbook_part_result`;
-DROP TABLE IF EXISTS `workbook_result`;
-DROP TABLE IF EXISTS `workbook_answer`;
-
-DROP TABLE IF EXISTS `workbook_item`;
-DROP TABLE IF EXISTS `workbook_attempt`;
-
-DROP TABLE IF EXISTS `workbook`;
-DROP TABLE IF EXISTS `exam_workbook_type`;
-DROP TABLE IF EXISTS `workbook_type`;
-
 CREATE TABLE workbook_type (
                                id BIGINT NOT NULL AUTO_INCREMENT,
                                code VARCHAR(50) NOT NULL,
@@ -841,6 +846,17 @@ CREATE TABLE workbook_item (
                                        ON DELETE CASCADE
 );
 
+CREATE TABLE workbook_result (
+                                 id BIGINT NOT NULL AUTO_INCREMENT,
+                                 is_passed BOOLEAN NOT NULL,
+                                 fail_reason_code VARCHAR(100) NULL,
+                                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                 PRIMARY KEY (id)
+
+);
+
 CREATE TABLE workbook_attempt (
                                   id BIGINT NOT NULL AUTO_INCREMENT,
                                   user_id BIGINT NOT NULL,
@@ -863,9 +879,9 @@ CREATE TABLE workbook_attempt (
                                           ON DELETE CASCADE,
 
                                   CONSTRAINT fk_workbook_attempt_workbook_result_id
-                                      FOREIGN KEY (user_id)
-                                          REFERENCES `users` (id)
-                                          ON DELETE CASCADE,
+                                      FOREIGN KEY (workbook_result_id)
+                                          REFERENCES workbook_result (id)
+                                          ON DELETE SET NULL,
 
                                   CONSTRAINT fk_workbook_attempt_workbook_id
                                       FOREIGN KEY (workbook_id)
@@ -908,17 +924,6 @@ CREATE TABLE workbook_answer (
                                      FOREIGN KEY (problem_choice_id)
                                          REFERENCES problem_choice (id)
                                          ON DELETE SET NULL
-);
-
-CREATE TABLE workbook_result (
-                                 id BIGINT NOT NULL AUTO_INCREMENT,
-                                 is_passed BOOLEAN NOT NULL,
-                                 fail_reason_code VARCHAR(100) NULL,
-                                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                 updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
-
-                                 PRIMARY KEY (id)
-
 );
 
 

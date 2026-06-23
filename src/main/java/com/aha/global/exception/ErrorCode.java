@@ -28,10 +28,25 @@ public enum ErrorCode {
     DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_001", "문서 업로드에 실패했습니다."),
     INVALID_DOCUMENT_FILE(400, "DOCUMENT_002", "지원하지 않는 문서 파일입니다."),
     DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
+    DOCUMENT_TEXT_EXTRACTION_FAILED(500, "DOCUMENT_004", "문서 텍스트 추출에 실패했습니다."),
+    DOCUMENT_TEXT_EMPTY(422, "DOCUMENT_005", "문서에서 추출할 수 있는 텍스트가 없습니다."),
+    DOCUMENT_PROCESSING_NOT_FOUND(404, "DOCUMENT_006", "처리할 문서 정보를 찾을 수 없습니다."),
+    INVALID_DOCUMENT_PROCESSING_STATUS(409, "DOCUMENT_007", "현재 문서 처리 상태에서는 요청한 작업을 수행할 수 없습니다."),
+    DOCUMENT_CHUNK_NOT_FOUND(404, "DOCUMENT_008", "목차에 매핑할 문서 청크를 찾을 수 없습니다."),
+    DOCUMENT_SCOPE_MAPPING_FAILED(500, "DOCUMENT_009", "문서 청크를 시험 목차에 매핑하지 못했습니다."),
+    AI_RESPONSE_PARSE_FAILED(500, "DOCUMENT_010", "AI 응답을 처리하는 중 오류가 발생했습니다."),
+    DOCUMENT_SCOPE_MAPPING_NOT_FOUND(404, "DOCUMENT_011", "개념 설명 생성에 사용할 목차 매핑 결과를 찾을 수 없습니다."),
+    LEARNING_CONTENT_GENERATION_FAILED(500, "DOCUMENT_012", "목차별 개념 설명 생성에 실패했습니다."),
+    USER_LEARNING_CONTENT_SAVE_FAILED(500, "DOCUMENT_013", "생성된 개념 설명을 저장하지 못했습니다."),
+    USER_LEARNING_CONTENT_NOT_FOUND(404, "DOCUMENT_014", "해당 목차에 생성된 개념 설명이 없습니다."),
+    INVALID_DOCUMENT_FILE_NAME(400, "DOCUMENT_015", "문서 파일명이 올바르지 않습니다."),
+    INVALID_DOCUMENT_MIME_TYPE(400, "DOCUMENT_016", "문서의 MIME 타입이 올바르지 않습니다."),
+    INVALID_DOCUMENT_FILE_EXTENSION(400, "DOCUMENT_017", "문서 파일의 확장자가 올바르지 않습니다."),
 
     //EXAM
     EXAM_NOT_FOUND(404, "EXAM_NOT_FOUND", "해당 시험이 존재하지 않습니다."),
     EXAM_INACTIVE(400, "EXAM_INACTIVE", "해당 시험은 비활성화 상태입니다."),
+    EXAM_SCOPE_NODE_NOT_FOUND(404, "EXAM_SCOPE_NODE_NOT_FOUND", "시험 목차 노드를 찾을 수 없습니다."),
 
     //WORKBOOK
     WORKBOOK_TYPE_NOT_FOUND(404, "WORKBOOK_TYPE_NOT_FOUND", "문제집 유형을 찾을 수 없습니다."),

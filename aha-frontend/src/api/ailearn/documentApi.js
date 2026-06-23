@@ -8,7 +8,7 @@ export const uploadLearningDocuments = (userExamId, files) => {
         formData.append("files", file);
     });
 
-    return axiosInstance.post("/api/v1/aiLearn/documents/batch", formData, {
+    return axiosInstance.post("/api/v1/ai-learning/documents/batch", formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },

@@ -1,8 +1,8 @@
 package com.aha.domain.ailearn.document.controller;
 
-import com.aha.domain.ailearn.document.dto.response.DocumentBatchUploadResponseDto;
-import com.aha.domain.ailearn.document.dto.response.DocumentProcessingGroupResponseDto;
-import com.aha.domain.ailearn.document.service.AiLearnDocumentService;
+import com.aha.domain.ailearn.document.dto.api.response.DocumentBatchUploadResponseDto;
+import com.aha.domain.ailearn.document.dto.api.response.DocumentProcessingGroupResponseDto;
+import com.aha.domain.ailearn.document.service.upload.AiLearnDocumentService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -10,15 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/aiLearn/documents")
+@RequestMapping("/api/v1/ai-learning/documents")
 @RequiredArgsConstructor
 public class AiLearnDocumentController {
 
-    private final AiLearnDocumentService ailearnDocumentService;
+    private final AiLearnDocumentService aiLearnDocumentService;
 
     @PostMapping("/batch")
     public ResponseEntity<ApiResponse<DocumentBatchUploadResponseDto>> uploadDocumentsBatch(
@@ -27,7 +26,7 @@ public class AiLearnDocumentController {
             @RequestPart("files") List<MultipartFile> files
     ) {
         DocumentBatchUploadResponseDto response =
-                ailearnDocumentService.uploadDocumentsBatch(
+                aiLearnDocumentService.uploadDocumentsBatch(
                         userDetails.getId(),
                         userExamId,
                         files
@@ -35,20 +34,21 @@ public class AiLearnDocumentController {
 
         return ResponseEntity.ok(
                 ApiResponse.success(
-                        200,
-                        "학습 문서 업로드에 성공했습니다.",
+                        202,
+                        "학습 문서 업로드가 접수되었습니다.",
                         response
                 )
         );
     }
 
+    /*
     @GetMapping("/processing-groups/{processingGroupId}")
     public ResponseEntity<ApiResponse<DocumentProcessingGroupResponseDto>> getProcessingGroup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long processingGroupId
     ) {
         DocumentProcessingGroupResponseDto response =
-                ailearnDocumentService.getProcessingGroup(
+                aiLearnDocumentService.getProcessingGroup(
                         userDetails.getId(),
                         processingGroupId
                 );
@@ -61,4 +61,6 @@ public class AiLearnDocumentController {
                 )
         );
     }
+
+     */
 }

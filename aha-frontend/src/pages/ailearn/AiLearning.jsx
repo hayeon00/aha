@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import UploadProgressModal from "../../components/ailearn/UploadProgressModal";
 import {
     getDocumentProcessingStatus,
     uploadLearningDocuments,
 } from "../../api/ailearn/documentApi";
 import { getExamScopeNodes } from "../../api/exam/examApi";
+import { getUserLearningContent } from "../../api/ailearn/learningContentApi";
 import { getVisibleUserExams } from "../../api/exam/userExamApi";
 import "./AiLearning.css";
 
@@ -54,6 +56,10 @@ function AiLearning() {
     const [uploadErrorMessage, setUploadErrorMessage] = useState("");
     const [message, setMessage] = useState("");
 
+    const [learningContent, setLearningContent] = useState(null);
+    const [isContentLoading, setIsContentLoading] = useState(false);
+    const [contentErrorMessage, setContentErrorMessage] = useState("");
+
     const selectedUserExam = useMemo(() => {
         return userExams.find(
             (userExam) => userExam.userExamId === selectedUserExamId
@@ -78,6 +84,16 @@ function AiLearning() {
     }, [selectedExamVersionId]);
 
     useEffect(() => {
+        if (!selectedUserExamId || !selectedNodeId) {
+            setLearningContent(null);
+            setContentErrorMessage("");
+            return;
+        }
+
+        fetchLearningContent(selectedUserExamId, selectedNodeId);
+    }, [selectedUserExamId, selectedNodeId]);
+
+    useEffect(() => {
         if (!processingId || !isProgressModalOpen) {
             return undefined;
         }
@@ -98,6 +114,13 @@ function AiLearning() {
                     setProcessingId(null);
                     setProcessingStatus(null);
                     setMessage("문서 처리가 완료되었습니다.");
+
+                    if (selectedUserExamId && selectedNodeId) {
+                        await fetchLearningContent(
+                            selectedUserExamId,
+                            selectedNodeId
+                        );
+                    }
                 }
 
                 if (
@@ -119,7 +142,7 @@ function AiLearning() {
         const intervalId = window.setInterval(pollProcessingStatus, 2000);
 
         return () => window.clearInterval(intervalId);
-    }, [processingId, isProgressModalOpen]);
+    }, [processingId, isProgressModalOpen, selectedUserExamId, selectedNodeId]);
 
     const getApiData = (response) => {
         if (!response) return null;
@@ -177,6 +200,38 @@ function AiLearning() {
         }
     };
 
+    const fetchLearningContent = async (
+        userExamId,
+        examScopeNodeId
+    ) => {
+        try {
+            setIsContentLoading(true);
+            setContentErrorMessage("");
+
+            const response = await getUserLearningContent(
+                userExamId,
+                examScopeNodeId
+            );
+
+            setLearningContent(getApiData(response));
+        } catch (error) {
+            if (error.response?.status === 404) {
+                setLearningContent(null);
+                setContentErrorMessage("");
+                return;
+            }
+
+            console.error("개념 설명 조회 실패:", error);
+            setLearningContent(null);
+            setContentErrorMessage(
+                error.response?.data?.message ||
+                "개념 설명을 불러오지 못했습니다."
+            );
+        } finally {
+            setIsContentLoading(false);
+        }
+    };
+
     const getDefaultExpandedNodeIds = (nodes) => {
         const ids = [];
 
@@ -197,7 +252,13 @@ function AiLearning() {
     const findFirstSelectableNodeId = (nodes) => {
         for (const node of nodes || []) {
             if (node.children?.length > 0) {
-                return node.children[0].id;
+                const childNodeId = findFirstSelectableNodeId(node.children);
+
+                if (childNodeId) {
+                    return childNodeId;
+                }
+
+                continue;
             }
 
             return node.id;
@@ -217,15 +278,18 @@ function AiLearning() {
     };
 
     const handleSelectNode = (node) => {
-        setSelectedNodeId(node.id);
-
         if (node.children?.length > 0) {
             toggleNode(node.id);
+            return;
         }
+
+        setSelectedNodeId(node.id);
     };
 
     const handleUserExamChange = (userExamId) => {
         setSelectedUserExamId(userExamId);
+        setLearningContent(null);
+        setContentErrorMessage("");
     };
 
     const handleUploadClick = () => {
@@ -320,7 +384,9 @@ function AiLearning() {
 
                     <div className="concept-title-wrap">
                         <h1>개념 학습</h1>
-                        <span>문서 업로드 전</span>
+                        <span>
+                            {learningContent ? "개념 설명 생성 완료" : "문서 업로드 전"}
+                        </span>
                     </div>
                 </div>
             </header>
@@ -397,7 +463,13 @@ function AiLearning() {
                         <div className="panel-header">
                             <div className="panel-title">
                                 <h2>개념 설명</h2>
-                                <span className="status-pill">문서 업로드 전</span>
+                                <span className={learningContent ? "status-pill ready" : "status-pill"}>
+                                    {isContentLoading
+                                        ? "불러오는 중"
+                                        : learningContent
+                                            ? "생성 완료"
+                                            : "문서 업로드 전"}
+                                </span>
                             </div>
 
                             <button
@@ -409,123 +481,175 @@ function AiLearning() {
                             </button>
                         </div>
 
-                        <div className="upload-dropzone">
-                            <div className="upload-empty-content">
-                                <div className="upload-doc-icon" aria-hidden="true">
-                                    <svg
-                                        width="100"
-                                        height="100"
-                                        viewBox="0 0 100 100"
-                                        fill="none"
-                                    >
-                                        <path
-                                            d="M33 18H58L74 34V72C74 76.4183 70.4183 80 66 80H33C28.5817 80 25 76.4183 25 72V26C25 21.5817 28.5817 18 33 18Z"
-                                            stroke="#C8D2DF"
-                                            strokeWidth="2.4"
-                                            fill="white"
-                                        />
-                                        <path
-                                            d="M58 18V30C58 34.4183 61.5817 38 66 38H74"
-                                            stroke="#F7B182"
-                                            strokeWidth="2.4"
-                                        />
-                                        <path
-                                            d="M38 46H60"
-                                            stroke="#C8D2DF"
-                                            strokeWidth="2.4"
-                                            strokeLinecap="round"
-                                        />
-                                        <path
-                                            d="M38 56H60"
-                                            stroke="#C8D2DF"
-                                            strokeWidth="2.4"
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                </div>
-
-                                <h3>
-                                    개념 설명을 보려면
-                                    <br />
-                                    먼저 문서를 업로드해 주세요.
-                                </h3>
-
-                                <p className="upload-description">
-                                    업로드한 문서를 AI가 분석한 뒤,
-                                    <br />
-                                    선택한 시험의 목차와 연결해 개념 설명으로 정리해드려요.
-                                </p>
-
-                                <div className="upload-process">
-                                    <div className="upload-process-item">
-                                        <span className="process-icon">📄</span>
-                                        <strong>문서 업로드</strong>
-                                    </div>
-                                    <span className="process-arrow">→</span>
-
-                                    <div className="upload-process-item">
-                                        <span className="process-icon">AI</span>
-                                        <strong>AI 분석</strong>
-                                    </div>
-                                    <span className="process-arrow">→</span>
-
-                                    <div className="upload-process-item">
-                                        <span className="process-icon">🔗</span>
-                                        <strong>목차 매핑</strong>
-                                    </div>
-                                    <span className="process-arrow">→</span>
-
-                                    <div className="upload-process-item">
-                                        <span className="process-icon">📘</span>
-                                        <strong>개념 설명 생성</strong>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className="main-upload-button"
-                                    onClick={handleUploadClick}
-                                    disabled={isUploading || !selectedUserExamId}
-                                >
-                                    <svg
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        aria-hidden="true"
-                                    >
-                                        <path
-                                            d="M12 15.5V4.5"
-                                            stroke="currentColor"
-                                            strokeWidth="2.4"
-                                            strokeLinecap="round"
-                                        />
-                                        <path
-                                            d="M7.5 9L12 4.5L16.5 9"
-                                            stroke="currentColor"
-                                            strokeWidth="2.4"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                        <path
-                                            d="M5 19.5H19"
-                                            stroke="currentColor"
-                                            strokeWidth="2.4"
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                    <span>학습 문서 업로드</span>
-                                </button>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".pdf,application/pdf"
-                                    multiple
-                                    className="upload-file-input"
-                                    onChange={handleFileChange}
-                                />
+                        {isContentLoading ? (
+                            <div className="content-loading-state">
+                                <div className="concept-loading-spinner" />
+                                <p>개념 설명을 불러오는 중입니다...</p>
                             </div>
-                        </div>
+                        ) : learningContent ? (
+                            <article className="learning-content-view">
+                                <div className="learning-content-head">
+                                    <div>
+                                        <p className="learning-content-path">
+                                            {selectedUserExam?.examName || "개념 학습"}
+                                        </p>
+                                        <h3>{learningContent.title}</h3>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="secondary-upload-button"
+                                        onClick={handleUploadClick}
+                                        disabled={isUploading}
+                                    >
+                                        문서 추가 업로드
+                                    </button>
+                                </div>
+
+                                {contentErrorMessage && (
+                                    <p className="content-error-message">
+                                        {contentErrorMessage}
+                                    </p>
+                                )}
+
+                                <div className="learning-content-markdown">
+                                    <ReactMarkdown>
+                                        {learningContent.content || ""}
+                                    </ReactMarkdown>
+                                </div>
+
+                                {Array.isArray(learningContent.keywords) &&
+                                    learningContent.keywords.length > 0 && (
+                                        <div className="learning-keywords">
+                                            <strong>핵심 키워드</strong>
+                                            <div>
+                                                {learningContent.keywords.map((keyword) => (
+                                                    <span key={keyword}>{keyword}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                            </article>
+                        ) : (
+                            <div className="upload-dropzone">
+                                <div className="upload-empty-content">
+                                    <div className="upload-doc-icon" aria-hidden="true">
+                                        <svg
+                                            width="100"
+                                            height="100"
+                                            viewBox="0 0 100 100"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M33 18H58L74 34V72C74 76.4183 70.4183 80 66 80H33C28.5817 80 25 76.4183 25 72V26C25 21.5817 28.5817 18 33 18Z"
+                                                stroke="#C8D2DF"
+                                                strokeWidth="2.4"
+                                                fill="white"
+                                            />
+                                            <path
+                                                d="M58 18V30C58 34.4183 61.5817 38 66 38H74"
+                                                stroke="#F7B182"
+                                                strokeWidth="2.4"
+                                            />
+                                            <path
+                                                d="M38 46H60"
+                                                stroke="#C8D2DF"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                            />
+                                            <path
+                                                d="M38 56H60"
+                                                stroke="#C8D2DF"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                    </div>
+
+                                    <h3>
+                                        개념 설명을 보려면
+                                        <br />
+                                        먼저 문서를 업로드해 주세요.
+                                    </h3>
+
+                                    <p className="upload-description">
+                                        업로드한 문서를 AI가 분석한 뒤,
+                                        <br />
+                                        선택한 시험의 목차와 연결해 개념 설명으로 정리해드려요.
+                                    </p>
+
+                                    <div className="upload-process">
+                                        <div className="upload-process-item">
+                                            <span className="process-icon">📄</span>
+                                            <strong>문서 업로드</strong>
+                                        </div>
+                                        <span className="process-arrow">→</span>
+
+                                        <div className="upload-process-item">
+                                            <span className="process-icon">AI</span>
+                                            <strong>AI 분석</strong>
+                                        </div>
+                                        <span className="process-arrow">→</span>
+
+                                        <div className="upload-process-item">
+                                            <span className="process-icon">🔗</span>
+                                            <strong>목차 매핑</strong>
+                                        </div>
+                                        <span className="process-arrow">→</span>
+
+                                        <div className="upload-process-item">
+                                            <span className="process-icon">📘</span>
+                                            <strong>개념 설명 생성</strong>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        className="main-upload-button"
+                                        onClick={handleUploadClick}
+                                        disabled={isUploading || !selectedUserExamId}
+                                    >
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                d="M12 15.5V4.5"
+                                                stroke="currentColor"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                            />
+                                            <path
+                                                d="M7.5 9L12 4.5L16.5 9"
+                                                stroke="currentColor"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                            <path
+                                                d="M5 19.5H19"
+                                                stroke="currentColor"
+                                                strokeWidth="2.4"
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                        <span>학습 문서 업로드</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            multiple
+                            className="upload-file-input"
+                            onChange={handleFileChange}
+                        />
 
                         <footer className="concept-safe-box">
                             <div>

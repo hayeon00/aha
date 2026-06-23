@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import {Routes, Route, Navigate, useNavigate,} from "react-router-dom";
+import { useState } from "react";
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import SignupPage from "./pages/auth/SignupPage.jsx";
 import AiLearning from "./pages/ailearn/AiLearning.jsx";
@@ -10,7 +11,14 @@ import { logout } from "./api/auth/authApi.jsx";
 function App() {
     const navigate = useNavigate();
 
-    const isLoggedIn = Boolean(localStorage.getItem("accessToken"));
+    const [isLoggedIn, setIsLoggedIn] = useState(
+        () => Boolean(localStorage.getItem("accessToken"))
+    );
+
+    const handleLoginSuccess = () => {
+        setIsLoggedIn(true);
+        navigate("/main", { replace: true });
+    };
 
     const handleLogout = async () => {
         try {
@@ -20,6 +28,8 @@ function App() {
         } finally {
             localStorage.removeItem("accessToken");
             localStorage.removeItem("refreshToken");
+
+            setIsLoggedIn(false);
             navigate("/login", { replace: true });
         }
     };
@@ -29,11 +39,10 @@ function App() {
             <Route
                 path="/"
                 element={
-                    isLoggedIn ? (
-                        <Navigate to="/main" replace />
-                    ) : (
-                        <Navigate to="/login" replace />
-                    )
+                    <Navigate
+                        to={isLoggedIn ? "/main" : "/login"}
+                        replace
+                    />
                 }
             />
 
@@ -44,10 +53,10 @@ function App() {
                         <Navigate to="/main" replace />
                     ) : (
                         <LoginPage
-                            onLoginSuccess={() =>
-                                navigate("/main", { replace: true })
+                            onLoginSuccess={handleLoginSuccess}
+                            onMoveSignup={() =>
+                                navigate("/signup")
                             }
-                            onMoveSignup={() => navigate("/signup")}
                         />
                     )
                 }
@@ -60,7 +69,9 @@ function App() {
                         <Navigate to="/main" replace />
                     ) : (
                         <SignupPage
-                            onMoveLogin={() => navigate("/login")}
+                            onMoveLogin={() =>
+                                navigate("/login")
+                            }
                         />
                     )
                 }
@@ -69,25 +80,42 @@ function App() {
             <Route
                 element={
                     isLoggedIn ? (
-                        <MainLayout onLogout={handleLogout} />
+                        <MainLayout
+                            onLogout={handleLogout}
+                        />
                     ) : (
-                        <Navigate to="/login" replace />
+                        <Navigate
+                            to="/login"
+                            replace
+                        />
                     )
                 }
             >
-                <Route path="/main" element={<MainPage />} />
-                <Route path="/learning" element={<AiLearning />} />
-                <Route path="/mypage" element={<MyPage />} />
+                <Route
+                    path="/main"
+                    element={<MainPage />}
+                />
+                <Route
+                    path="/learning"
+                    element={<AiLearning />}
+                />
+                <Route
+                    path="/mypage"
+                    element={<MyPage />}
+                />
             </Route>
 
             <Route
                 path="*"
                 element={
-                    isLoggedIn ? (
-                        <Navigate to="/main" replace />
-                    ) : (
-                        <Navigate to="/login" replace />
-                    )
+                    <Navigate
+                        to={
+                            isLoggedIn
+                                ? "/main"
+                                : "/login"
+                        }
+                        replace
+                    />
                 }
             />
         </Routes>

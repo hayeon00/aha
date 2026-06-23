@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.document.dto.response;
+package com.aha.domain.ailearn.document.dto.api.response;
 
 import com.aha.domain.ailearn.document.entity.DocumentProcessing;
 import com.aha.domain.ailearn.document.entity.SourceDocument;
@@ -9,7 +9,6 @@ public record UploadedDocumentResponseDto(
         String originalFileName,
         String fileExtension,
         Long fileSize,
-        String documentStatus,
         String processingStatus
 ) {
 
@@ -23,7 +22,6 @@ public record UploadedDocumentResponseDto(
                 sourceDocument.getOriginalFileName(),
                 sourceDocument.getFileExtension(),
                 sourceDocument.getFileSize(),
-                sourceDocument.getStatus().name(),
                 documentProcessing.getStatus().name()
         );
     }
