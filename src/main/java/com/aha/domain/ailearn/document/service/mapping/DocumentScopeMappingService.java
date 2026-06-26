@@ -1,304 +1,248 @@
 package com.aha.domain.ailearn.document.service.mapping;
 
-import com.aha.domain.ailearn.document.client.DocumentScopeMappingClient;
-import com.aha.domain.ailearn.document.dto.mapping.request.ExamScopeCandidateDto;
-import com.aha.domain.ailearn.document.dto.mapping.response.DocumentScopeMappingResultDto;
+import com.aha.domain.ailearn.document.client.mapping.DocumentScopeMappingClient;
+import com.aha.domain.ailearn.document.dto.mapping.request.ChunkMappingRequestDto;
+import com.aha.domain.ailearn.document.dto.mapping.request.ScopeCandidateRequestDto;
+import com.aha.domain.ailearn.document.dto.mapping.response.ScopeMappingAiResultResponseDto;
 import com.aha.domain.ailearn.document.entity.DocumentChunk;
-import com.aha.domain.ailearn.document.entity.DocumentProcessing;
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
 import com.aha.domain.ailearn.document.entity.DocumentScopeMapping;
 import com.aha.domain.ailearn.document.repository.DocumentChunkRepository;
 import com.aha.domain.ailearn.document.repository.DocumentProcessingGroupRepository;
-import com.aha.domain.ailearn.document.repository.DocumentProcessingRepository;
-import com.aha.domain.ailearn.document.repository.DocumentScopeMappingRepository;
 import com.aha.domain.exam.entity.ExamScopeNode;
-import com.aha.domain.exam.enums.ExamScopeNodeType;
 import com.aha.domain.exam.repository.ExamScopeNodeRepository;
+
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class DocumentScopeMappingService {
 
-    private final DocumentProcessingRepository documentProcessingRepository;
-    private final DocumentChunkRepository documentChunkRepository;
-    private final DocumentScopeMappingRepository documentScopeMappingRepository;
+    private static final BigDecimal MIN_MAPPING_CONFIDENCE = BigDecimal.valueOf(0.7);
+    private static final int MAX_MAPPING_REASON_LENGTH = 1000;
+
     private final DocumentProcessingGroupRepository documentProcessingGroupRepository;
+    private final DocumentChunkRepository documentChunkRepository;
     private final ExamScopeNodeRepository examScopeNodeRepository;
+    private final DocumentScopeMappingPersistenceService documentScopeMappingPersistenceService;
     private final DocumentScopeMappingClient documentScopeMappingClient;
 
-    /**
-     * 처리 그룹에 포함된 모든 문서의 청크를
-     * 해당 시험 버전의 목차에 매핑한다.
-     */
-    @Transactional
-    public void mapDocuments(
-            Long processingGroupId
-    ) {
-        List<DocumentProcessing> processings =
-                getDocumentProcessings(
-                        processingGroupId
-                );
+    public void mapDocuments(Long processingGroupId){
 
-        List<ExamScopeNode> scopeNodes =
-                getExamScopeNodes(
-                        processingGroupId
-                );
+        if(processingGroupId == null){
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
-        List<ExamScopeCandidateDto> candidates =
-                createScopeCandidates(
-                        scopeNodes
-                );
+        DocumentProcessingGroup processingGroup = documentProcessingGroupRepository.findByIdWithExamVersion(processingGroupId)
+                .orElseThrow(()-> new BusinessException(ErrorCode.DOCUMENT_PROCESSING_GROUP_NOT_FOUND));
 
-        Map<Long, ExamScopeNode> scopeNodeMap =
-                scopeNodes.stream()
-                        .collect(
-                                Collectors.toMap(
-                                        ExamScopeNode::getId,
-                                        Function.identity()
-                                )
-                        );
+        Long examVersionId = getExamVersionId(processingGroup);
 
-        for (DocumentProcessing processing : processings) {
-            mapDocument(
-                    processing,
-                    candidates,
-                    scopeNodeMap
+        List<DocumentChunk> chunks = getDocumentChunks(processingGroupId);
+
+        List<ExamScopeNode> scopeNodes = getMappingTargetScopeNodes(examVersionId);
+
+        Map<Long, DocumentChunk> chunkMap = chunks.stream()
+                .collect(Collectors.toMap(DocumentChunk::getId, Function.identity()));
+
+        Map<Long, ExamScopeNode> scopeNodeMap = scopeNodes.stream()
+                .collect(Collectors.toMap(ExamScopeNode::getId, Function.identity()));
+
+        List<ChunkMappingRequestDto> chunkRequests = chunks.stream().map(this::toChunkMappingRequestDto).toList();
+
+        List<ScopeCandidateRequestDto> scopeCandidates = scopeNodes.stream().map(this::toScopeCandidateRequestDto).toList();
+
+        List<ScopeMappingAiResultResponseDto> aiResults = documentScopeMappingClient.mapChunks(chunkRequests, scopeCandidates);
+
+        if(aiResults == null){
+            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        }
+
+        List<DocumentScopeMapping> mappings = createMappings(aiResults, chunkMap, scopeNodeMap);
+
+        documentScopeMappingPersistenceService.replaceMappings(processingGroupId, mappings);
+
+        if (mappings.isEmpty()) {
+            log.info(
+                    "문서에서 신뢰할 수 있는 목차 매핑을 찾지 못했습니다. processingGroupId={}, chunkCount={}",
+                    processingGroupId,
+                    chunks.size()
             );
+
+            return;
         }
 
         log.info(
-                "처리 그룹 문서 목차 매핑 완료. processingGroupId={}, documentCount={}, scopeNodeCount={}",
-                processingGroupId,
-                processings.size(),
-                scopeNodes.size()
+                "문서 청크 목차 매핑 저장 완료. processingGroupId={}, chunkCount={}, mappingCount={}",
+                 processingGroupId,
+                 chunks.size(),
+                 mappings.size()
         );
+
     }
 
+    private ChunkMappingRequestDto toChunkMappingRequestDto(DocumentChunk documentChunk) {
 
-    /**
-     * 문서 한 개에 속한 모든 청크를 목차에 매핑한다.
-     */
-    private void mapDocument(
-            DocumentProcessing processing,
-            List<ExamScopeCandidateDto> candidates,
-            Map<Long, ExamScopeNode> scopeNodeMap
-    ) {
-        Long sourceDocumentId =
-                processing.getSourceDocument().getId();
-
-        List<DocumentChunk> chunks =
-                documentChunkRepository
-                        .findAllBySourceDocument_IdOrderByChunkOrderAsc(
-                                sourceDocumentId
-                        );
-
-        if (chunks.isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
-            );
+        if(documentChunk == null || documentChunk.getId() == null || documentChunk.getContentText() == null || documentChunk.getContentText().isBlank()){
+            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
         }
 
-        documentScopeMappingRepository
-                .deleteAllByDocumentChunk_SourceDocument_Id(
-                        sourceDocumentId
+        return new ChunkMappingRequestDto(documentChunk.getId(), documentChunk.getContentText());
+
+    }
+
+    private ScopeCandidateRequestDto toScopeCandidateRequestDto(ExamScopeNode scopeNode) {
+
+        if(scopeNode == null || scopeNode.getId() == null || scopeNode.getTitle() == null || scopeNode.getTitle().isBlank()){
+            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        }
+
+        return new ScopeCandidateRequestDto(scopeNode.getId(), scopeNode.getTitle());
+    }
+
+    private List<DocumentScopeMapping> createMappings(List<ScopeMappingAiResultResponseDto> aiResults, Map<Long, DocumentChunk> chunkMap, Map<Long, ExamScopeNode> scopeNodeMap) {
+
+        List<DocumentScopeMapping> mappings = new ArrayList<>(aiResults.size());
+
+        Set<String> mappingKeys = new HashSet<>();
+
+        for(ScopeMappingAiResultResponseDto aiResult : aiResults){
+
+            if(aiResult == null || aiResult.documentChunkId() == null || aiResult.examScopeNodeId() == null){
+                throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
+            }
+
+            DocumentChunk documentChunk = chunkMap.get(aiResult.documentChunkId());
+
+            ExamScopeNode examScopeNode = scopeNodeMap.get(aiResult.examScopeNodeId());
+
+            BigDecimal confidenceScore = normalizeConfidenceScore(aiResult.confidenceScore());
+
+            if (documentChunk == null) {
+
+                log.warn(
+                        "AI가 존재하지 않는 문서 청크 ID를 반환하여 매핑에서 제외합니다. documentChunkId={}",
+                        aiResult.documentChunkId()
                 );
 
-        for (DocumentChunk chunk : chunks) {
-            mapChunk(
-                    chunk,
-                    candidates,
-                    scopeNodeMap
-            );
-        }
+                continue;
+            }
 
-        long mappingCount =
-                documentScopeMappingRepository
-                        .countByDocumentChunk_SourceDocument_Id(
-                                sourceDocumentId
-                        );
-
-        if (mappingCount != chunks.size()) {
-            log.error(
-                    "문서 청크 매핑 개수가 일치하지 않습니다. sourceDocumentId={}, chunkCount={}, mappingCount={}",
-                    sourceDocumentId,
-                    chunks.size(),
-                    mappingCount
-            );
-
-            throw new BusinessException(
-                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
-            );
-        }
-
-        log.info(
-                "문서 목차 매핑 완료. processingId={}, sourceDocumentId={}, chunkCount={}, mappingCount={}",
-                processing.getId(),
-                sourceDocumentId,
-                chunks.size(),
-                mappingCount
-        );
-    }
-    /**
-     * 청크 하나를 적절한 ExamScopeNode에 매핑한다.
-     *
-     * 현재는 AI 매핑 로직을 연결하기 전 단계다.
-     */
-    private void mapChunk(
-            DocumentChunk chunk,
-            List<ExamScopeCandidateDto> candidates,
-            Map<Long, ExamScopeNode> scopeNodeMap
-    ) {
-        String chunkContent =
-                chunk.getContentText();
-
-        if (chunkContent == null
-                || chunkContent.isBlank()) {
-
-            throw new BusinessException(
-                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
-            );
-        }
-
-        DocumentScopeMappingResultDto result =
-                documentScopeMappingClient.mapChunk(
-                        chunkContent,
-                        candidates
+            if (examScopeNode == null) {
+                log.warn(
+                        "AI가 매핑 후보에 없는 목차 ID를 반환하여 제외합니다. documentChunkId={}, examScopeNodeId={}",
+                        aiResult.documentChunkId(),
+                        aiResult.examScopeNodeId()
                 );
 
-        ExamScopeNode selectedScopeNode =
-                scopeNodeMap.get(
-                        result.examScopeNodeId()
+                continue;
+            }
+
+            if(confidenceScore.compareTo(MIN_MAPPING_CONFIDENCE) < 0){
+                log.warn(
+                        "신뢰도 기준 미만의 목차 매핑을 제외합니다. " +
+                                "documentChunkId={}, examScopeNodeId={}, confidenceScore={}",
+                        aiResult.documentChunkId(),
+                        aiResult.examScopeNodeId(),
+                        confidenceScore
                 );
 
-        if (selectedScopeNode == null) {
-            throw new BusinessException(
-                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
-            );
+                continue;
+            }
+
+            String mappingKey = aiResult.documentChunkId() + ":" + aiResult.examScopeNodeId();
+
+            if(!mappingKeys.add(mappingKey)){
+                log.warn(
+                        "중복된 목차 매핑 결과를 제외합니다. documentChunkId={}, examScopeNodeId={}",
+                        aiResult.documentChunkId(),
+                        aiResult.examScopeNodeId()
+                );
+
+                continue;
+            }
+
+            DocumentScopeMapping mapping = DocumentScopeMapping.builder()
+                    .documentChunk(documentChunk)
+                    .examScopeNode(examScopeNode)
+                    .confidenceScore(confidenceScore)
+                    .mappingReason(normalizeMappingReason(aiResult.mappingReason()))
+                    .build();
+
+            mappings.add(mapping);
         }
 
-        DocumentScopeMapping mapping =
-                DocumentScopeMapping.builder()
-                        .documentChunk(chunk)
-                        .examScopeNode(selectedScopeNode)
-                        .mappingReason(
-                                result.mappingReason()
-                        )
-                        .build();
+        return mappings;
 
-        documentScopeMappingRepository.save(mapping);
-
-        log.info(
-                "청크 목차 매핑 저장 완료. chunkId={}, chunkOrder={}, examScopeNodeId={}",
-                chunk.getId(),
-                chunk.getChunkOrder(),
-                selectedScopeNode.getId()
-        );
     }
 
-    private List<DocumentProcessing> getDocumentProcessings(
-            Long processingGroupId
-    ) {
-        List<DocumentProcessing> processings =
-                documentProcessingRepository
-                        .findAllByProcessingGroup_IdOrderByIdAsc(
-                                processingGroupId
-                        );
+    private String normalizeMappingReason(String mappingReason) {
 
-        if (processings.isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.DOCUMENT_PROCESSING_NOT_FOUND
-            );
+        if(mappingReason == null || mappingReason.isBlank()){
+            return null;
         }
 
-        return processings;
+        String normalizedReason = mappingReason.trim();
+
+        if(normalizedReason.length() > MAX_MAPPING_REASON_LENGTH){
+            return normalizedReason.substring(0,MAX_MAPPING_REASON_LENGTH);
+        }
+
+        return normalizedReason;
+
     }
 
-    private List<ExamScopeNode> getExamScopeNodes(
-            Long processingGroupId
-    ) {
-        DocumentProcessingGroup processingGroup =
-                documentProcessingGroupRepository
-                        .findById(processingGroupId)
-                        .orElseThrow(() ->
-                                new BusinessException(
-                                        ErrorCode.DOCUMENT_PROCESSING_GROUP_NOT_FOUND
-                                )
-                        );
+    private BigDecimal normalizeConfidenceScore(BigDecimal confidenceScore) {
 
-        Long examVersionId =
-                processingGroup
-                        .getUserExam()
-                        .getExamVersion()
-                        .getId();
-
-        List<ExamScopeNode> scopeNodes =
-                examScopeNodeRepository
-                        .findActiveNodesByExamVersionIdAndNodeTypes(
-                                examVersionId,
-                                List.of(
-                                        ExamScopeNodeType.TOPIC
-                                )
-                        );
-
-        if (scopeNodes.isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.EXAM_SCOPE_NODE_NOT_FOUND
-            );
+        if(confidenceScore == null || confidenceScore.compareTo(BigDecimal.ZERO) < 0 || confidenceScore.compareTo(BigDecimal.ONE) > 0){
+            throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
         }
 
-        log.info(
-                "시험 목차 후보 조회 완료. processingGroupId={}, examVersionId={}, scopeNodeCount={}",
-                processingGroupId,
-                examVersionId,
-                scopeNodes.size()
-        );
+        return confidenceScore.setScale(4, java.math.RoundingMode.HALF_UP);
+    }
+
+    private List<ExamScopeNode> getMappingTargetScopeNodes(Long examVersionId) {
+
+        List<ExamScopeNode> scopeNodes = examScopeNodeRepository.findAllByExamVersion_IdAndIsLeafTrueAndIsActiveTrueOrderByDepthAscDisplayOrderAsc(examVersionId);
+
+        if(scopeNodes.isEmpty()){
+            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        }
 
         return scopeNodes;
     }
 
-    private List<ExamScopeCandidateDto> createScopeCandidates(
-            List<ExamScopeNode> scopeNodes
-    ) {
-        return scopeNodes.stream()
-                .map(scopeNode ->
-                        new ExamScopeCandidateDto(
-                                scopeNode.getId(),
-                                scopeNode.getTitle(),
-                                createScopePath(scopeNode)
-                        )
-                )
-                .toList();
-    }
+    private List<DocumentChunk> getDocumentChunks(Long processingGroupId) {
 
-    private String createScopePath(
-            ExamScopeNode scopeNode
-    ) {
-        List<String> titles = new ArrayList<>();
+        List<DocumentChunk> chunks = documentChunkRepository.findAllByProcessingGroupId(processingGroupId);
 
-        ExamScopeNode currentNode = scopeNode;
-
-        while (currentNode != null) {
-            titles.add(currentNode.getTitle());
-            currentNode = currentNode.getParent();
+        if(chunks.isEmpty()){
+            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
         }
 
-        Collections.reverse(titles);
-
-        return String.join(" > ", titles);
+        return chunks;
     }
+
+    private Long getExamVersionId(DocumentProcessingGroup processingGroup) {
+
+        if(processingGroup.getUserExam() == null || processingGroup.getUserExam().getExamVersion() == null
+                        || processingGroup.getUserExam().getExamVersion().getId() == null){
+
+            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        }
+
+        return  processingGroup.getUserExam().getExamVersion().getId();
+    }
+
 }

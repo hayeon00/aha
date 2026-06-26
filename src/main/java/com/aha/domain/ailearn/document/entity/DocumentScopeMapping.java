@@ -39,56 +39,33 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DocumentScopeMapping {
 
-    private static final BigDecimal MIN_CONFIDENCE_SCORE =
-            BigDecimal.ZERO;
-
-    private static final BigDecimal MAX_CONFIDENCE_SCORE =
-            BigDecimal.ONE;
+    private static final BigDecimal MIN_CONFIDENCE_SCORE = BigDecimal.ZERO;
+    private static final BigDecimal MAX_CONFIDENCE_SCORE = BigDecimal.ONE;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "document_chunk_id",
-            nullable = false
-    )
+    @JoinColumn(name = "document_chunk_id", nullable = false)
     private DocumentChunk documentChunk;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "exam_scope_node_id",
-            nullable = false
-    )
+    @JoinColumn(name = "exam_scope_node_id", nullable = false)
     private ExamScopeNode examScopeNode;
 
-    @Column(
-            name = "confidence_score",
-            precision = 5,
-            scale = 4
-    )
+    @Column(name = "confidence_score", precision = 5, scale = 4)
     private BigDecimal confidenceScore;
 
-    @Column(
-            name = "mapping_reason",
-            length = 1000
-    )
+    @Column(name = "mapping_reason", length = 1000)
     private String mappingReason;
 
     @CreationTimestamp
-    @Column(
-            name = "created_at",
-            nullable = false,
-            updatable = false
-    )
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(
-            name = "updated_at",
-            nullable = false
-    )
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     @Builder
