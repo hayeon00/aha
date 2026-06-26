@@ -211,12 +211,11 @@ CREATE TABLE `user_exam` (
 );
 
 
-
 CREATE TABLE `document_processing_group` (
                                              `id`                   BIGINT        NOT NULL AUTO_INCREMENT,
                                              `user_exam_id`         BIGINT        NOT NULL,
                                              `status`               VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
-                                             `current_step`         VARCHAR(50)   NOT NULL DEFAULT 'FILE_UPLOADED',
+                                             `current_step`         VARCHAR(50)   NOT NULL DEFAULT 'UPLOAD_PENDING',
                                              `progress_rate`        INT           NOT NULL DEFAULT 0,
                                              `total_file_count`     INT           NOT NULL DEFAULT 0,
                                              `completed_file_count` INT           NOT NULL DEFAULT 0,
@@ -235,7 +234,8 @@ CREATE TABLE `document_processing_group` (
                                              INDEX `idx_dpg_created_at` (`created_at`),
 
                                              CONSTRAINT `fk_dpg_user_exam_id`
-                                                 FOREIGN KEY (`user_exam_id`) REFERENCES `user_exam` (`id`)
+                                                 FOREIGN KEY (`user_exam_id`)
+                                                     REFERENCES `user_exam` (`id`)
                                                      ON DELETE CASCADE,
 
                                              CONSTRAINT `chk_dpg_progress_rate`
@@ -505,28 +505,41 @@ CREATE TABLE `problem_choice` (
 
 
 CREATE TABLE `source_document` (
-                                   `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
-                                   `user_exam_id`       BIGINT       NOT NULL,
-                                   `original_file_name` VARCHAR(255) NOT NULL,
-                                   `stored_file_name`   VARCHAR(255) NOT NULL,
-                                   `storage_key`        VARCHAR(500) NOT NULL,
-                                   `file_extension`     VARCHAR(20)      NULL,
-                                   `mime_type`          VARCHAR(100)     NULL,
-                                   `file_size`          BIGINT           NULL,
-                                   `status`             VARCHAR(30)  NOT NULL DEFAULT 'UPLOADED',
-                                   `is_active`          BOOLEAN      NOT NULL DEFAULT TRUE,
-                                   `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                   `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                   `id`                   BIGINT       NOT NULL AUTO_INCREMENT,
+                                   `processing_group_id`  BIGINT       NOT NULL,
+                                   `original_file_name`   VARCHAR(255) NOT NULL,
+                                   `stored_file_name`     VARCHAR(255) NOT NULL,
+                                   `storage_key`          VARCHAR(500) NOT NULL,
+                                   `file_extension`       VARCHAR(20)  NOT NULL,
+                                   `mime_type`            VARCHAR(100) NOT NULL,
+                                   `file_size`            BIGINT       NOT NULL,
+                                   `upload_status`        VARCHAR(30)  NOT NULL DEFAULT 'PENDING',
+                                   `upload_error_message` VARCHAR(1000)     NULL,
+                                   `is_active`            BOOLEAN      NOT NULL DEFAULT TRUE,
+                                   `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   `updated_at`           DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
 
                                    PRIMARY KEY (`id`),
 
-                                   INDEX `idx_source_document_user_exam_id` (`user_exam_id`),
-                                   INDEX `idx_source_document_status` (`status`),
-                                   INDEX `idx_source_document_storage_key` (`storage_key`),
+                                   INDEX `idx_source_document_processing_group_id`
+                                       (`processing_group_id`),
 
-                                   CONSTRAINT `fk_source_document_user_exam_id`
-                                       FOREIGN KEY (`user_exam_id`) REFERENCES `user_exam` (`id`)
-                                           ON DELETE CASCADE
+                                   INDEX `idx_source_document_upload_status`
+                                       (`upload_status`),
+
+                                   INDEX `idx_source_document_storage_key`
+                                       (`storage_key`),
+
+                                   UNIQUE KEY `uk_source_document_storage_key`
+                                       (`storage_key`),
+
+                                   CONSTRAINT `fk_source_document_processing_group_id`
+                                       FOREIGN KEY (`processing_group_id`)
+                                           REFERENCES `document_processing_group` (`id`)
+                                           ON DELETE CASCADE,
+
+                                   CONSTRAINT `chk_source_document_file_size`
+                                       CHECK (`file_size` > 0)
 );
 
 
@@ -544,24 +557,32 @@ CREATE TABLE `document_processing` (
 
                                        PRIMARY KEY (`id`),
 
-                                       INDEX `idx_document_processing_group_id` (`processing_group_id`),
-                                       INDEX `idx_document_processing_source_document_id` (`source_document_id`),
-                                       INDEX `idx_document_processing_status` (`status`),
+                                       UNIQUE KEY `uk_document_processing_group_document`
+                                           (`processing_group_id`, `source_document_id`),
+
+                                       INDEX `idx_document_processing_group_id`
+                                           (`processing_group_id`),
+
+                                       INDEX `idx_document_processing_source_document_id`
+                                           (`source_document_id`),
+
+                                       INDEX `idx_document_processing_status`
+                                           (`status`),
 
                                        CONSTRAINT `fk_document_processing_group_id`
-                                           FOREIGN KEY (`processing_group_id`) REFERENCES `document_processing_group` (`id`)
+                                           FOREIGN KEY (`processing_group_id`)
+                                               REFERENCES `document_processing_group` (`id`)
                                                ON DELETE CASCADE,
 
                                        CONSTRAINT `fk_document_processing_source_document_id`
-                                           FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
+                                           FOREIGN KEY (`source_document_id`)
+                                               REFERENCES `source_document` (`id`)
                                                ON DELETE CASCADE
 );
-
 
 CREATE TABLE `document_chunk` (
                                   `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
                                   `source_document_id` BIGINT       NOT NULL,
-                                  `processing_id`      BIGINT           NULL,
                                   `chunk_order`        INT          NOT NULL,
                                   `page_no`            INT              NULL,
                                   `section_title`      VARCHAR(255)     NULL,
@@ -573,23 +594,24 @@ CREATE TABLE `document_chunk` (
                                   `structure_json`     JSON             NULL,
                                   `token_count`        INT              NULL,
                                   `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                  `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                  `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                      ON UPDATE CURRENT_TIMESTAMP,
 
                                   PRIMARY KEY (`id`),
-                                  UNIQUE KEY `uk_document_chunk_document_order` (`source_document_id`, `chunk_order`),
 
-                                  INDEX `idx_document_chunk_source_document_id` (`source_document_id`),
-                                  INDEX `idx_document_chunk_processing_id` (`processing_id`),
-                                  INDEX `idx_document_chunk_page_no` (`source_document_id`, `page_no`),
-                                  INDEX `idx_document_chunk_content_type` (`content_type`),
+                                  UNIQUE KEY `uk_document_chunk_source_order`
+                                      (`source_document_id`, `chunk_order`),
 
-                                  CONSTRAINT `fk_document_chunk_source_document_id`
-                                      FOREIGN KEY (`source_document_id`) REFERENCES `source_document` (`id`)
+                                  INDEX `idx_document_chunk_page_no`
+                                      (`source_document_id`, `page_no`),
+
+                                  INDEX `idx_document_chunk_content_type`
+                                      (`content_type`),
+
+                                  CONSTRAINT `fk_document_chunk_source_document`
+                                      FOREIGN KEY (`source_document_id`)
+                                          REFERENCES `source_document` (`id`)
                                           ON DELETE CASCADE,
-
-                                  CONSTRAINT `fk_document_chunk_processing_id`
-                                      FOREIGN KEY (`processing_id`) REFERENCES `document_processing` (`id`)
-                                          ON DELETE SET NULL,
 
                                   CONSTRAINT `chk_document_chunk_order`
                                       CHECK (`chunk_order` >= 1),
@@ -606,31 +628,31 @@ CREATE TABLE `document_scope_mapping` (
                                           `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
                                           `document_chunk_id`  BIGINT        NOT NULL,
                                           `exam_scope_node_id` BIGINT        NOT NULL,
-                                          `confidence_score`   DECIMAL(5,4)      NULL,
-                                          `mapping_reason`     VARCHAR(1000)     NULL,
-                                          `status`             VARCHAR(30)   NOT NULL DEFAULT 'NOT_MAPPED',
+                                          `confidence_score`   DECIMAL(5,4)  NOT NULL,
+                                          `mapping_reason`     VARCHAR(1000) NULL,
                                           `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                          `updated_at`         DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+                                          `updated_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                              ON UPDATE CURRENT_TIMESTAMP,
 
                                           PRIMARY KEY (`id`),
-                                          UNIQUE KEY `uk_dsm_chunk_scope` (`document_chunk_id`, `exam_scope_node_id`),
 
-                                          INDEX `idx_dsm_document_chunk_id` (`document_chunk_id`),
-                                          INDEX `idx_dsm_exam_scope_node_id` (`exam_scope_node_id`),
-                                          INDEX `idx_dsm_status` (`status`),
+                                          UNIQUE KEY `uk_dsm_chunk_scope`
+                                              (`document_chunk_id`, `exam_scope_node_id`),
 
                                           CONSTRAINT `fk_dsm_document_chunk_id`
-                                              FOREIGN KEY (`document_chunk_id`) REFERENCES `document_chunk` (`id`)
+                                              FOREIGN KEY (`document_chunk_id`)
+                                                  REFERENCES `document_chunk` (`id`)
                                                   ON DELETE CASCADE,
 
                                           CONSTRAINT `fk_dsm_exam_scope_node_id`
-                                              FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
+                                              FOREIGN KEY (`exam_scope_node_id`)
+                                                  REFERENCES `exam_scope_node` (`id`)
                                                   ON DELETE CASCADE,
 
                                           CONSTRAINT `chk_dsm_confidence_score`
                                               CHECK (
-                                                  `confidence_score` IS NULL
-                                                      OR (`confidence_score` >= 0 AND `confidence_score` <= 1)
+                                                  `confidence_score` >= 0
+                                                      AND `confidence_score` <= 1
                                                   )
 );
 
@@ -666,7 +688,7 @@ CREATE TABLE `user_learning_content` (
 CREATE TABLE `learning_content_reference` (
                                               `id`                       BIGINT   NOT NULL AUTO_INCREMENT,
                                               `user_learning_content_id` BIGINT   NOT NULL,
-                                              `extracted_content_id`     BIGINT   NOT NULL,
+                                              `document_chunk_id`        BIGINT   NOT NULL,
                                               `page_no`                  INT          NULL,
                                               `snippet`                  TEXT         NULL,
                                               `display_order`            INT      NOT NULL DEFAULT 1,
@@ -675,16 +697,30 @@ CREATE TABLE `learning_content_reference` (
 
                                               PRIMARY KEY (`id`),
 
-                                              INDEX `idx_lcr_user_learning_content_id` (`user_learning_content_id`),
-                                              INDEX `idx_lcr_extracted_content_id` (`extracted_content_id`),
-                                              INDEX `idx_lcr_content_order` (`user_learning_content_id`, `display_order`),
+                                              INDEX `idx_lcr_user_learning_content_id`
+                                                  (`user_learning_content_id`),
+
+                                              INDEX `idx_lcr_document_chunk_id`
+                                                  (`document_chunk_id`),
+
+                                              INDEX `idx_lcr_content_order`
+                                                  (`user_learning_content_id`, `display_order`),
 
                                               CONSTRAINT `fk_lcr_user_learning_content_id`
-                                                  FOREIGN KEY (`user_learning_content_id`) REFERENCES `user_learning_content` (`id`)
+                                                  FOREIGN KEY (`user_learning_content_id`)
+                                                      REFERENCES `user_learning_content` (`id`)
+                                                      ON DELETE CASCADE,
+
+                                              CONSTRAINT `fk_lcr_document_chunk_id`
+                                                  FOREIGN KEY (`document_chunk_id`)
+                                                      REFERENCES `document_chunk` (`id`)
                                                       ON DELETE CASCADE,
 
                                               CONSTRAINT `chk_lcr_page_no`
-                                                  CHECK (`page_no` IS NULL OR `page_no` >= 1)
+                                                  CHECK (`page_no` IS NULL OR `page_no` >= 1),
+
+                                              CONSTRAINT `chk_lcr_display_order`
+                                                  CHECK (`display_order` >= 1)
 );
 
 
