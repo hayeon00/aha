@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import UploadProgressModal from "../../components/ailearn/UploadProgressModal";
 import {
     getDocumentProcessingStatus,
+    getUserExamDocumentState,
     uploadLearningDocuments,
 } from "../../api/ailearn/documentApi";
 import { getExamScopeNodes } from "../../api/exam/examApi";
@@ -39,6 +41,7 @@ const coachFeatures = [
 ];
 
 function AiLearning() {
+    const navigate = useNavigate();
     const fileInputRef = useRef(null);
     const [userExams, setUserExams] = useState([]);
     const [selectedUserExamId, setSelectedUserExamId] = useState(null);
@@ -59,6 +62,8 @@ function AiLearning() {
     const [learningContent, setLearningContent] = useState(null);
     const [isContentLoading, setIsContentLoading] = useState(false);
     const [contentErrorMessage, setContentErrorMessage] = useState("");
+    const [hasProcessedDocuments, setHasProcessedDocuments] = useState(false);
+    const [isDocumentStateLoading, setIsDocumentStateLoading] = useState(false);
 
     const selectedUserExam = useMemo(() => {
         return userExams.find(
@@ -67,6 +72,15 @@ function AiLearning() {
     }, [userExams, selectedUserExamId]);
 
     const selectedExamVersionId = selectedUserExam?.examVersionId ?? null;
+
+    useEffect(() => {
+        if (!selectedUserExamId) {
+            setHasProcessedDocuments(false);
+            return;
+        }
+
+        fetchUserExamDocumentState(selectedUserExamId);
+    }, [selectedUserExamId]);
 
     useEffect(() => {
         fetchVisibleUserExams();
@@ -113,7 +127,12 @@ function AiLearning() {
                     setIsProgressModalOpen(false);
                     setProcessingId(null);
                     setProcessingStatus(null);
-                    setMessage("문서 처리가 완료되었습니다.");
+                    setMessage("");
+                    setHasProcessedDocuments(true);
+
+                    if (selectedUserExamId) {
+                        await fetchUserExamDocumentState(selectedUserExamId);
+                    }
 
                     if (selectedUserExamId && selectedNodeId) {
                         await fetchLearningContent(
@@ -156,6 +175,24 @@ function AiLearning() {
         }
 
         return response;
+    };
+
+    const fetchUserExamDocumentState = async (userExamId) => {
+        try {
+            setIsDocumentStateLoading(true);
+
+            const response = await getUserExamDocumentState(userExamId);
+            const stateData = getApiData(response);
+
+            setHasProcessedDocuments(
+                Boolean(stateData?.hasUploadedDocuments)
+            );
+        } catch (error) {
+            console.error("문서 업로드 상태 조회 실패:", error);
+            setHasProcessedDocuments(false);
+        } finally {
+            setIsDocumentStateLoading(false);
+        }
     };
 
     const fetchVisibleUserExams = async () => {
@@ -213,7 +250,12 @@ function AiLearning() {
                 examScopeNodeId
             );
 
-            setLearningContent(getApiData(response));
+            const contentData = getApiData(response);
+            setLearningContent(contentData);
+
+            if (contentData) {
+                setHasProcessedDocuments(true);
+            }
         } catch (error) {
             if (error.response?.status === 404) {
                 setLearningContent(null);
@@ -368,7 +410,7 @@ function AiLearning() {
                             disabled={userExams.length === 0}
                         >
                             {userExams.length === 0 ? (
-                                <option value="">표시 시험 없음</option>
+                                <option value="">활성 시험 없음</option>
                             ) : (
                                 userExams.map((userExam) => (
                                     <option
@@ -380,13 +422,27 @@ function AiLearning() {
                                 ))
                             )}
                         </select>
+
+                        <svg
+                            className="exam-select-arrow"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 16 16"
+                            fill="none"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="M4 6L8 10L12 6"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
                     </div>
 
                     <div className="concept-title-wrap">
                         <h1>개념 학습</h1>
-                        <span>
-                            {learningContent ? "개념 설명 생성 완료" : "문서 업로드 전"}
-                        </span>
                     </div>
                 </div>
             </header>
@@ -395,11 +451,79 @@ function AiLearning() {
 
             {userExams.length === 0 ? (
                 <section className="concept-empty-state">
-                    <h2>표시 중인 시험이 없습니다</h2>
-                    <p>
-                        마이페이지에서 학습할 시험의 표시 설정을 켜면
-                        개념학습 화면에서 확인할 수 있습니다.
-                    </p>
+                    <div className="concept-empty-card">
+                        <div className="concept-empty-illustration" aria-hidden="true">
+                            <svg
+                                width="72"
+                                height="72"
+                                viewBox="0 0 72 72"
+                                fill="none"
+                            >
+                                <rect
+                                    x="14"
+                                    y="12"
+                                    width="44"
+                                    height="50"
+                                    rx="11"
+                                    fill="#FFFFFF"
+                                    stroke="#E9CDB9"
+                                    strokeWidth="2"
+                                />
+                                <path
+                                    d="M25 28H47M25 37H44M25 46H38"
+                                    stroke="#C7AA95"
+                                    strokeWidth="2.3"
+                                    strokeLinecap="round"
+                                />
+                                <circle
+                                    cx="55"
+                                    cy="54"
+                                    r="11"
+                                    fill="#FF7A18"
+                                />
+                                <path
+                                    d="M55 49V59M50 54H60"
+                                    stroke="#FFFFFF"
+                                    strokeWidth="2.2"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </div>
+
+                        <h2>학습할 시험을 먼저 선택해 주세요</h2>
+
+                        <p>
+                            마이페이지에서 학습 시험을 활성화하면
+                            개념 학습을 바로 시작할 수 있습니다.
+                        </p>
+
+                        <button
+                            type="button"
+                            className="concept-empty-action"
+                            onClick={() => navigate("/mypage")}
+                        >
+                            <span>마이페이지로 이동</span>
+                            <svg
+                                width="17"
+                                height="17"
+                                viewBox="0 0 17 17"
+                                fill="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M6 3.5L11 8.5L6 13.5"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                        </button>
+
+                        <span className="concept-empty-caption">
+                            학습 시험 설정에서 표시할 시험을 켜주세요.
+                        </span>
+                    </div>
                 </section>
             ) : (
                 <section className="concept-workspace">
@@ -407,16 +531,7 @@ function AiLearning() {
                         <div className="panel-header">
                             <div className="panel-title">
                                 <h2>학습 목차</h2>
-                                <span className="info-dot">i</span>
                             </div>
-
-                            <button
-                                type="button"
-                                className="icon-button"
-                                aria-label="목차 설정"
-                            >
-                                ⚙
-                            </button>
                         </div>
 
                         <button type="button" className="toc-select">
@@ -449,39 +564,21 @@ function AiLearning() {
                             )}
                         </div>
 
-                        <div className="toc-guide-card">
-                            <span className="guide-file-icon">▣</span>
-                            <p>
-                                문서를 업로드하면 목차별
-                                <br />
-                                개념 설명이 자동으로 연결됩니다.
-                            </p>
-                        </div>
                     </aside>
 
                     <section className="concept-main-panel">
                         <div className="panel-header">
                             <div className="panel-title">
                                 <h2>개념 설명</h2>
-                                <span className={learningContent ? "status-pill ready" : "status-pill"}>
-                                    {isContentLoading
-                                        ? "불러오는 중"
-                                        : learningContent
-                                            ? "생성 완료"
-                                            : "문서 업로드 전"}
-                                </span>
                             </div>
-
-                            <button
-                                type="button"
-                                className="icon-button"
-                                aria-label="확대"
-                            >
-                                ↗
-                            </button>
                         </div>
 
-                        {isContentLoading ? (
+                        {isDocumentStateLoading ? (
+                            <div className="content-loading-state">
+                                <div className="concept-loading-spinner" />
+                                <p>문서 상태를 확인하는 중입니다...</p>
+                            </div>
+                        ) : isContentLoading ? (
                             <div className="content-loading-state">
                                 <div className="concept-loading-spinner" />
                                 <p>개념 설명을 불러오는 중입니다...</p>
@@ -530,78 +627,94 @@ function AiLearning() {
                                         </div>
                                     )}
                             </article>
+                        ) : hasProcessedDocuments ? (
+                            <div className="content-empty-state">
+                                <div className="content-empty-icon" aria-hidden="true">
+                                    <svg
+                                        width="52"
+                                        height="52"
+                                        viewBox="0 0 52 52"
+                                        fill="none"
+                                    >
+                                        <rect
+                                            x="11"
+                                            y="7"
+                                            width="30"
+                                            height="38"
+                                            rx="7"
+                                            fill="#FFF8F2"
+                                            stroke="#F6C7A8"
+                                            strokeWidth="1.8"
+                                        />
+                                        <path
+                                            d="M18 20H34M18 27H30"
+                                            stroke="#C9A995"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                        />
+                                    </svg>
+                                </div>
+                                <h3>연결된 학습 내용이 없습니다</h3>
+                                <p>
+                                    선택한 목차와 연결된 문서 내용이 없어
+                                    개념 설명이 생성되지 않았습니다.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="empty-upload-button"
+                                    onClick={handleUploadClick}
+                                    disabled={isUploading}
+                                >
+                                    문서 추가 업로드
+                                </button>
+                            </div>
                         ) : (
                             <div className="upload-dropzone">
                                 <div className="upload-empty-content">
                                     <div className="upload-doc-icon" aria-hidden="true">
                                         <svg
-                                            width="100"
-                                            height="100"
-                                            viewBox="0 0 100 100"
+                                            width="84"
+                                            height="84"
+                                            viewBox="0 0 84 84"
                                             fill="none"
                                         >
-                                            <path
-                                                d="M33 18H58L74 34V72C74 76.4183 70.4183 80 66 80H33C28.5817 80 25 76.4183 25 72V26C25 21.5817 28.5817 18 33 18Z"
-                                                stroke="#C8D2DF"
-                                                strokeWidth="2.4"
-                                                fill="white"
+                                            <rect
+                                                x="20"
+                                                y="11"
+                                                width="44"
+                                                height="58"
+                                                rx="10"
+                                                fill="#FFFFFF"
+                                                stroke="#E6C7B1"
+                                                strokeWidth="2"
                                             />
                                             <path
-                                                d="M58 18V30C58 34.4183 61.5817 38 66 38H74"
-                                                stroke="#F7B182"
-                                                strokeWidth="2.4"
-                                            />
-                                            <path
-                                                d="M38 46H60"
-                                                stroke="#C8D2DF"
+                                                d="M31 31H53M31 40H53M31 49H46"
+                                                stroke="#C6A995"
                                                 strokeWidth="2.4"
                                                 strokeLinecap="round"
                                             />
+                                            <circle
+                                                cx="61"
+                                                cy="62"
+                                                r="13"
+                                                fill="#FF7A18"
+                                            />
                                             <path
-                                                d="M38 56H60"
-                                                stroke="#C8D2DF"
-                                                strokeWidth="2.4"
+                                                d="M61 67V56M56.5 60.5L61 56L65.5 60.5"
+                                                stroke="white"
+                                                strokeWidth="2.2"
                                                 strokeLinecap="round"
+                                                strokeLinejoin="round"
                                             />
                                         </svg>
                                     </div>
 
-                                    <h3>
-                                        개념 설명을 보려면
-                                        <br />
-                                        먼저 문서를 업로드해 주세요.
-                                    </h3>
+                                    <h3>학습 문서를 업로드해 주세요</h3>
 
                                     <p className="upload-description">
-                                        업로드한 문서를 AI가 분석한 뒤,
-                                        <br />
-                                        선택한 시험의 목차와 연결해 개념 설명으로 정리해드려요.
+                                        PDF 파일을 선택해 개념 학습을 시작하세요.
                                     </p>
-
-                                    <div className="upload-process">
-                                        <div className="upload-process-item">
-                                            <span className="process-icon">📄</span>
-                                            <strong>문서 업로드</strong>
-                                        </div>
-                                        <span className="process-arrow">→</span>
-
-                                        <div className="upload-process-item">
-                                            <span className="process-icon">AI</span>
-                                            <strong>AI 분석</strong>
-                                        </div>
-                                        <span className="process-arrow">→</span>
-
-                                        <div className="upload-process-item">
-                                            <span className="process-icon">🔗</span>
-                                            <strong>목차 매핑</strong>
-                                        </div>
-                                        <span className="process-arrow">→</span>
-
-                                        <div className="upload-process-item">
-                                            <span className="process-icon">📘</span>
-                                            <strong>개념 설명 생성</strong>
-                                        </div>
-                                    </div>
 
                                     <button
                                         type="button"
@@ -636,8 +749,12 @@ function AiLearning() {
                                                 strokeLinecap="round"
                                             />
                                         </svg>
-                                        <span>학습 문서 업로드</span>
+                                        <span>PDF 업로드</span>
                                     </button>
+
+                                    <span className="upload-hint">
+                                        여러 개의 PDF 파일을 한 번에 선택할 수 있습니다.
+                                    </span>
                                 </div>
                             </div>
                         )}
@@ -651,24 +768,12 @@ function AiLearning() {
                             onChange={handleFileChange}
                         />
 
-                        <footer className="concept-safe-box">
-                            <div>
-                                <span className="shield-icon">♡</span>
-                                업로드한 파일은 안전하게 보호되며, 학습 분석 목적으로만 활용됩니다.
-                            </div>
-
-                            <button type="button">
-                                자세히 보기
-                                <span>›</span>
-                            </button>
-                        </footer>
                     </section>
 
                     <aside className="coach-panel">
                         <div className="panel-header">
                             <div className="panel-title">
                                 <h2>AI 코치</h2>
-                                <span className="disabled-pill">비활성</span>
                             </div>
                         </div>
 
@@ -719,14 +824,6 @@ function AiLearning() {
                             ))}
                         </div>
 
-                        <div className="coach-bottom-card">
-                            <span>▣</span>
-                            <p>
-                                문서 업로드 후 모든 AI 코치 기능을
-                                <br />
-                                활용할 수 있습니다.
-                            </p>
-                        </div>
                     </aside>
                 </section>
             )}
