@@ -18,8 +18,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-// 저장된 storageKey를 물리 저장소에 저장
-
 
 @Slf4j
 @Service
@@ -41,6 +39,7 @@ public class DocumentFileStorageService {
 
     private final Tika tika;
     private final Path baseUploadDirectory;
+    private final Path temporaryUploadDirectory;
 
     public DocumentFileStorageService(@Value("${file.document-upload-dir:uploads}") String documentUploadDir) {
 
@@ -48,6 +47,10 @@ public class DocumentFileStorageService {
 
         this.baseUploadDirectory = Paths.get(documentUploadDir)
                                         .toAbsolutePath()
+                                        .normalize();
+
+        this.temporaryUploadDirectory = baseUploadDirectory
+                                        .resolve("temp")
                                         .normalize();
     }
 
@@ -69,64 +72,147 @@ public class DocumentFileStorageService {
         return List.copyOf(files);
     }
 
-    public void storeFile(MultipartFile file, String storageKey) {
+    public void storeTemporaryFile(Long processingGroupId, MultipartFile file, String storageKey){
 
         validateFile(file);
 
-        Path targetPath = resolveStoragePath(storageKey);
+        String storedFileName = extractStoredFileName(storageKey);
+
+        Path temporaryBatchDirectory = resolveTemporaryBatchDirectory(processingGroupId);
+
+        Path temporaryFilePath = temporaryBatchDirectory
+                .resolve(storedFileName)
+                .toAbsolutePath()
+                .normalize();
+
+        validatePathInsideDirectory(
+                temporaryBatchDirectory,
+                temporaryFilePath
+        );
 
         try{
-            Files.createDirectories(targetPath.getParent());
+            Files.createDirectories(temporaryBatchDirectory);
 
-            file.transferTo(targetPath);
+            file.transferTo(temporaryFilePath);
 
             validateStoredFile(
                     file,
-                    targetPath
+                    temporaryFilePath
             );
 
         }catch (BusinessException exception){
-            deleteFile(targetPath);
+            deleteFile(temporaryFilePath);
             throw exception;
 
         }catch (IOException exception){
-            deleteFile(targetPath);
+            deleteFile(temporaryFilePath);
 
             log.error(
-                    "문서 파일 저장 실패. storageKey={}",
+                    "임시 문서 파일 저장 실패. processingGroupId={}, storageKey={}",
+                    processingGroupId,
                     storageKey,
                     exception
             );
 
             throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+
         }catch (RuntimeException exception){
-            deleteFile(targetPath);
+            deleteFile(temporaryFilePath);
             throw exception;
+        }
+
+    }
+
+
+    // ============== 내부 Method ===================
+
+    // 실제 파일명만 꺼냄
+    private String extractStoredFileName(String storageKey) {
+
+        if(storageKey == null || storageKey.isBlank()){
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        Path storagePath = Path.of(storageKey).normalize();
+
+        Path storedFileName = storagePath.getFileName();
+
+        if(storedFileName == null || storedFileName.toString().isBlank()){
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        String fileName = storedFileName.toString();
+        extractExtension(fileName);
+
+        return fileName;
+
+    }
+
+
+    // 임시 폴더 경로생성
+    private Path resolveTemporaryBatchDirectory(Long processingGroupId) {
+
+        if(processingGroupId == null) {
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        Path temporaryBatchDirectory = temporaryUploadDirectory
+                                        .resolve(String.valueOf(processingGroupId))
+                                        .toAbsolutePath()
+                                        .normalize();
+
+        if (!temporaryBatchDirectory.startsWith(temporaryUploadDirectory)) {
+            throw invalidDocumentFile();
+        }
+
+        return temporaryBatchDirectory;
+    }
+
+    // 전체 경로가 내부에 있는지 검사
+    private void validatePathInsideDirectory(Path parentDirectory, Path targetPath) {
+
+        if(parentDirectory == null || targetPath == null){
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        Path normalizedParentDirectory = parentDirectory
+                                        .toAbsolutePath()
+                                        .normalize();
+
+        Path normalizedTargetPath = targetPath
+                                        .toAbsolutePath()
+                                        .normalize();
+
+        if(!normalizedTargetPath.startsWith(normalizedParentDirectory)){
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE);
         }
     }
 
-    private void validateStoredFile(MultipartFile file, Path targetPath) throws IOException{
+
+    private void validateStoredFile(MultipartFile file, Path storedFilePath) throws IOException{
 
         String originalFilename = resolveOriginalFileName(file);
 
         String extension = extractExtension(originalFilename);
 
-        long storedFileSize = Files.size(targetPath);
+        long storedFileSize = Files.size(storedFilePath);
 
         if(storedFileSize <= 0 || storedFileSize > MAX_FILE_SIZE_BYTES){
             throw invalidDocumentFile();
         }
 
-        detectMimeType(
-                targetPath,
+        if(storedFileSize != file.getSize()){
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        validateMimeType(
+                storedFilePath,
                 originalFilename,
                 extension
         );
 
 
     }
-
-
 
 
     // ==================== File Validation ====================
@@ -141,7 +227,6 @@ public class DocumentFileStorageService {
     private void validateFile(MultipartFile file) {
         if (file == null
                 || file.isEmpty()
-                || file.getSize() <= 0
                 || file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw invalidDocumentFile();
         }
@@ -150,6 +235,7 @@ public class DocumentFileStorageService {
         extractExtension(originalFileName);
     }
 
+    // 원본 파일명 검증 및 정규화 C:\fakepath\sqld.pdf-> sqld.pdf
     private String resolveOriginalFileName(MultipartFile file) {
         String originalFileName = file.getOriginalFilename();
 
@@ -195,8 +281,7 @@ public class DocumentFileStorageService {
     private String extractExtension(String originalFileName) {
         int extensionIndex = originalFileName.lastIndexOf('.');
 
-        if (extensionIndex <= 0
-                || extensionIndex == originalFileName.length() - 1) {
+        if (extensionIndex <= 0 || extensionIndex == originalFileName.length() - 1) {
             throw invalidDocumentFile();
         }
 
@@ -211,7 +296,7 @@ public class DocumentFileStorageService {
         return extension;
     }
 
-    private String detectMimeType(Path targetPath, String originalFileName, String extension) throws IOException {
+    private void validateMimeType(Path storedFilePath, String originalFileName, String extension) throws IOException {
 
         Set<String> allowedMimeTypes = ALLOWED_MIME_TYPES.get(extension);
 
@@ -219,7 +304,7 @@ public class DocumentFileStorageService {
             throw invalidDocumentFile();
         }
 
-        try(InputStream inputStream = Files.newInputStream(targetPath)) {
+        try(InputStream inputStream = Files.newInputStream(storedFilePath)) {
             String detectedMimeType = tika.detect(inputStream, originalFileName);
 
             if(!allowedMimeTypes.contains(detectedMimeType)) {
@@ -233,11 +318,7 @@ public class DocumentFileStorageService {
                 throw invalidDocumentFile();
 
             }
-
-            return detectedMimeType;
-
         }
-
     }
 
 
@@ -260,27 +341,93 @@ public class DocumentFileStorageService {
         }
     }
 
-    private void deleteDirectoryIfEmpty(Path directory) {
-        if (directory == null || !Files.isDirectory(directory)) {
+
+    private BusinessException invalidDocumentFile() {
+
+        return new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE);
+    }
+
+
+    // 임시 폴더에 모두 저장된 파일 묶음을 최종 저장 경로로 이동
+    public void commitTemporaryBatch(Long processingGroupId, String firstStorageKey) {
+
+        Path temporaryBatchDirectory = resolveTemporaryBatchDirectory(processingGroupId);
+
+        Path finalFilePath = resolveStoragePath(firstStorageKey);
+
+        Path finalBatchDirectory = finalFilePath.getParent();
+
+        if(finalBatchDirectory == null || finalBatchDirectory.getParent() == null) {
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        if(!Files.isDirectory(temporaryBatchDirectory)) {
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+        Path finalParentDirectory = finalBatchDirectory.getParent();
+
+        try{
+            Files.createDirectories(finalParentDirectory);
+
+            if(Files.exists(finalBatchDirectory)) {
+                throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+            }
+
+            Files.move(
+                    temporaryBatchDirectory,
+                    finalBatchDirectory
+            );
+
+        }catch (IOException exception){
+            log.error(
+                    "임시 배치 최종 이동 실패. processingGroupId={}, finalDirectory={}",
+                    processingGroupId,
+                    finalBatchDirectory,
+                    exception
+            );
+
+            throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
+        }
+
+    }
+
+    public void deleteTemporaryBatch(Long processingGroupId) {
+        Path temporaryBatchDirectory = resolveTemporaryBatchDirectory(processingGroupId);
+
+        deleteDirectoryRecursively(temporaryBatchDirectory);
+    }
+
+    private void deleteDirectoryRecursively(Path directory) {
+
+        if (directory == null || !Files.exists(directory)) {
             return;
         }
 
-        try (var paths = Files.list(directory)) {
-            if (paths.findAny().isEmpty()) {
-                Files.deleteIfExists(directory);
-            }
+        try (var paths = Files.walk(directory)) {
+            paths.sorted(
+                            (first, second) ->
+                                    second.getNameCount()
+                                            - first.getNameCount()
+                    )
+                    .forEach(this::deleteFile);
+
         } catch (IOException exception) {
-            log.warn(
-                    "빈 업로드 디렉터리 삭제 실패. path={}",
+            log.error(
+                    "업로드 디렉터리 삭제 실패. path={}",
                     directory,
                     exception
             );
         }
     }
 
-    private BusinessException invalidDocumentFile() {
-        return new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE);
-    }
+    public void deleteFinalBatch(String firstStorageKey) {
 
+        Path finalFilePath = resolveStoragePath(firstStorageKey);
+
+        Path finalBatchDirectory = finalFilePath.getParent();
+
+        deleteDirectoryRecursively(finalBatchDirectory);
+    }
 
 }

@@ -1,9 +1,8 @@
 package com.aha.domain.ailearn.document.service.upload;
 
-import com.aha.domain.ailearn.document.dto.api.response.DocumentBatchUploadResponseDto;
-import com.aha.domain.ailearn.document.dto.upload.DocumentFileUploadResult;
-import com.aha.domain.ailearn.document.dto.upload.PendingDocumentBatch;
-import com.aha.domain.ailearn.document.dto.upload.PendingDocumentFile;
+import com.aha.domain.ailearn.document.dto.upload.response.BatchUploadResponseDto;
+import com.aha.domain.ailearn.document.service.upload.model.PendingDocumentBatch;
+import com.aha.domain.ailearn.document.service.upload.model.PendingDocumentFile;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -22,9 +20,8 @@ public class AiLearnDocumentService {
     private final DocumentFileStorageService documentFileStorageService;
     private final DocumentUploadPersistenceService documentUploadPersistenceService;
 
-    // 여러 학습 문서 업로드
 
-    public DocumentBatchUploadResponseDto uploadDocumentsBatch(
+    public BatchUploadResponseDto uploadDocumentsBatch(
             Long userId,
             Long userExamId,
             List<MultipartFile> files
@@ -39,74 +36,85 @@ public class AiLearnDocumentService {
                         validatedFiles
                 );
 
-        List<DocumentFileUploadResult> uploadResults =
-                storePendingFiles(
-                        pendingBatch,
-                        validatedFiles
-                );
+        Long processingGroupId = pendingBatch.getProcessingGroupId();
 
-        return documentUploadPersistenceService.completeUploadBatch(
-                userId,
-                pendingBatch.getProcessingGroupId(),
-                uploadResults
-        );
+        String firstStorageKey = pendingBatch.getDocuments().get(0).getStorageKey();
 
+        boolean batchCommitted = false;
 
-    }
+        try{
+            storePendingFiles(
+                    pendingBatch,
+                    validatedFiles
+            );
 
+            documentFileStorageService.commitTemporaryBatch(
+                    processingGroupId,
+                    firstStorageKey);
 
+            batchCommitted = true;
 
-    // ================ 내부 Method ===========================
+            return documentUploadPersistenceService.completeUploadBatch(userId, processingGroupId);
 
-    private List<DocumentFileUploadResult> storePendingFiles(PendingDocumentBatch pendingBatch, List<MultipartFile> files) {
-        List<PendingDocumentFile> pendingFiles = pendingBatch.getDocuments();
+        }catch (RuntimeException exception){
 
-        validatePendingFileCount(pendingFiles, files);
+            log.error(
+                    "문서 배치 업로드 실패. userId={}, userExamId={}, processingGroupId={}",
+                    userId,
+                    userExamId,
+                    processingGroupId,
+                    exception
+            );
 
-        List<DocumentFileUploadResult> uploadResults = new ArrayList<>(files.size());
-
-        for(int index=0; index<files.size(); index++) {
-            MultipartFile file = files.get(index);
-
-            PendingDocumentFile pendingFile = pendingFiles.get(index);
+            cleanupFailedBatch(batchCommitted, processingGroupId, firstStorageKey);
 
             try{
-                documentFileStorageService.storeFile(
-                        file,
-                        pendingFile.getStorageKey()
+                documentUploadPersistenceService.failUploadBatch(
+                        userId,
+                        processingGroupId,
+                        resolveUploadErrorMessage(exception)
                 );
 
-                uploadResults.add(DocumentFileUploadResult.success(
-                        pendingFile.getSourceDocumentId(),
-                        pendingFile.getOriginalFileName()
-                ));
-            }catch(BusinessException exception){
-                String errorMessage = exception.getErrorCode().getMessage();
-
-                uploadResults.add(DocumentFileUploadResult.failure(
-                        pendingFile.getSourceDocumentId(),
-                        pendingFile.getOriginalFileName(),
-                        errorMessage
-                ));
-
-                log.error( "문서 파일 저장 실패. processingGroupId={}, sourceDocumentId={}, originalFileName={}, storageKey={}",
-                        pendingBatch.getProcessingGroupId(),
-                        pendingFile.getSourceDocumentId(),
-                        pendingFile.getOriginalFileName(),
-                        pendingFile.getStorageKey(),
-                        exception
+            }catch (RuntimeException statusException){
+                log.error(
+                        "업로드 실패 상태 저장 실패. processingGroupId={}",
+                        processingGroupId,
+                        statusException
                 );
 
             }
 
+            throw exception;
         }
 
-        return List.copyOf(uploadResults);
+    }
+
+
+    // ================ 내부 Method ===========================
+
+    private void storePendingFiles(PendingDocumentBatch pendingBatch, List<MultipartFile> files) {
+        List<PendingDocumentFile> pendingFiles = pendingBatch.getDocuments();
+
+        validatePendingFileCount(pendingFiles, files);
+
+        Long processingGroupId = pendingBatch.getProcessingGroupId();
+
+            for(int index=0; index<files.size(); index++) {
+                MultipartFile file = files.get(index);
+
+                PendingDocumentFile pendingFile = pendingFiles.get(index);
+
+                documentFileStorageService.storeTemporaryFile(
+                        processingGroupId,
+                        file,
+                        pendingFile.getStorageKey()
+                );
+            }
     }
 
     private void validatePendingFileCount(List<PendingDocumentFile> pendingFiles, List<MultipartFile> files) {
 
-        if(pendingFiles == null || files == null || pendingFiles.size() != files.size()) {
+        if(pendingFiles == null || files == null || pendingFiles.isEmpty() || files.isEmpty() || pendingFiles.size() != files.size()) {
             throw new BusinessException(ErrorCode.DOCUMENT_UPLOAD_FAILED);
         }
     }
@@ -126,7 +134,23 @@ public class AiLearnDocumentService {
         return exception.getMessage();
     }
 
+    private void cleanupFailedBatch(boolean batchCommitted, Long processingGroupId, String firstStorageKey) {
+        try{
+            if(batchCommitted){
+                documentFileStorageService.deleteFinalBatch(firstStorageKey);
+                return;
+            }
+
+            documentFileStorageService.deleteTemporaryBatch(processingGroupId);
 
 
-
+        }catch (RuntimeException cleanupException){
+            log.error(
+                    "업로드 실패 파일 정리 실패. processingGroupId={}, batchCommitted={}",
+                    processingGroupId,
+                    batchCommitted,
+                    cleanupException
+            );
+        }
+    }
 }

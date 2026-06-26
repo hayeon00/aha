@@ -1,9 +1,10 @@
 package com.aha.domain.ailearn.document.service.upload;
 
-import com.aha.domain.ailearn.document.dto.api.response.DocumentBatchUploadResponseDto;
-import com.aha.domain.ailearn.document.dto.upload.DocumentFileUploadResult;
-import com.aha.domain.ailearn.document.dto.upload.PendingDocumentBatch;
-import com.aha.domain.ailearn.document.dto.upload.PendingDocumentFile;
+import com.aha.domain.ailearn.document.dto.upload.response.BatchUploadResponseDto;
+import com.aha.domain.ailearn.document.dto.upload.response.UploadedResponseDto;
+import com.aha.domain.ailearn.document.event.DocumentUploadCompletedEvent;
+import com.aha.domain.ailearn.document.service.upload.model.PendingDocumentBatch;
+import com.aha.domain.ailearn.document.service.upload.model.PendingDocumentFile;
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
 import com.aha.domain.ailearn.document.entity.SourceDocument;
 import com.aha.domain.ailearn.document.repository.DocumentProcessingGroupRepository;
@@ -13,7 +14,9 @@ import com.aha.domain.user.repository.UserExamRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,8 +33,8 @@ public class DocumentUploadPersistenceService {
     private final UserExamRepository userExamRepository;
     private final DocumentProcessingGroupRepository documentProcessingGroupRepository;
     private final SourceDocumentRepository sourceDocumentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    // 이 함수에서는 처리그룹,문서,storageKey를 생성하고 그룹과 문서 상태를 Pending으로 저장한다.
     @Transactional
     public PendingDocumentBatch createPendingBatch(
             Long userId,
@@ -103,13 +106,30 @@ public class DocumentUploadPersistenceService {
 
     private String requireOriginalFileName(MultipartFile file) {
 
-        String originalFileName=file.getOriginalFilename();
+        String originalFileName = file.getOriginalFilename();
 
-        if(originalFileName==null ||  originalFileName.isBlank()){
+        if (originalFileName == null || originalFileName.isBlank()) {
+
             throw new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE_NAME);
         }
 
-        return originalFileName;
+        String normalizedPath = originalFileName
+                        .replace("\\", "/")
+                        .trim();
+
+        int separatorIndex = normalizedPath.lastIndexOf('/');
+
+        String normalizedFileName = normalizedPath
+                        .substring(separatorIndex + 1)
+                        .trim();
+
+        if (normalizedFileName.isBlank()
+                || normalizedFileName.length() > 255) {
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE);
+
+        }
+
+        return normalizedFileName;
     }
 
     private String createStoredFileName(String fileExtension) {
@@ -141,15 +161,66 @@ public class DocumentUploadPersistenceService {
 
         int extensionIndex = originalFileName.lastIndexOf('.');
 
-        if(extensionIndex < 0 || extensionIndex == originalFileName.length()-1 ){
+        if(extensionIndex <= 0 || extensionIndex == originalFileName.length()-1 ){
             throw new BusinessException(ErrorCode.INVALID_DOCUMENT_FILE_EXTENSION);
         }
 
-        return originalFileName.substring(extensionIndex+1).toLowerCase(Locale.ROOT);
+        return originalFileName.substring(extensionIndex + 1).toLowerCase(Locale.ROOT);
     }
 
 
-    public DocumentBatchUploadResponseDto completeUploadBatch(Long userId, Long processingGroupId, List<DocumentFileUploadResult> uploadResults) {
-        return null;
+    @Transactional
+    public BatchUploadResponseDto completeUploadBatch(Long userId, Long processingGroupId) {
+
+        DocumentProcessingGroup processingGroup = findProcessingGroup(userId, processingGroupId);
+
+        processingGroup.markFilesUploaded();
+
+        List<SourceDocument> sourceDocuments = sourceDocumentRepository.findAllByProcessingGroup_Id(processingGroupId);
+
+        List<UploadedResponseDto> documents = sourceDocuments.stream().map(UploadedResponseDto::from).toList();
+
+        eventPublisher.publishEvent(new DocumentUploadCompletedEvent(processingGroupId));
+
+        return BatchUploadResponseDto.of(
+                processingGroup,
+                documents
+        );
+
+    }
+
+    private DocumentProcessingGroup findProcessingGroup(Long userId, Long processingGroupId) {
+
+        if(userId==null || processingGroupId==null){
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return documentProcessingGroupRepository.findByIdAndUserExam_User_Id(processingGroupId, userId)
+                .orElseThrow(()-> new BusinessException(ErrorCode.DOCUMENT_PROCESSING_GROUP_NOT_FOUND));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void failUploadBatch(Long userId, Long processingGroupId, String errorMessage) {
+
+        DocumentProcessingGroup processingGroup = findProcessingGroup(userId, processingGroupId);
+
+        String resolvedErrorMessage = resolveErrorMessage(errorMessage);
+
+        List<SourceDocument> sourceDocuments = sourceDocumentRepository.findAllByProcessingGroup_Id(processingGroupId);
+
+        for(SourceDocument sourceDocument : sourceDocuments){
+            sourceDocument.markUploadFailed(resolvedErrorMessage);
+        }
+
+        processingGroup.fail(resolvedErrorMessage);
+    }
+
+    private String resolveErrorMessage(String errorMessage) {
+
+        String resolvedMessage = errorMessage ==null || errorMessage.isBlank() ? ErrorCode.DOCUMENT_UPLOAD_FAILED.getMessage() : errorMessage;
+
+        int maxLength = 1000;
+
+        return resolvedMessage.length() > maxLength ? resolvedMessage.substring(0, maxLength) : resolvedMessage;
     }
 }

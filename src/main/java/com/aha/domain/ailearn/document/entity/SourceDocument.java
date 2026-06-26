@@ -182,47 +182,6 @@ public class SourceDocument {
         );
     }
 
-
-    public void startUpload() {
-        if (uploadStatus != DocumentUploadStatus.PENDING
-                && uploadStatus != DocumentUploadStatus.FAILED) {
-            throw new IllegalStateException(
-                    "PENDING 또는 FAILED 상태의 문서만 업로드를 시작할 수 있습니다."
-            );
-        }
-
-        this.uploadStatus = DocumentUploadStatus.STORING;
-        this.uploadErrorMessage = null;
-    }
-
-
-    public void completeUpload() {
-        if (uploadStatus != DocumentUploadStatus.PENDING
-                && uploadStatus != DocumentUploadStatus.STORING) {
-            throw new IllegalStateException(
-                    "PENDING 또는 STORING 상태의 문서만 업로드를 완료할 수 있습니다."
-            );
-        }
-
-        this.uploadStatus = DocumentUploadStatus.STORED;
-        this.uploadErrorMessage = null;
-    }
-
-    public void failUpload(String errorMessage) {
-        if (uploadStatus == DocumentUploadStatus.STORED) {
-            throw new IllegalStateException(
-                    "이미 저장 완료된 문서는 업로드 실패 처리할 수 없습니다."
-            );
-        }
-
-        this.uploadStatus = DocumentUploadStatus.FAILED;
-        this.uploadErrorMessage = normalizeErrorMessage(errorMessage);
-    }
-
-    public void deactivate() {
-        this.active = false;
-    }
-
     private void validateRequiredFields(
             DocumentProcessingGroup processingGroup,
             String originalFileName,
@@ -275,11 +234,20 @@ public class SourceDocument {
         }
     }
 
-    private String normalizeErrorMessage(String errorMessage) {
-        if (errorMessage == null || errorMessage.isBlank()) {
-            return "파일 저장 중 오류가 발생했습니다.";
+    public void markStored() {
+        if(this.uploadStatus != DocumentUploadStatus.PENDING){
+            throw new IllegalStateException("PENDING 상태의 문서만 저장 완료 처리할 수 있습니다.");
         }
 
-        return errorMessage;
+        this.uploadStatus = DocumentUploadStatus.STORED;
+
+        this.uploadErrorMessage = null;
+    }
+
+    public void markUploadFailed(String resolvedErrorMessage) {
+
+        this.uploadStatus = DocumentUploadStatus.FAILED;
+
+        this.uploadErrorMessage = resolvedErrorMessage;
     }
 }
