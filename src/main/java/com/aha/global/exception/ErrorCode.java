@@ -42,6 +42,8 @@ public enum ErrorCode {
     INVALID_DOCUMENT_FILE_NAME(400, "DOCUMENT_015", "문서 파일명이 올바르지 않습니다."),
     INVALID_DOCUMENT_MIME_TYPE(400, "DOCUMENT_016", "문서의 MIME 타입이 올바르지 않습니다."),
     INVALID_DOCUMENT_FILE_EXTENSION(400, "DOCUMENT_017", "문서 파일의 확장자가 올바르지 않습니다."),
+    SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),
+    INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
     //EXAM
     EXAM_NOT_FOUND(404, "EXAM_NOT_FOUND", "해당 시험이 존재하지 않습니다."),
