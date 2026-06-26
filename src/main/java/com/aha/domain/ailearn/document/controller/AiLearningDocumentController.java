@@ -1,7 +1,8 @@
 package com.aha.domain.ailearn.document.controller;
 
-import com.aha.domain.ailearn.document.dto.api.response.DocumentBatchUploadResponseDto;
-import com.aha.domain.ailearn.document.dto.api.response.DocumentProcessingGroupResponseDto;
+import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingGroupResponseDto;
+import com.aha.domain.ailearn.document.dto.upload.response.BatchUploadResponseDto;
+import com.aha.domain.ailearn.document.service.processing.DocumentProcessingQueryService;
 import com.aha.domain.ailearn.document.service.upload.AiLearnDocumentService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
@@ -15,17 +16,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/ai-learning/documents")
 @RequiredArgsConstructor
-public class AiLearnDocumentController {
+public class AiLearningDocumentController {
 
     private final AiLearnDocumentService aiLearnDocumentService;
+    private final DocumentProcessingQueryService  documentProcessingQueryService;
 
-    @PostMapping("/batch")
-    public ResponseEntity<ApiResponse<DocumentBatchUploadResponseDto>> uploadDocumentsBatch(
+    @PostMapping("/upload")
+    public ResponseEntity<ApiResponse<BatchUploadResponseDto>> uploadDocumentsBatch(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("userExamId") Long userExamId,
-            @RequestPart("files") List<MultipartFile> files
-    ) {
-        DocumentBatchUploadResponseDto response =
+            @RequestPart("files") List<MultipartFile> files) {
+
+        BatchUploadResponseDto response =
                 aiLearnDocumentService.uploadDocumentsBatch(
                         userDetails.getId(),
                         userExamId,
@@ -41,17 +43,17 @@ public class AiLearnDocumentController {
         );
     }
 
-    /*
     @GetMapping("/processing-groups/{processingGroupId}")
     public ResponseEntity<ApiResponse<DocumentProcessingGroupResponseDto>> getProcessingGroup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long processingGroupId
-    ) {
+            @PathVariable Long processingGroupId) {
+
         DocumentProcessingGroupResponseDto response =
-                aiLearnDocumentService.getProcessingGroup(
-                        userDetails.getId(),
-                        processingGroupId
-                );
+                documentProcessingQueryService
+                        .getProcessingGroup(
+                                userDetails.getId(),
+                                processingGroupId
+                        );
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -61,6 +63,4 @@ public class AiLearnDocumentController {
                 )
         );
     }
-
-     */
 }

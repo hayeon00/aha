@@ -1,11 +1,10 @@
-package com.aha.domain.ailearn.document.dto.api.response;
+package com.aha.domain.ailearn.document.dto.upload.response;
 
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
 
 import java.util.List;
 
-public record DocumentBatchUploadResponseDto(
-        Long processingId,
+public record BatchUploadResponseDto(
         Long processingGroupId,
         Long userExamId,
         String status,
@@ -14,15 +13,14 @@ public record DocumentBatchUploadResponseDto(
         Integer totalFileCount,
         Integer completedFileCount,
         Integer failedFileCount,
-        List<UploadedDocumentResponseDto> documents
+        List<UploadedResponseDto> documents
 ) {
 
-    public static DocumentBatchUploadResponseDto of(
+    public static BatchUploadResponseDto of(
             DocumentProcessingGroup processingGroup,
-            List<UploadedDocumentResponseDto> documents
+            List<UploadedResponseDto> documents
     ) {
-        return new DocumentBatchUploadResponseDto(
-                processingGroup.getId(),
+        return new BatchUploadResponseDto(
                 processingGroup.getId(),
                 processingGroup.getUserExam().getId(),
                 processingGroup.getStatus().name(),

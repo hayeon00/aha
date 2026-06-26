@@ -1,9 +1,8 @@
-package com.aha.domain.ailearn.document.dto.api.response;
+package com.aha.domain.ailearn.document.dto.upload.response;
 
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
 
-public record DocumentProcessingGroupResponseDto(
-        Long processingId,
+public record ProcessingGroupResponseDto(
         Long processingGroupId,
         Long userExamId,
         String status,
@@ -15,11 +14,10 @@ public record DocumentProcessingGroupResponseDto(
         String errorMessage
 ) {
 
-    public static DocumentProcessingGroupResponseDto from(
+    public static ProcessingGroupResponseDto from(
             DocumentProcessingGroup processingGroup
     ) {
-        return new DocumentProcessingGroupResponseDto(
-                processingGroup.getId(),
+        return new ProcessingGroupResponseDto(
                 processingGroup.getId(),
                 processingGroup.getUserExam().getId(),
                 processingGroup.getStatus().name(),

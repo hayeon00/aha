@@ -1,4 +1,4 @@
-package com.aha.domain.ailearn.document.dto.upload;
+package com.aha.domain.ailearn.document.service.upload.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
