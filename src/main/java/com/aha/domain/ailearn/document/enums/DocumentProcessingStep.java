@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum DocumentProcessingStep {
 
+    UPLOAD_PENDING(0),
     FILE_UPLOADED(10),
     TEXT_EXTRACTING(35),
     SCOPE_MAPPING(65),

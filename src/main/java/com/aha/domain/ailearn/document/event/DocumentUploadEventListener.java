@@ -13,9 +13,8 @@ public class DocumentUploadEventListener {
     private final DocumentProcessingWorkerService documentProcessingWorkerService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handle(
-            DocumentUploadCompletedEvent event
-    ) {
+    public void handle(DocumentUploadCompletedEvent event) {
+
         documentProcessingWorkerService.process(
                 event.processingGroupId()
         );

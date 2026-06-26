@@ -3,9 +3,10 @@ package com.aha.domain.ailearn.document.entity;
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStatus;
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStep;
 import com.aha.domain.user.entity.UserExam;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -92,39 +93,28 @@ public class DocumentProcessingGroup {
         DocumentProcessingGroup processingGroup = new DocumentProcessingGroup();
 
         processingGroup.userExam = userExam;
-        processingGroup.totalFileCount = totalFileCount;
         processingGroup.status = DocumentProcessingStatus.PENDING;
+        processingGroup.currentStep = DocumentProcessingStep.UPLOAD_PENDING;
+        processingGroup.progressRate = DocumentProcessingStep.UPLOAD_PENDING.getProgressRate();
+
+        processingGroup.totalFileCount = totalFileCount;
+        processingGroup.completedFileCount = 0;
+        processingGroup.failedFileCount = 0;
 
         return processingGroup;
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     public void startProcessing() {
         validateNotFinished();
 
+        if(this.status != DocumentProcessingStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
+        }
+
         this.status = DocumentProcessingStatus.PROCESSING;
         this.currentStep = DocumentProcessingStep.TEXT_EXTRACTING;
-        this.progressRate =
-                DocumentProcessingStep.TEXT_EXTRACTING.getProgressRate();
+        this.progressRate = DocumentProcessingStep.TEXT_EXTRACTING.getProgressRate();
 
         if (this.startedAt == null) {
             this.startedAt = LocalDateTime.now();
@@ -140,66 +130,48 @@ public class DocumentProcessingGroup {
             );
         }
 
+        if(this.status != DocumentProcessingStatus.PROCESSING){
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
+        }
+
+        if(nextStep == DocumentProcessingStep.UPLOAD_PENDING || nextStep == DocumentProcessingStep.FILE_UPLOADED
+                || nextStep == DocumentProcessingStep.COMPLETED){
+
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
+        }
+
+        if(nextStep.getProgressRate() <= this.currentStep.getProgressRate()){
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
+        }
+
         this.currentStep = nextStep;
         this.progressRate = nextStep.getProgressRate();
     }
 
-    public void increaseCompletedFileCount() {
+    public void markFilesUploaded() {
         validateNotFinished();
-        validateFileCountCanIncrease();
 
-        this.completedFileCount++;
-    }
-
-    public void increaseFailedFileCount() {
-        validateNotFinished();
-        validateFileCountCanIncrease();
-
-        this.failedFileCount++;
-    }
-
-    public void finish(
-            int completedFileCount,
-            int failedFileCount
-    ) {
-        validateResultCounts(
-                completedFileCount,
-                failedFileCount
-        );
-
-        this.completedFileCount = completedFileCount;
-        this.failedFileCount = failedFileCount;
-        this.completedAt = LocalDateTime.now();
-        this.currentStep = DocumentProcessingStep.COMPLETED;
-        this.progressRate =
-                DocumentProcessingStep.COMPLETED.getProgressRate();
-
-        if (completedFileCount == totalFileCount) {
-            this.status =
-                    DocumentProcessingStatus.COMPLETED;
-            this.errorMessage = null;
-            return;
+        if (this.status != DocumentProcessingStatus.PENDING) {
+            throw new IllegalStateException(
+                    "처리 대기 상태에서만 파일 업로드를 완료할 수 있습니다."
+            );
         }
 
-        if (failedFileCount == totalFileCount) {
-            this.status =
-                    DocumentProcessingStatus.FAILED;
-            return;
+        if (this.currentStep
+                != DocumentProcessingStep.UPLOAD_PENDING) {
+            throw new IllegalStateException(
+                    "업로드 대기 단계에서만 파일 업로드를 완료할 수 있습니다."
+            );
         }
 
-        if (completedFileCount + failedFileCount
-                == totalFileCount) {
-            this.status =
-                    DocumentProcessingStatus.PARTIALLY_COMPLETED;
-            return;
-        }
-
-        throw new IllegalStateException(
-                "모든 문서 처리가 종료되지 않았습니다."
-        );
+        this.currentStep = DocumentProcessingStep.FILE_UPLOADED;
+        this.progressRate = DocumentProcessingStep.FILE_UPLOADED.getProgressRate();
     }
 
     public void fail(String errorMessage) {
+
+        validateNotFinished();
+
         if (errorMessage == null || errorMessage.isBlank()) {
             throw new IllegalArgumentException(
                     "실패 메시지는 필수입니다."
@@ -211,45 +183,36 @@ public class DocumentProcessingGroup {
         this.completedAt = LocalDateTime.now();
     }
 
-    private void validateFileCountCanIncrease() {
-        int processedFileCount =
-                completedFileCount + failedFileCount;
+    public void complete() {
 
-        if (processedFileCount >= totalFileCount) {
-            throw new IllegalStateException(
-                    "전체 파일 개수를 초과할 수 없습니다."
-            );
+        validateNotFinished();
+
+        if(this.status != DocumentProcessingStatus.PROCESSING){
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
         }
+
+        if(this.currentStep != DocumentProcessingStep.LEARNING_CONTENT_GENERATING){
+            throw new BusinessException(ErrorCode.INVALID_DOCUMENT_PROCESSING_STATUS);
+        }
+
+        this.status = DocumentProcessingStatus.COMPLETED;
+        this.currentStep = DocumentProcessingStep.COMPLETED;
+        this.progressRate = DocumentProcessingStep.COMPLETED.getProgressRate();
+
+        this.completedFileCount = this.totalFileCount;
+        this.failedFileCount = 0;
+
+        this.completedAt = LocalDateTime.now();
+        this.errorMessage = null;
+
     }
 
     private void validateNotFinished() {
         if (status == DocumentProcessingStatus.COMPLETED
-                || status == DocumentProcessingStatus.PARTIALLY_COMPLETED
                 || status == DocumentProcessingStatus.FAILED) {
 
             throw new IllegalStateException(
                     "이미 종료된 문서 처리 작업입니다."
-            );
-        }
-    }
-
-    private void validateResultCounts(
-            int completedFileCount,
-            int failedFileCount
-    ) {
-        if (completedFileCount < 0
-                || failedFileCount < 0) {
-
-            throw new IllegalArgumentException(
-                    "문서 처리 개수는 0 이상이어야 합니다."
-            );
-        }
-
-        if (completedFileCount + failedFileCount
-                > totalFileCount) {
-
-            throw new IllegalArgumentException(
-                    "완료 및 실패 파일 수가 전체 파일 수를 초과할 수 없습니다."
             );
         }
     }
