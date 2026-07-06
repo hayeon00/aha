@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { getUserLearningContent } from "../api/learningContentApi.js";
 import { getApiData } from "../utils/apiResponseUtils.js";
 
-export const useLearningContent = ({ userExamId, examScopeNodeId }) => {
+export const useLearningContent = ({
+                                       userExamId,
+                                       examScopeNodeId,
+                                       enabled = true,
+                                   }) => {
     const [learningContent, setLearningContent] = useState(null);
     const [isContentLoading, setIsContentLoading] = useState(false);
     const [contentErrorMessage, setContentErrorMessage] = useState("");
@@ -13,7 +17,7 @@ export const useLearningContent = ({ userExamId, examScopeNodeId }) => {
     }, []);
 
     const fetchLearningContent = useCallback(async () => {
-        if (!userExamId || !examScopeNodeId) {
+        if (!enabled || !userExamId || !examScopeNodeId) {
             resetLearningContent();
             return;
         }
@@ -46,7 +50,12 @@ export const useLearningContent = ({ userExamId, examScopeNodeId }) => {
         } finally {
             setIsContentLoading(false);
         }
-    }, [userExamId, examScopeNodeId, resetLearningContent]);
+    }, [
+        enabled,
+        userExamId,
+        examScopeNodeId,
+        resetLearningContent,
+    ]);
 
     useEffect(() => {
         fetchLearningContent();

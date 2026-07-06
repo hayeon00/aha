@@ -66,17 +66,6 @@ function AiLearningPage() {
     });
 
     const {
-        learningContent,
-        isContentLoading,
-        contentErrorMessage,
-        resetLearningContent,
-        refetchLearningContent,
-    } = useLearningContent({
-        userExamId: selectedUserExamId,
-        examScopeNodeId: selectedNodeId,
-    });
-
-    const {
         isUploading,
         processingStatus,
         isProgressModalOpen,
@@ -85,12 +74,24 @@ function AiLearningPage() {
         isDocumentStateLoading,
         uploadDocuments,
         closeProgressModal,
-        resetDocumentProcessing,
+        resetDocumentState,
     } = useDocumentProcessing({
         selectedUserExamId,
         selectedNodeId,
-        onCompleted: refetchLearningContent,
     });
+
+    const {
+        learningContent,
+        isContentLoading,
+        contentErrorMessage,
+        resetLearningContent,
+    } = useLearningContent({
+        userExamId: selectedUserExamId,
+        examScopeNodeId: selectedNodeId,
+        enabled: hasProcessedDocuments && !isDocumentStateLoading,
+    });
+
+
 
     const message = examMessage || scopeMessage;
 
@@ -98,7 +99,7 @@ function AiLearningPage() {
         changeUserExam(userExamId);
         resetScopeNodes();
         resetLearningContent();
-        resetDocumentProcessing();
+        resetDocumentState();
     };
 
     const handleUploadClick = () => {
