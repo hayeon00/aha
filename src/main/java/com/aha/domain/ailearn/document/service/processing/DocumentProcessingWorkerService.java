@@ -21,7 +21,7 @@ public class DocumentProcessingWorkerService {
     private final DocumentScopeMappingService documentScopeMappingService;
     private final DocumentLearningContentBatchGenerationService learningContentBatchGenerationService;
 
-    @Async
+    @Async("documentProcessingTaskExecutor")
     public void process(Long processingGroupId) {
 
         if (processingGroupId == null) {
