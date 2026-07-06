@@ -1,5 +1,6 @@
 package com.aha.domain.ailearn.document.service.upload;
 
+import com.aha.domain.ailearn.document.config.DocumentUploadProperties;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +24,10 @@ import java.util.Set;
 @Service
 public class DocumentFileStorageService {
 
-    private static final long MAX_FILE_SIZE_BYTES = 20L * 1024 * 1024;
-    private static final long MAX_TOTAL_FILE_SIZE_BYTES = 100L * 1024 * 1024;
-    private static final int MAX_FILE_COUNT = 5;
-    private static final int MAX_FILE_NAME_LENGTH = 255;
+    private final long maxFileSizeBytes;
+    private final long maxTotalFileSizeBytes;
+    private final int maxFileCount;
+    private final int maxFileNameLength;
 
     private static final Map<String, Set<String>> ALLOWED_MIME_TYPES =
             Map.of(
@@ -41,17 +42,21 @@ public class DocumentFileStorageService {
     private final Path baseUploadDirectory;
     private final Path temporaryUploadDirectory;
 
-    public DocumentFileStorageService(@Value("${file.document-upload-dir:uploads}") String documentUploadDir) {
+    public DocumentFileStorageService(@Value("${file.document-upload-dir:uploads}") String documentUploadDir, DocumentUploadProperties documentUploadProperties) {
 
         this.tika = new Tika();
-
         this.baseUploadDirectory = Paths.get(documentUploadDir)
-                                        .toAbsolutePath()
-                                        .normalize();
+                .toAbsolutePath()
+                .normalize();
 
         this.temporaryUploadDirectory = baseUploadDirectory
-                                        .resolve("temp")
-                                        .normalize();
+                .resolve("temp")
+                .normalize();
+
+        this.maxFileSizeBytes = documentUploadProperties.getMaxFileSizeBytes();
+        this.maxTotalFileSizeBytes = documentUploadProperties.getMaxTotalSizeBytes();
+        this.maxFileCount = documentUploadProperties.getMaxFileCount();
+        this.maxFileNameLength = documentUploadProperties.getMaxFileNameLength();
     }
 
     public List<MultipartFile> validateFiles(List<MultipartFile> files) {
@@ -65,7 +70,7 @@ public class DocumentFileStorageService {
             totalFileSize += file.getSize();
         }
 
-        if (totalFileSize > MAX_TOTAL_FILE_SIZE_BYTES) {
+        if (totalFileSize > maxTotalFileSizeBytes) {
             throw invalidDocumentFile();
         }
 
@@ -197,7 +202,7 @@ public class DocumentFileStorageService {
 
         long storedFileSize = Files.size(storedFilePath);
 
-        if(storedFileSize <= 0 || storedFileSize > MAX_FILE_SIZE_BYTES){
+        if(storedFileSize <= 0 || storedFileSize > maxFileSizeBytes){
             throw invalidDocumentFile();
         }
 
@@ -219,7 +224,7 @@ public class DocumentFileStorageService {
 
     private void validateFileCount(List<MultipartFile> files) {
 
-        if (files == null || files.isEmpty() || files.size() > MAX_FILE_COUNT) {
+        if (files == null || files.isEmpty() || files.size() > maxFileCount) {
             throw invalidDocumentFile();
         }
     }
@@ -227,7 +232,7 @@ public class DocumentFileStorageService {
     private void validateFile(MultipartFile file) {
         if (file == null
                 || file.isEmpty()
-                || file.getSize() > MAX_FILE_SIZE_BYTES) {
+                || file.getSize() > maxFileSizeBytes) {
             throw invalidDocumentFile();
         }
 
@@ -253,7 +258,7 @@ public class DocumentFileStorageService {
                 .trim();
 
         if (normalizedFileName.isBlank()
-                || normalizedFileName.length() > MAX_FILE_NAME_LENGTH) {
+                || normalizedFileName.length() > maxFileNameLength) {
             throw invalidDocumentFile();
         }
 
