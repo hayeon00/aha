@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,18 +27,38 @@ public class DocumentProcessingStatusService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean start(Long processingGroupId) {
-        DocumentProcessingGroup processingGroup = getProcessingGroup(processingGroupId);
+        if (processingGroupId == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
-        if (processingGroup.getStatus() != DocumentProcessingStatus.PENDING) {
+        LocalDateTime now = LocalDateTime.now();
+        DocumentProcessingStep startStep = DocumentProcessingStep.TEXT_EXTRACTING;
+
+        int updatedCount = processingGroupRepository.startProcessingIfPending(
+                processingGroupId,
+                DocumentProcessingStatus.PENDING,
+                DocumentProcessingStatus.PROCESSING,
+                startStep,
+                startStep.getProgressRate(),
+                now,
+                now
+        );
+
+        if (updatedCount == 0) {
             log.warn(
-                    "문서 처리 시작 요청을 건너뜁니다. processingGroupId={}, status={}",
-                    processingGroupId,
-                    processingGroup.getStatus()
+                    "문서 처리 시작 요청을 건너뜁니다. 이미 시작되었거나 시작 가능한 상태가 아닙니다. processingGroupId={}",
+                    processingGroupId
             );
 
             return false;
         }
-        processingGroup.startProcessing();
+
+        log.info(
+                "문서 처리 시작 상태 전환 완료. processingGroupId={}, status={}, step={}",
+                processingGroupId,
+                DocumentProcessingStatus.PROCESSING,
+                startStep
+        );
 
         return true;
     }

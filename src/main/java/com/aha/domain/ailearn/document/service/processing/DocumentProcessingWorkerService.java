@@ -32,6 +32,7 @@ public class DocumentProcessingWorkerService {
         log.info("문서 비동기 처리 시작. processingGroupId={}", processingGroupId);
 
         try {
+
             if (!processingStatusService.start(processingGroupId)) {
                 log.warn(
                         "이미 시작되었거나 처리할 수 없는 작업입니다. processingGroupId={}",
