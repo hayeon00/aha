@@ -1,0 +1,9 @@
+app:
+  ai:
+    openai:
+      enabled: false
+
+spring:
+  ai:
+    openai:
+      api-key: test-key

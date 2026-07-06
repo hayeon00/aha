@@ -4,6 +4,7 @@ import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
  * @since : 2026. 6. 25. 목요일
  */
 
+@ConditionalOnProperty(name = "app.ai.openai.enabled", havingValue = "true", matchIfMissing = true)
 @Slf4j
 @Component
 public class OpenAiLearningContentGenerationClient implements LearningContentGenerationClient{
