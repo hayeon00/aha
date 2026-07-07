@@ -11,8 +11,6 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long> {
 
     boolean existsByUser_IdAndExamVersion_Id(Long userId, Long examVersionId);
 
-    Optional<UserExam> findByUser_IdAndExamVersion_Id(Long userId, Long examVersionId);
-
     @Query("""
         SELECT ue
         FROM UserExam ue
@@ -35,11 +33,5 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long> {
     List<UserExam> findVisibleWithExamByUserId(Long userId);
 
     Optional<UserExam> findByIdAndUser_Id(Long userExamId, Long userId);
-
-
-    List<UserExam> findAllByUser_IdOrderByIdAsc(Long userId);
-
-    List<UserExam> findAllByUser_IdAndIsHiddenFalseOrderByIdAsc(Long userId);
-
 
 }

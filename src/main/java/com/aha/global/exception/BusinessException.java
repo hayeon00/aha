@@ -2,9 +2,10 @@ package com.aha.global.exception;
 
 import lombok.Getter;
 
+@Getter
 public class BusinessException extends RuntimeException {
 
-    @Getter
+
     private final ErrorCode errorCode;
     private final Object data;
 
