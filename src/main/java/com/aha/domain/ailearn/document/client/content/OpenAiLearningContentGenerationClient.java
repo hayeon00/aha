@@ -1,5 +1,6 @@
 package com.aha.domain.ailearn.document.client.content;
 
+import com.aha.domain.ailearn.document.service.processing.DocumentProcessingRetryExecutor;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +23,12 @@ public class OpenAiLearningContentGenerationClient implements LearningContentGen
 
     private final ChatClient chatClient;
     private final LearningContentGenerationPromptBuilder promptBuilder;
+    private final DocumentProcessingRetryExecutor retryExecutor;
 
-    public OpenAiLearningContentGenerationClient(ChatClient.Builder chatClientBuilder, LearningContentGenerationPromptBuilder promptBuilder) {
+    public OpenAiLearningContentGenerationClient(ChatClient.Builder chatClientBuilder, LearningContentGenerationPromptBuilder promptBuilder, DocumentProcessingRetryExecutor retryExecutor) {
         this.chatClient = chatClientBuilder.build();
         this.promptBuilder = promptBuilder;
+        this.retryExecutor = retryExecutor;
     }
 
     @Override
@@ -42,12 +45,18 @@ public class OpenAiLearningContentGenerationClient implements LearningContentGen
         String generatedContent;
 
         try{
-            generatedContent = chatClient.prompt()
-                    .user(prompt)
-                    .call()
-                    .content();
+            generatedContent = retryExecutor.execute(
+                    "learning-content-generation",
+                    () -> chatClient.prompt()
+                            .user(prompt)
+                            .call()
+                            .content()
+            );
 
-        }catch (Exception exception){
+        } catch (BusinessException exception){
+            throw exception;
+
+        } catch (Exception exception){
 
             log.error(
                     "문서 기반 개념 설명 생성 요청 실패. topicTitle={}",

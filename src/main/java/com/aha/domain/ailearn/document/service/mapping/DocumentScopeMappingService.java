@@ -31,6 +31,7 @@ public class DocumentScopeMappingService {
 
     private static final BigDecimal MIN_MAPPING_CONFIDENCE = BigDecimal.valueOf(0.7);
     private static final int MAX_MAPPING_REASON_LENGTH = 1000;
+    private static final int CHUNK_MAPPING_BATCH_SIZE = 5;
 
     private final DocumentProcessingGroupRepository documentProcessingGroupRepository;
     private final DocumentChunkRepository documentChunkRepository;
@@ -47,10 +48,13 @@ public class DocumentScopeMappingService {
         DocumentProcessingGroup processingGroup = documentProcessingGroupRepository.findByIdWithExamVersion(processingGroupId)
                 .orElseThrow(()-> new BusinessException(ErrorCode.DOCUMENT_PROCESSING_GROUP_NOT_FOUND));
 
+        // 시험 버전 조회
         Long examVersionId = getExamVersionId(processingGroup);
 
+        // 생성된 청크 조회
         List<DocumentChunk> chunks = getDocumentChunks(processingGroupId);
 
+        // 시험 목차 조회
         List<ExamScopeNode> scopeNodes = getMappingTargetScopeNodes(examVersionId);
 
         Map<Long, DocumentChunk> chunkMap = chunks.stream()
@@ -63,11 +67,9 @@ public class DocumentScopeMappingService {
 
         List<ScopeCandidateRequestDto> scopeCandidates = scopeNodes.stream().map(this::toScopeCandidateRequestDto).toList();
 
-        List<ScopeMappingAiResultResponseDto> aiResults = documentScopeMappingClient.mapChunks(chunkRequests, scopeCandidates);
 
-        if(aiResults == null){
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
-        }
+        // 청크를 5개씩 쪼개서 ai에게 보냄
+        List<ScopeMappingAiResultResponseDto> aiResults = requestAiMappingsInBatches(chunkRequests, scopeCandidates);
 
         List<DocumentScopeMapping> mappings = createMappings(aiResults, chunkMap, scopeNodeMap);
 
@@ -91,6 +93,36 @@ public class DocumentScopeMappingService {
         );
 
     }
+
+    private List<ScopeMappingAiResultResponseDto> requestAiMappingsInBatches(List<ChunkMappingRequestDto> chunkRequests, List<ScopeCandidateRequestDto> scopeCandidates) {
+
+        List<ScopeMappingAiResultResponseDto> aiResults = new ArrayList<>();
+
+        for (int start = 0; start < chunkRequests.size(); start += CHUNK_MAPPING_BATCH_SIZE) {
+            int end = Math.min(start + CHUNK_MAPPING_BATCH_SIZE, chunkRequests.size());
+            List<ChunkMappingRequestDto> chunkBatch = chunkRequests.subList(start, end);
+
+            log.info(
+                    "문서 청크 목차 매핑 AI 배치 요청. start={}, end={}, batchSize={}, scopeCandidateCount={}",
+                    start,
+                    end,
+                    chunkBatch.size(),
+                    scopeCandidates.size()
+            );
+
+            List<ScopeMappingAiResultResponseDto> batchResults =
+                    documentScopeMappingClient.mapChunks(chunkBatch, scopeCandidates);
+
+            if (batchResults == null) {
+                throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            }
+
+            aiResults.addAll(batchResults);
+        }
+
+        return aiResults;
+    }
+
 
     private ChunkMappingRequestDto toChunkMappingRequestDto(DocumentChunk documentChunk) {
 

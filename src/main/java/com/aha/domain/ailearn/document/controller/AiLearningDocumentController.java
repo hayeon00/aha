@@ -1,6 +1,7 @@
 package com.aha.domain.ailearn.document.controller;
 
 import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingGroupResponseDto;
+import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingStateResponseDto;
 import com.aha.domain.ailearn.document.dto.upload.response.BatchUploadResponseDto;
 import com.aha.domain.ailearn.document.service.processing.DocumentProcessingQueryService;
 import com.aha.domain.ailearn.document.service.upload.AiLearnDocumentService;
@@ -42,6 +43,27 @@ public class AiLearningDocumentController {
                 )
         );
     }
+
+    @GetMapping("/user-exams/{userExamId}/state")
+    public ResponseEntity<ApiResponse<DocumentProcessingStateResponseDto>> getLatestProcessing(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long userExamId){
+        DocumentProcessingStateResponseDto response =
+                documentProcessingQueryService.getLatestProcessingState(
+                        userDetails.getId(),
+                        userExamId
+                );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        200,
+                        "문서 처리 상태 조회에 성공했습니다.",
+                        response
+                )
+        );
+        
+    }
+
 
     @GetMapping("/processing-groups/{processingGroupId}")
     public ResponseEntity<ApiResponse<DocumentProcessingGroupResponseDto>> getProcessingGroup(

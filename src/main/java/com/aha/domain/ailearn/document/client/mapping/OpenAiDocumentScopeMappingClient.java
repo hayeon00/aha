@@ -3,6 +3,7 @@ package com.aha.domain.ailearn.document.client.mapping;
 import com.aha.domain.ailearn.document.dto.mapping.request.ChunkMappingRequestDto;
 import com.aha.domain.ailearn.document.dto.mapping.request.ScopeCandidateRequestDto;
 import com.aha.domain.ailearn.document.dto.mapping.response.ScopeMappingAiResultResponseDto;
+import com.aha.domain.ailearn.document.service.processing.DocumentProcessingRetryExecutor;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
@@ -20,12 +21,14 @@ public class OpenAiDocumentScopeMappingClient implements DocumentScopeMappingCli
     private final ChatClient chatClient;
     private final DocumentScopeMappingPromptBuilder promptBuilder;
     private final DocumentScopeMappingResponseParser responseParser;
+    private final DocumentProcessingRetryExecutor retryExecutor;
 
-    public OpenAiDocumentScopeMappingClient(ChatClient.Builder chatClientBuilder, DocumentScopeMappingPromptBuilder promptBuilder, DocumentScopeMappingResponseParser responseParser) {
+    public OpenAiDocumentScopeMappingClient(ChatClient.Builder chatClientBuilder, DocumentScopeMappingPromptBuilder promptBuilder, DocumentScopeMappingResponseParser responseParser,DocumentProcessingRetryExecutor retryExecutor) {
 
         this.chatClient = chatClientBuilder.build();
         this.promptBuilder = promptBuilder;
         this.responseParser = responseParser;
+        this.retryExecutor = retryExecutor;
 
     }
 
@@ -45,12 +48,17 @@ public class OpenAiDocumentScopeMappingClient implements DocumentScopeMappingCli
         String aiResponse;
 
         try{
-            aiResponse = chatClient.prompt()
-                                    .user(prompt)
-                                    .call()
-                                    .content();
+            aiResponse = retryExecutor.execute(
+                    "document-scope-mapping",
+                    () -> chatClient.prompt()
+                            .user(prompt)
+                            .call()
+                            .content());
 
-        }catch (Exception exception){
+        }catch (BusinessException exception){
+            throw exception;
+
+        } catch (Exception exception){
             log.error(
                     "OpenAI 목차 매핑 요청 실패.",
                     exception

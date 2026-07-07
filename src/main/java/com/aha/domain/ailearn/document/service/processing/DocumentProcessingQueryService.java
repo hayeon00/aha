@@ -1,6 +1,7 @@
 package com.aha.domain.ailearn.document.service.processing;
 
 import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingGroupResponseDto;
+import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingStateResponseDto;
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
 import com.aha.domain.ailearn.document.repository.DocumentProcessingGroupRepository;
 import com.aha.global.exception.BusinessException;
@@ -32,6 +33,12 @@ public class DocumentProcessingQueryService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.DOCUMENT_PROCESSING_GROUP_NOT_FOUND));
 
         return DocumentProcessingGroupResponseDto.from(processingGroup);
+    }
+
+    public DocumentProcessingStateResponseDto getLatestProcessingState(Long userId, Long userExamId){
+        return documentProcessingGroupRepository.findTopByUserExam_IdAndUserExam_User_IdOrderByCreatedAtDesc(userExamId, userId)
+                .map(DocumentProcessingStateResponseDto::from)
+                .orElseGet(DocumentProcessingStateResponseDto::idle);
     }
 
     private void validateInput(Long userId, Long processingGroupId) {

@@ -1,7 +1,9 @@
 package com.aha.domain.ailearn.document.service.content;
 
+import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingStateResponseDto;
 import com.aha.domain.ailearn.document.dto.content.response.UserLearningContentResponseDto;
 import com.aha.domain.ailearn.document.entity.UserLearningContent;
+import com.aha.domain.ailearn.document.repository.DocumentProcessingGroupRepository;
 import com.aha.domain.ailearn.document.repository.UserLearningContentRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -25,8 +27,9 @@ public class UserLearningContentQueryService {
     private final UserLearningContentRepository userLearningContentRepository;
 
     public UserLearningContentResponseDto getLearningContent(Long userId, Long userExamId, Long examScopeNodeId){
-
-        validateInput(userId, userExamId, examScopeNodeId);
+        if(userId==null || userExamId == null || examScopeNodeId == null){
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
         UserLearningContent learningContent = userLearningContentRepository.findByUserIdAndUserExamIdAndExamScopeNodeId(
                 userId, userExamId, examScopeNodeId).orElseThrow(() -> new BusinessException(ErrorCode.ENTITY_NOT_FOUND));
@@ -34,11 +37,4 @@ public class UserLearningContentQueryService {
         return UserLearningContentResponseDto.from(learningContent);
     }
 
-    private void validateInput(Long userId, Long userExamId, Long examScopeNodeId) {
-
-        if(userId==null || userExamId == null || examScopeNodeId == null){
-
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-    }
 }

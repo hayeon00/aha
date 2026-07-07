@@ -2,7 +2,6 @@ package com.aha.domain.ailearn.document.controller;
 
 import com.aha.domain.ailearn.document.dto.content.response.DocumentBasedLearningContentResponseDto;
 import com.aha.domain.ailearn.document.service.content.DocumentBasedLearningContentGenerationService;
-import com.aha.domain.ailearn.document.service.content.DocumentLearningContentBatchGenerationService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class DocumentLearningContentController {
 
     private final DocumentBasedLearningContentGenerationService generationService;
-    private final DocumentLearningContentBatchGenerationService batchGenerationService;
 
     @PostMapping("/user-exams/{userExamId}/scope-nodes/{examScopeNodeId}/generate")
     public ResponseEntity<ApiResponse<DocumentBasedLearningContentResponseDto>>
