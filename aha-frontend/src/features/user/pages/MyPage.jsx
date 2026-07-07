@@ -2,13 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyInfo, updateProfile, updateProfileImage } from "../api/userApi.js";
 import { getUserExams, updateUserExamHidden } from "../../exam/api/userExamApi.js";
-import { logout } from "../../auth/api/authApi.jsx";
 import "./MyPage.css";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 const getApiData = (response) => {
-    if (!response) return null;
+    if (!response) {
+        return null;
+    }
 
     if (response.data?.data !== undefined) {
         return response.data.data;
@@ -39,45 +41,50 @@ function MyPage() {
     const [isProfileSaving, setIsProfileSaving] = useState(false);
     const [isImageUploading, setIsImageUploading] = useState(false);
 
-    const fetchMyPageData = useCallback(async () => {
-        await Promise.resolve();
+    const isUnauthorizedError = (error) => {
+        return error.response?.status === 401;
+    };
 
+    const handleUnauthorized = useCallback(() => {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+
+        navigate("/login", { replace: true });
+    }, [navigate]);
+
+    const fetchMyPageData = useCallback(async () => {
         setIsLoading(true);
         setMessage("");
 
-        let hasError = false;
-
         try {
-            const myInfoResponse = await getMyInfo();
+            const [myInfoResponse, userExamResponse] = await Promise.all([
+                getMyInfo(),
+                getUserExams(),
+            ]);
+
             const myInfo = getApiData(myInfoResponse);
-            setUserInfo(myInfo);
-        } catch (error) {
-            hasError = true;
-            console.error("내 정보 조회 실패:", error);
-        }
-
-        try {
-            const userExamResponse = await getUserExams();
             const exams = getApiData(userExamResponse);
+
+            setUserInfo(myInfo);
             setUserExams(Array.isArray(exams) ? exams : []);
         } catch (error) {
-            hasError = true;
-            console.error("내 시험 목록 조회 실패:", error);
-        } finally {
-            if (hasError) {
-                setMessage("일부 마이페이지 정보를 불러오지 못했습니다.");
+            console.error("마이페이지 정보 조회 실패:", error);
+
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
             }
 
+            setUserInfo(null);
+            setUserExams([]);
+            setMessage("마이페이지 정보를 불러오지 못했습니다.");
+        } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [handleUnauthorized]);
 
     useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
-            fetchMyPageData();
-        }, 0);
-
-        return () => window.clearTimeout(timeoutId);
+        fetchMyPageData();
     }, [fetchMyPageData]);
 
     const profileInitial = useMemo(() => {
@@ -91,7 +98,9 @@ function MyPage() {
     }, [userInfo]);
 
     const profileImageSrc = useMemo(() => {
-        if (!userInfo?.profileImageUrl) return null;
+        if (!userInfo?.profileImageUrl) {
+            return null;
+        }
 
         if (userInfo.profileImageUrl.startsWith("http")) {
             return userInfo.profileImageUrl;
@@ -101,7 +110,9 @@ function MyPage() {
     }, [userInfo]);
 
     const formatLastStudiedAt = (value) => {
-        if (!value) return "-";
+        if (!value) {
+            return "-";
+        }
 
         const date = new Date(value);
         const now = new Date();
@@ -125,8 +136,13 @@ function MyPage() {
             hour12: false,
         });
 
-        if (isToday) return `오늘 ${time}`;
-        if (isYesterday) return `어제 ${time}`;
+        if (isToday) {
+            return `오늘 ${time}`;
+        }
+
+        if (isYesterday) {
+            return `어제 ${time}`;
+        }
 
         return date.toLocaleDateString("ko-KR", {
             year: "numeric",
@@ -136,7 +152,9 @@ function MyPage() {
     };
 
     const formatCreatedAt = (value) => {
-        if (!value) return "-";
+        if (!value) {
+            return "-";
+        }
 
         const date = new Date(value);
 
@@ -148,14 +166,15 @@ function MyPage() {
     };
 
     const handleToggleExam = async (targetExam) => {
-        if (updatingExamId) return;
+        if (updatingExamId) {
+            return;
+        }
 
         const nextHidden = !targetExam.hidden;
+        const previousExams = userExams;
 
         setUpdatingExamId(targetExam.userExamId);
         setMessage("");
-
-        const previousExams = userExams;
 
         setUserExams((prev) =>
             prev.map((exam) =>
@@ -184,6 +203,12 @@ function MyPage() {
             }
         } catch (error) {
             console.error("시험 표시 설정 변경 실패:", error);
+
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
+            }
+
             setUserExams(previousExams);
             setMessage("시험 표시 설정 변경에 실패했습니다.");
         } finally {
@@ -201,7 +226,10 @@ function MyPage() {
     };
 
     const closeProfileModal = () => {
-        if (isProfileSaving) return;
+        if (isProfileSaving) {
+            return;
+        }
+
         setIsProfileModalOpen(false);
     };
 
@@ -243,6 +271,12 @@ function MyPage() {
             setIsProfileModalOpen(false);
         } catch (error) {
             console.error("프로필 정보 수정 실패:", error);
+
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
+            }
+
             setMessage("프로필 정보 수정에 실패했습니다.");
         } finally {
             setIsProfileSaving(false);
@@ -250,14 +284,19 @@ function MyPage() {
     };
 
     const handleProfileImageButtonClick = () => {
-        if (isImageUploading) return;
+        if (isImageUploading) {
+            return;
+        }
+
         profileImageInputRef.current?.click();
     };
 
     const handleProfileImageChange = async (event) => {
         const file = event.target.files?.[0];
 
-        if (!file) return;
+        if (!file) {
+            return;
+        }
 
         try {
             setIsImageUploading(true);
@@ -271,6 +310,12 @@ function MyPage() {
             }
         } catch (error) {
             console.error("프로필 이미지 수정 실패:", error);
+
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
+            }
+
             setMessage("프로필 이미지 수정에 실패했습니다.");
         } finally {
             setIsImageUploading(false);
@@ -278,17 +323,6 @@ function MyPage() {
         }
     };
 
-    const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (error) {
-            console.error("로그아웃 실패:", error);
-        } finally {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            navigate("/login", { replace: true });
-        }
-    };
 
     if (isLoading) {
         return (
@@ -347,7 +381,9 @@ function MyPage() {
                                             {exam.examCode || exam.examName}
                                         </strong>
                                         <span>
-                                            {exam.examName || exam.versionName || "지원 시험"}
+                                            {exam.examName ||
+                                                exam.versionName ||
+                                                "지원 시험"}
                                         </span>
                                     </div>
 
@@ -376,7 +412,9 @@ function MyPage() {
                                                     : "exam-toggle active"
                                             }
                                             aria-label="시험 표시 설정"
-                                            disabled={updatingExamId === exam.userExamId}
+                                            disabled={
+                                                updatingExamId === exam.userExamId
+                                            }
                                             onClick={() => handleToggleExam(exam)}
                                         >
                                             <span />
@@ -401,7 +439,12 @@ function MyPage() {
                                 aria-label="프로필 수정"
                                 onClick={openProfileModal}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <svg
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                >
                                     <path
                                         d="M4 20H8L18.5 9.5C19.6 8.4 19.6 6.6 18.5 5.5C17.4 4.4 15.6 4.4 14.5 5.5L4 16V20Z"
                                         stroke="currentColor"
@@ -489,70 +532,55 @@ function MyPage() {
                         </div>
 
                         <div className="account-menu">
-                            <button type="button" className="account-menu-row">
-                                <span className="account-menu-left">
-                                    <em className="menu-icon">
-                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                                            <path
-                                                d="M7 11V8C7 5.2 9.2 3 12 3C14.8 3 17 5.2 17 8V11"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                            />
-                                            <path
-                                                d="M6 11H18V20H6V11Z"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                    </em>
-                                    비밀번호 변경
-                                </span>
-                                <span className="menu-arrow">›</span>
-                            </button>
-
                             <button
                                 type="button"
                                 className="account-menu-row"
-                                onClick={handleLogout}
+                                onClick={() =>
+                                    setMessage("비밀번호 변경 기능은 준비 중입니다.")
+                                }
                             >
-                                <span className="account-menu-left">
-                                    <em className="menu-icon">
-                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                                            <path
-                                                d="M10 17L15 12L10 7"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                            <path
-                                                d="M15 12H3"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                            />
-                                            <path
-                                                d="M21 4V20"
-                                                stroke="currentColor"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                            />
-                                        </svg>
-                                    </em>
-                                    로그아웃
-                                </span>
+            <span className="account-menu-left">
+                <em className="menu-icon">
+                    <svg
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                    >
+                        <path
+                            d="M7 11V8C7 5.2 9.2 3 12 3C14.8 3 17 5.2 17 8V11"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                        <path
+                            d="M6 11H18V20H6V11Z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                        />
+                    </svg>
+                </em>
+                비밀번호 변경
+            </span>
                                 <span className="menu-arrow">›</span>
                             </button>
 
                             <button
                                 type="button"
                                 className="account-menu-row danger"
+                                onClick={() =>
+                                    setMessage("회원 탈퇴 기능은 준비 중입니다.")
+                                }
                             >
                                 <span className="account-menu-left">
                                     <em className="menu-icon danger-icon">
-                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                                        <svg
+                                            width="17"
+                                            height="17"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                        >
                                             <path
                                                 d="M5 7H19"
                                                 stroke="currentColor"
@@ -595,7 +623,10 @@ function MyPage() {
             </section>
 
             {isProfileModalOpen && (
-                <div className="profile-modal-backdrop" onClick={closeProfileModal}>
+                <div
+                    className="profile-modal-backdrop"
+                    onClick={closeProfileModal}
+                >
                     <section
                         className="profile-modal"
                         onClick={(event) => event.stopPropagation()}
@@ -616,7 +647,10 @@ function MyPage() {
                             </button>
                         </header>
 
-                        <form onSubmit={handleProfileSubmit} className="profile-modal-form">
+                        <form
+                            onSubmit={handleProfileSubmit}
+                            className="profile-modal-form"
+                        >
                             <label>
                                 <span>이름</span>
                                 <input

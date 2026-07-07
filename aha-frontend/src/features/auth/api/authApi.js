@@ -8,17 +8,26 @@ export const signup = async (signupData) => {
         nickname: signupData.nickname,
     };
 
-    const response = await axiosInstance.post("/api/v1/auth/signup", requestData);
+    const response = await axiosInstance.post(
+        "/api/v1/auth/signup",
+        requestData
+    );
+
     return response.data;
 };
 
 export const login = async (loginData) => {
-    const response = await axiosInstance.post("/api/v1/auth/login", loginData);
+    const response = await axiosInstance.post(
+        "/api/v1/auth/login",
+        loginData
+    );
+
     return response.data;
 };
 
 export const logout = async () => {
     const response = await axiosInstance.post("/api/v1/auth/logout");
+
     return response.data;
 };
 

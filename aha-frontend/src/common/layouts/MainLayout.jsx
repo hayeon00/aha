@@ -1,15 +1,35 @@
-import { useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate,} from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getMyInfo } from "../../features/user/api/userApi.js";
 import "./MainLayout.css";
+
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+const getApiData = (response) => {
+    if (!response) {
+        return null;
+    }
+
+    if (response.data?.data !== undefined) {
+        return response.data.data;
+    }
+
+    if (response.data !== undefined) {
+        return response.data;
+    }
+
+    return response;
+};
 
 function MainLayout({ onLogout }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const profileMenuRef = useRef(null);
 
     const [userInfo, setUserInfo] = useState(null);
-    const [isUserInfoLoading, setIsUserInfoLoading] =
-        useState(true);
+    const [isUserInfoLoading, setIsUserInfoLoading] = useState(true);
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchMyInfo = async () => {
@@ -17,16 +37,11 @@ function MainLayout({ onLogout }) {
                 setIsUserInfoLoading(true);
 
                 const response = await getMyInfo();
+                const myInfo = getApiData(response);
 
-                setUserInfo(
-                    response?.data ?? null
-                );
+                setUserInfo(myInfo);
             } catch (error) {
-                console.error(
-                    "로그인 사용자 정보 조회 실패:",
-                    error
-                );
-
+                console.error("로그인 사용자 정보 조회 실패:", error);
                 setUserInfo(null);
             } finally {
                 setIsUserInfoLoading(false);
@@ -36,31 +51,58 @@ function MainLayout({ onLogout }) {
         fetchMyInfo();
     }, []);
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                profileMenuRef.current &&
+                !profileMenuRef.current.contains(event.target)
+            ) {
+                setIsProfileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    useEffect(() => {
+        setIsProfileMenuOpen(false);
+    }, [location.pathname]);
+
     const isActive = (path) => {
         return (
             location.pathname === path ||
-            location.pathname.startsWith(
-                `${path}/`
-            )
+            location.pathname.startsWith(`${path}/`)
         );
     };
 
     const handleLogout = async () => {
+        setIsProfileMenuOpen(false);
+
         if (onLogout) {
             await onLogout();
             return;
         }
 
-        localStorage.removeItem(
-            "accessToken"
-        );
-        localStorage.removeItem(
-            "refreshToken"
-        );
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
 
         navigate("/login", {
             replace: true,
         });
+    };
+
+    const handleMoveMyPage = () => {
+        setIsProfileMenuOpen(false);
+        navigate("/mypage");
+    };
+
+    const handlePasswordChange = () => {
+        setIsProfileMenuOpen(false);
+        alert("비밀번호 변경 기능은 준비 중입니다.");
     };
 
     const getDisplayName = () => {
@@ -68,16 +110,11 @@ function MainLayout({ onLogout }) {
             return "확인 중";
         }
 
-        return (
-            userInfo?.nickname ||
-            userInfo?.name ||
-            "사용자"
-        );
+        return userInfo?.nickname || userInfo?.name || "사용자";
     };
 
     const getProfileImageUrl = () => {
-        const imageUrl =
-            userInfo?.profileImageUrl;
+        const imageUrl = userInfo?.profileImageUrl;
 
         if (!imageUrl) {
             return null;
@@ -90,11 +127,10 @@ function MainLayout({ onLogout }) {
             return imageUrl;
         }
 
-        return `http://localhost:8080${imageUrl}`;
+        return `${API_BASE_URL}${imageUrl}`;
     };
 
-    const profileImageUrl =
-        getProfileImageUrl();
+    const profileImageUrl = getProfileImageUrl();
 
     return (
         <div className="app-layout">
@@ -102,9 +138,7 @@ function MainLayout({ onLogout }) {
                 <button
                     type="button"
                     className="side-logo"
-                    onClick={() =>
-                        navigate("/main")
-                    }
+                    onClick={() => navigate("/main")}
                 >
                     Aha
                 </button>
@@ -112,14 +146,8 @@ function MainLayout({ onLogout }) {
                 <nav className="side-nav">
                     <button
                         type="button"
-                        className={
-                            isActive("/main")
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            navigate("/main")
-                        }
+                        className={isActive("/main") ? "active" : ""}
+                        onClick={() => navigate("/main")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -137,20 +165,13 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-
                         <span>학습 홈</span>
                     </button>
 
                     <button
                         type="button"
-                        className={
-                            isActive("/learning")
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            navigate("/learning")
-                        }
+                        className={isActive("/learning") ? "active" : ""}
+                        onClick={() => navigate("/learning")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -166,7 +187,6 @@ function MainLayout({ onLogout }) {
                                     strokeWidth="2"
                                     strokeLinejoin="round"
                                 />
-
                                 <path
                                     d="M5 20C5 19.17 5.67 18.5 6.5 18.5H20"
                                     stroke="currentColor"
@@ -175,20 +195,13 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-
                         <span>개념 학습</span>
                     </button>
 
                     <button
                         type="button"
-                        className={
-                            isActive("/problems")
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            navigate("/problems")
-                        }
+                        className={isActive("/problems") ? "active" : ""}
+                        onClick={() => navigate("/problems")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -204,14 +217,12 @@ function MainLayout({ onLogout }) {
                                     strokeWidth="2"
                                     strokeLinejoin="round"
                                 />
-
                                 <path
                                     d="M9 11H15"
                                     stroke="currentColor"
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                 />
-
                                 <path
                                     d="M9 15H14"
                                     stroke="currentColor"
@@ -220,24 +231,13 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-
                         <span>문제집</span>
                     </button>
 
                     <button
                         type="button"
-                        className={
-                            isActive(
-                                "/wrong-notes"
-                            )
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            navigate(
-                                "/wrong-notes"
-                            )
-                        }
+                        className={isActive("/wrong-notes") ? "active" : ""}
+                        onClick={() => navigate("/wrong-notes")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -255,20 +255,13 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-
                         <span>오답노트</span>
                     </button>
 
                     <button
                         type="button"
-                        className={
-                            isActive("/mypage")
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            navigate("/mypage")
-                        }
+                        className={isActive("/mypage") ? "active" : ""}
+                        onClick={() => navigate("/mypage")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -283,7 +276,6 @@ function MainLayout({ onLogout }) {
                                     stroke="currentColor"
                                     strokeWidth="2"
                                 />
-
                                 <path
                                     d="M5 20C6.2 16.9 8.6 15.4 12 15.4C15.4 15.4 17.8 16.9 19 20"
                                     stroke="currentColor"
@@ -292,56 +284,14 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-
                         <span>마이페이지</span>
                     </button>
                 </nav>
 
                 <div className="side-bottom">
-                    <button
-                        type="button"
-                        className="guide-button"
-                    >
+                    <button type="button" className="guide-button">
                         이용 가이드
                         <span>›</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        className="side-logout-button"
-                        onClick={handleLogout}
-                    >
-                        <span>로그아웃</span>
-
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            aria-hidden="true"
-                        >
-                            <path
-                                d="M10 5H6C4.9 5 4 5.9 4 7V17C4 18.1 4.9 19 6 19H10"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                            />
-
-                            <path
-                                d="M14 8L18 12L14 16"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-
-                            <path
-                                d="M18 12H9"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                            />
-                        </svg>
                     </button>
                 </div>
             </aside>
@@ -366,7 +316,6 @@ function MainLayout({ onLogout }) {
                                 strokeWidth="2"
                                 strokeLinejoin="round"
                             />
-
                             <path
                                 d="M10 20C10.5 20.6 11.2 21 12 21C12.8 21 13.5 20.6 14 20"
                                 stroke="currentColor"
@@ -376,56 +325,90 @@ function MainLayout({ onLogout }) {
                         </svg>
                     </button>
 
-                    <button
-                        type="button"
-                        className="user-profile-button"
-                        aria-label="마이페이지로 이동"
-                        onClick={() =>
-                            navigate("/mypage")
-                        }
-                    >
-                        <span className="user-profile-image">
-                            {profileImageUrl ? (
-                                <img
-                                    src={
-                                        profileImageUrl
-                                    }
-                                    alt={`${getDisplayName()} 프로필`}
-                                    onError={(
-                                        event
-                                    ) => {
-                                        event.currentTarget.style.display =
-                                            "none";
-                                    }}
-                                />
-                            ) : (
-                                <svg
-                                    width="17"
-                                    height="17"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    aria-hidden="true"
+                    <div className="top-profile-area" ref={profileMenuRef}>
+                        <button
+                            type="button"
+                            className={
+                                isProfileMenuOpen
+                                    ? "user-profile-button active"
+                                    : "user-profile-button"
+                            }
+                            aria-label="프로필 메뉴 열기"
+                            aria-expanded={isProfileMenuOpen}
+                            onClick={() =>
+                                setIsProfileMenuOpen((prev) => !prev)
+                            }
+                        >
+                            <span className="user-profile-image">
+                                {profileImageUrl ? (
+                                    <img
+                                        src={profileImageUrl}
+                                        alt={`${getDisplayName()} 프로필`}
+                                        onError={(event) => {
+                                            event.currentTarget.style.display =
+                                                "none";
+                                        }}
+                                    />
+                                ) : (
+                                    <svg
+                                        width="17"
+                                        height="17"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        aria-hidden="true"
+                                    >
+                                        <path
+                                            d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12Z"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        />
+                                        <path
+                                            d="M5 20C6.2 16.9 8.6 15.4 12 15.4C15.4 15.4 17.8 16.9 19 20"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                        />
+                                    </svg>
+                                )}
+                            </span>
+
+                            <span className="user-profile-name">
+                                {getDisplayName()}님
+                            </span>
+
+                            <span className="profile-menu-caret">⌄</span>
+                        </button>
+
+                        {isProfileMenuOpen && (
+                            <div className="profile-dropdown">
+                                <button
+                                    type="button"
+                                    className="profile-dropdown-item"
+                                    onClick={handleMoveMyPage}
                                 >
-                                    <path
-                                        d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12Z"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                    />
+                                    마이페이지
+                                </button>
 
-                                    <path
-                                        d="M5 20C6.2 16.9 8.6 15.4 12 15.4C15.4 15.4 17.8 16.9 19 20"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                            )}
-                        </span>
+                                <button
+                                    type="button"
+                                    className="profile-dropdown-item"
+                                    onClick={handlePasswordChange}
+                                >
+                                    비밀번호 변경
+                                </button>
 
-                        <span className="user-profile-name">
-                            {getDisplayName()}님
-                        </span>
-                    </button>
+                                <div className="profile-dropdown-divider" />
+
+                                <button
+                                    type="button"
+                                    className="profile-dropdown-item logout"
+                                    onClick={handleLogout}
+                                >
+                                    로그아웃
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </header>
 
                 <main className="layout-content">

@@ -4,6 +4,8 @@ const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ||
     "http://localhost:8080";
 
+export const AUTH_EXPIRED_EVENT = "auth-expired";
+
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     timeout: 30000,
@@ -11,13 +13,13 @@ const axiosInstance = axios.create({
 
 let refreshPromise = null;
 
-const clearAuthAndRedirect = () => {
+const clearAuth = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+};
 
-    if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-    }
+const notifyAuthExpired = () => {
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
 };
 
 const reissueToken = async () => {
@@ -94,7 +96,9 @@ axiosInstance.interceptors.response.use(
 
             return axiosInstance(originalRequest);
         } catch (refreshError) {
-            clearAuthAndRedirect();
+            clearAuth();
+            notifyAuthExpired();
+
             return Promise.reject(refreshError);
         }
     }

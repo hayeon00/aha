@@ -6,7 +6,7 @@ import AiLearningPage from "../features/ailearn/pages/AiLearningPage.jsx";
 import MainPage from "../features/home/pages/MainPage.jsx";
 import MyPage from "../features/user/pages/MyPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
-import { logout } from "../features/auth/api/authApi.jsx";
+import { logout } from "../features/auth/api/authApi.js";
 
 const isAccessTokenValid = () => {
     const token = localStorage.getItem("accessToken");

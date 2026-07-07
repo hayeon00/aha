@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signup } from "../api/authApi.jsx";
+import { signup } from "../api/authApi.js";
 import "./SignupPage.css";
 
 function SignupPage({ onMoveLogin }) {
