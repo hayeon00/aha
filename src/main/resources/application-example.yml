@@ -1,0 +1,36 @@
+spring:
+  profiles:
+    active: local
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/aha?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: your-db-username
+    password: your-db-password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 100MB
+
+jwt:
+  secret: your-jwt-secret-minimum-32-bytes
+  access-token-expiration: 1800000
+  refresh-token-expiration: 1209600000
+
+openai:
+  api-key: sk-test-openai-api-key-for-context-loads-only
+  model: gpt-4.1-mini
+
+file:
+  profile-upload-dir: uploads/profile
+  document-upload-dir: uploads/documents
