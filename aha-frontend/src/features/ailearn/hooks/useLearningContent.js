@@ -58,7 +58,9 @@ export const useLearningContent = ({
     ]);
 
     useEffect(() => {
-        fetchLearningContent();
+        queueMicrotask(() => {
+            fetchLearningContent();
+        });
     }, [fetchLearningContent]);
 
     return {

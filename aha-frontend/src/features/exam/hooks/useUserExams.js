@@ -46,7 +46,9 @@ export const useUserExams = ({ onEmpty, onChange } = {}) => {
     }, [onEmpty]);
 
     useEffect(() => {
-        fetchVisibleUserExams();
+        queueMicrotask(() => {
+            fetchVisibleUserExams();
+        });
     }, [fetchVisibleUserExams]);
 
     const changeUserExam = useCallback((userExamId) => {

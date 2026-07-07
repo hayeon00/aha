@@ -32,23 +32,39 @@ function MainLayout({ onLogout }) {
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
+
         const fetchMyInfo = async () => {
             try {
-                setIsUserInfoLoading(true);
-
                 const response = await getMyInfo();
                 const myInfo = getApiData(response);
 
+                if (!isMounted) {
+                    return;
+                }
+
                 setUserInfo(myInfo);
             } catch (error) {
+                if (!isMounted) {
+                    return;
+                }
+
                 console.error("로그인 사용자 정보 조회 실패:", error);
                 setUserInfo(null);
             } finally {
-                setIsUserInfoLoading(false);
+                if (isMounted) {
+                    setIsUserInfoLoading(false);
+                }
             }
         };
 
-        fetchMyInfo();
+        queueMicrotask(() => {
+            fetchMyInfo();
+        });
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     useEffect(() => {
@@ -68,9 +84,6 @@ function MainLayout({ onLogout }) {
         };
     }, []);
 
-    useEffect(() => {
-        setIsProfileMenuOpen(false);
-    }, [location.pathname]);
 
     const isActive = (path) => {
         return (

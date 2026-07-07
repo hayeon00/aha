@@ -49,7 +49,9 @@ export const useExamScopeNodes = ({ examVersionId, onResetContent } = {}) => {
     }, [examVersionId, resetScope, onResetContent]);
 
     useEffect(() => {
-        fetchScopeNodes();
+        queueMicrotask(() => {
+            fetchScopeNodes();
+        });
     }, [fetchScopeNodes]);
 
     const toggleNode = useCallback((nodeId) => {

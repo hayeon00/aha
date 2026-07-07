@@ -1,7 +1,5 @@
 import {
-    createContext,
     useCallback,
-    useContext,
     useEffect,
     useMemo,
     useState,
@@ -9,8 +7,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { logout as requestLogout } from "../api/authApi.js";
 import { AUTH_EXPIRED_EVENT } from "../../../common/api/axiosInstance.js";
-
-const AuthContext = createContext(null);
+import { AuthContext } from "./AuthContext.js";
 
 export function AuthProvider({ children }) {
     const navigate = useNavigate();
@@ -74,14 +71,4 @@ export function AuthProvider({ children }) {
             {children}
         </AuthContext.Provider>
     );
-}
-
-export function useAuth() {
-    const context = useContext(AuthContext);
-
-    if (!context) {
-        throw new Error("useAuth는 AuthProvider 내부에서만 사용할 수 있습니다.");
-    }
-
-    return context;
 }

@@ -45,7 +45,9 @@ export const useDocumentProcessing = ({
     }, []);
 
     useEffect(() => {
-        fetchUserExamDocumentState(selectedUserExamId);
+        queueMicrotask(() => {
+            fetchUserExamDocumentState(selectedUserExamId);
+        });
     }, [selectedUserExamId, fetchUserExamDocumentState]);
 
     const uploadDocuments = useCallback(async (files) => {

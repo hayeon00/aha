@@ -84,7 +84,9 @@ function MyPage() {
     }, [handleUnauthorized]);
 
     useEffect(() => {
-        fetchMyPageData();
+        queueMicrotask(() => {
+            fetchMyPageData();
+        });
     }, [fetchMyPageData]);
 
     const profileInitial = useMemo(() => {
