@@ -43,6 +43,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExamScopeNode {
 
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -89,6 +90,12 @@ public class ExamScopeNode {
 
     @Column(nullable = false, length = 200)
     private String title;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "keywords_json")
+    private String keywordsJson;
 
     @Column(name = "is_leaf", nullable = false)
     private boolean isLeaf;
