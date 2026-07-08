@@ -65,6 +65,9 @@ public class DocumentChunk {
     @Column(name = "section_title", length = 255)
     private String sectionTitle;
 
+    @Column(name = "heading_path", length = 1000)
+    private String headingPath;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "content_type", nullable = false, length = 30)
     private DocumentChunkContentType contentType;
@@ -104,6 +107,7 @@ public class DocumentChunk {
             Integer chunkOrder,
             Integer pageNo,
             String sectionTitle,
+            String headingPath,
             DocumentChunkContentType contentType,
             String contentText,
             String rawText,
@@ -122,6 +126,7 @@ public class DocumentChunk {
         this.chunkOrder = chunkOrder;
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
+        this.headingPath = normalizeNullableText(headingPath);
         this.contentType = contentType != null
                 ? contentType
                 : DocumentChunkContentType.TEXT;
@@ -141,6 +146,7 @@ public class DocumentChunk {
     public void updateStructure(
             Integer pageNo,
             String sectionTitle,
+            String headingPath,
             DocumentChunkContentType contentType,
             String structureJson
     ) {
@@ -148,6 +154,7 @@ public class DocumentChunk {
 
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
+        this.headingPath = normalizeNullableText(headingPath);
         this.contentType = contentType != null
                 ? contentType
                 : DocumentChunkContentType.TEXT;

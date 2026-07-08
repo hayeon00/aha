@@ -2,10 +2,10 @@ package com.aha.domain.ailearn.document.enums;
 
 public enum DocumentChunkContentType {
     TEXT,
-    TITLE,
-    LIST,
+    HEADING,
     TABLE,
-    CODE,
-    IMAGE_DESCRIPTION,
-    UNKNOWN
+    SQL,
+    EXAMPLE,
+    WARNING,
+    MIXED
 }
