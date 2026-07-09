@@ -32,6 +32,7 @@ public class DocumentFileStorageService {
     private static final Map<String, Set<String>> ALLOWED_MIME_TYPES =
             Map.of(
                 "pdf", Set.of("application/pdf"),
+                    "doc", Set.of("application/msword"),
                 "docx", Set.of(
                         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 ),

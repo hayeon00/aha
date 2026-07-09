@@ -143,15 +143,22 @@ public class DocumentScopeMappingService {
         return new ScopeCandidateRequestDto(scopeNode.getId(), scopeNode.getTitle());
     }
 
-    private List<DocumentScopeMapping> createMappings(List<ScopeMappingAiResultResponseDto> aiResults, Map<Long, DocumentChunk> chunkMap, Map<Long, ExamScopeNode> scopeNodeMap) {
-
+    private List<DocumentScopeMapping> createMappings(
+            List<ScopeMappingAiResultResponseDto> aiResults,
+            Map<Long, DocumentChunk> chunkMap,
+            Map<Long, ExamScopeNode> scopeNodeMap
+    ) {
         List<DocumentScopeMapping> mappings = new ArrayList<>(aiResults.size());
 
         Set<String> mappingKeys = new HashSet<>();
 
-        for(ScopeMappingAiResultResponseDto aiResult : aiResults){
+        Map<Long, Integer> rankNoByChunkId = new HashMap<>();
 
-            if(aiResult == null || aiResult.documentChunkId() == null || aiResult.examScopeNodeId() == null){
+        for (ScopeMappingAiResultResponseDto aiResult : aiResults) {
+
+            if (aiResult == null
+                    || aiResult.documentChunkId() == null
+                    || aiResult.examScopeNodeId() == null) {
                 throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
             }
 
@@ -162,7 +169,6 @@ public class DocumentScopeMappingService {
             BigDecimal confidenceScore = normalizeConfidenceScore(aiResult.confidenceScore());
 
             if (documentChunk == null) {
-
                 log.warn(
                         "AI가 존재하지 않는 문서 청크 ID를 반환하여 매핑에서 제외합니다. documentChunkId={}",
                         aiResult.documentChunkId()
@@ -181,10 +187,9 @@ public class DocumentScopeMappingService {
                 continue;
             }
 
-            if(confidenceScore.compareTo(MIN_MAPPING_CONFIDENCE) < 0){
+            if (confidenceScore.compareTo(MIN_MAPPING_CONFIDENCE) < 0) {
                 log.warn(
-                        "신뢰도 기준 미만의 목차 매핑을 제외합니다. " +
-                                "documentChunkId={}, examScopeNodeId={}, confidenceScore={}",
+                        "신뢰도 기준 미만의 목차 매핑을 제외합니다. documentChunkId={}, examScopeNodeId={}, confidenceScore={}",
                         aiResult.documentChunkId(),
                         aiResult.examScopeNodeId(),
                         confidenceScore
@@ -195,7 +200,7 @@ public class DocumentScopeMappingService {
 
             String mappingKey = aiResult.documentChunkId() + ":" + aiResult.examScopeNodeId();
 
-            if(!mappingKeys.add(mappingKey)){
+            if (!mappingKeys.add(mappingKey)) {
                 log.warn(
                         "중복된 목차 매핑 결과를 제외합니다. documentChunkId={}, examScopeNodeId={}",
                         aiResult.documentChunkId(),
@@ -205,10 +210,17 @@ public class DocumentScopeMappingService {
                 continue;
             }
 
+            int rankNo = rankNoByChunkId.merge(
+                    documentChunk.getId(),
+                    1,
+                    Integer::sum
+            );
+
             DocumentScopeMapping mapping = DocumentScopeMapping.builder()
                     .documentChunk(documentChunk)
                     .examScopeNode(examScopeNode)
                     .confidenceScore(confidenceScore)
+                    .rankNo(rankNo)
                     .mappingReason(normalizeMappingReason(aiResult.mappingReason()))
                     .build();
 
@@ -216,7 +228,6 @@ public class DocumentScopeMappingService {
         }
 
         return mappings;
-
     }
 
     private String normalizeMappingReason(String mappingReason) {

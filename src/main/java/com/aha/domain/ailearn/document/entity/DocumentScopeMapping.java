@@ -1,6 +1,8 @@
 package com.aha.domain.ailearn.document.entity;
 
 import com.aha.domain.exam.entity.ExamScopeNode;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -54,6 +56,9 @@ public class DocumentScopeMapping {
     @JoinColumn(name = "exam_scope_node_id", nullable = false)
     private ExamScopeNode examScopeNode;
 
+    @Column(name = "rank_no", nullable = false)
+    private Integer rankNo;
+
     @Column(name = "confidence_score", precision = 5, scale = 4)
     private BigDecimal confidenceScore;
 
@@ -73,6 +78,7 @@ public class DocumentScopeMapping {
             DocumentChunk documentChunk,
             ExamScopeNode examScopeNode,
             BigDecimal confidenceScore,
+            Integer rankNo,
             String mappingReason
     ) {
         if (documentChunk == null) {
@@ -92,6 +98,7 @@ public class DocumentScopeMapping {
         this.documentChunk = documentChunk;
         this.examScopeNode = examScopeNode;
         this.confidenceScore = confidenceScore;
+        this.rankNo = rankNo;
         this.mappingReason = normalizeMappingReason(
                 mappingReason
         );
@@ -148,5 +155,11 @@ public class DocumentScopeMapping {
         }
 
         return normalizedReason;
+    }
+
+    private void validateRankNo(Integer rankNo) {
+        if (rankNo == null || rankNo < 1) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
     }
 }

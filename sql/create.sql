@@ -147,43 +147,61 @@ CREATE TABLE `exam_part` (
                                      ON DELETE CASCADE
 );
 
-
-
 CREATE TABLE `exam_scope_node` (
-                                   `id`               BIGINT       NOT NULL AUTO_INCREMENT,
-                                   `exam_version_id`  BIGINT       NOT NULL,
-                                   `exam_part_id`     BIGINT       NOT NULL,
-                                   `code`             VARCHAR(100) NOT NULL,
-                                   `parent_id`        BIGINT           NULL,
-                                   `node_type`        VARCHAR(30)  NOT NULL,
-                                   `depth`            INT          NOT NULL,
-                                   `title`            VARCHAR(200) NOT NULL,
-                                   `is_leaf`          BOOLEAN      NOT NULL,
-                                   `is_active`        BOOLEAN      NOT NULL,
-                                   `display_order`    INT          NOT NULL DEFAULT 0,
-                                   `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                   `updated_at`       DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                   `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                   `exam_version_id` BIGINT NOT NULL,
+                                   `exam_part_id` BIGINT NOT NULL,
+                                   `parent_id` BIGINT NULL,
+                                   `code` VARCHAR(100) NOT NULL,
+                                   `node_type` VARCHAR(30) NOT NULL,
+                                   `depth` INT NOT NULL,
+                                   `title` VARCHAR(200) NOT NULL,
+                                   `description` TEXT NULL,
+                                   `keywords_json` JSON NULL,
+                                   `is_leaf` BOOLEAN NOT NULL DEFAULT FALSE,
+                                   `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
+                                   `display_order` INT NOT NULL DEFAULT 0,
+                                   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   `updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
 
                                    PRIMARY KEY (`id`),
-                                   UNIQUE KEY `uk_exam_version_id_code` (`exam_version_id`, `code`),
 
-                                   INDEX `idx_scope_parent` (`parent_id`),
-                                   INDEX `idx_scope_level` (`exam_version_id`, `depth`),
-                                   INDEX `idx_scope_exam_part_id` (`exam_part_id`),
+                                   UNIQUE KEY `uk_exam_scope_node_version_code`
+                                       (`exam_version_id`, `code`),
+                                   UNIQUE KEY `uk_exam_scope_node_parent_order`
+                                       (`exam_version_id`, `parent_id`, `display_order`),
+                                   UNIQUE KEY `uk_exam_scope_node_parent_title`
+                                       (`exam_version_id`, `parent_id`, `title`),
+                                   INDEX `idx_scope_node_exam_version`
+                                       (`exam_version_id`),
+                                   INDEX `idx_scope_node_exam_part`
+                                       (`exam_part_id`),
+                                   INDEX `idx_scope_node_parent`
+                                       (`parent_id`),
+                                   INDEX `idx_scope_node_depth`
+                                       (`exam_version_id`, `depth`),
+                                   INDEX `idx_scope_node_type`
+                                       (`node_type`),
+                                   INDEX `idx_scope_node_active`
+                                       (`is_active`),
 
-                                   CONSTRAINT `fk_exam_scope_node_exam_version_id`
-                                       FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
+                                   CONSTRAINT `fk_scope_node_exam_version`
+                                       FOREIGN KEY (`exam_version_id`)
+                                           REFERENCES `exam_version` (`id`)
                                            ON DELETE CASCADE,
-
-                                   CONSTRAINT `fk_exam_scope_node_exam_part_id`
-                                       FOREIGN KEY (`exam_part_id`) REFERENCES `exam_part` (`id`)
+                                   CONSTRAINT `fk_scope_node_exam_part`
+                                       FOREIGN KEY (`exam_part_id`)
+                                           REFERENCES `exam_part` (`id`)
                                            ON DELETE CASCADE,
-
-                                   CONSTRAINT `fk_exam_scope_node_parent_id`
-                                       FOREIGN KEY (`parent_id`) REFERENCES `exam_scope_node` (`id`)
-                                           ON DELETE SET NULL
+                                   CONSTRAINT `fk_scope_node_parent`
+                                       FOREIGN KEY (`parent_id`)
+                                           REFERENCES `exam_scope_node` (`id`)
+                                           ON DELETE SET NULL,
+                                   CONSTRAINT `chk_scope_node_depth`
+                                       CHECK (`depth` >= 0),
+                                   CONSTRAINT `chk_scope_node_display_order`
+                                       CHECK (`display_order` >= 0)
 );
-
 
 
 CREATE TABLE `user_exam` (
@@ -290,23 +308,22 @@ CREATE TABLE `source_document` (
                                        CHECK (`file_size` > 0)
 );
 
-
-
 CREATE TABLE `document_chunk` (
-                                  `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
-                                  `source_document_id` BIGINT       NOT NULL,
-                                  `chunk_order`        INT          NOT NULL,
-                                  `page_no`            INT              NULL,
-                                  `section_title`      VARCHAR(255)     NULL,
-                                  `content_type`       VARCHAR(30)  NOT NULL DEFAULT 'TEXT',
-                                  `content_text`       LONGTEXT     NOT NULL,
-                                  `raw_text`           LONGTEXT         NULL,
-                                  `summary`            TEXT             NULL,
-                                  `keywords_json`      JSON             NULL,
-                                  `structure_json`     JSON             NULL,
-                                  `token_count`        INT              NULL,
-                                  `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                  `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                  `source_document_id` BIGINT NOT NULL,
+                                  `chunk_order` INT NOT NULL,
+                                  `page_no` INT NULL,
+                                  `section_title` VARCHAR(255) NULL,
+                                  `heading_path` VARCHAR(1000) NULL,
+                                  `content_type` VARCHAR(30) NOT NULL DEFAULT 'TEXT',
+                                  `content_text` LONGTEXT NOT NULL,
+                                  `raw_text` LONGTEXT NULL,
+                                  `summary` TEXT NULL,
+                                  `keywords_json` JSON NULL,
+                                  `structure_json` JSON NULL,
+                                  `token_count` INT NULL,
+                                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                       ON UPDATE CURRENT_TIMESTAMP,
 
                                   PRIMARY KEY (`id`),
@@ -316,56 +333,60 @@ CREATE TABLE `document_chunk` (
 
                                   INDEX `idx_document_chunk_page_no`
                                       (`source_document_id`, `page_no`),
-
                                   INDEX `idx_document_chunk_content_type`
                                       (`content_type`),
+                                  INDEX `idx_document_chunk_heading_path`
+                                      (`source_document_id`, `heading_path`(255)),
 
                                   CONSTRAINT `fk_document_chunk_source_document`
                                       FOREIGN KEY (`source_document_id`)
                                           REFERENCES `source_document` (`id`)
                                           ON DELETE CASCADE,
-
                                   CONSTRAINT `chk_document_chunk_order`
                                       CHECK (`chunk_order` >= 1),
-
                                   CONSTRAINT `chk_document_chunk_page_no`
                                       CHECK (`page_no` IS NULL OR `page_no` >= 1),
-
                                   CONSTRAINT `chk_document_chunk_token_count`
                                       CHECK (`token_count` IS NULL OR `token_count` >= 0)
 );
 
-
 CREATE TABLE `document_scope_mapping` (
-                                          `id`                 BIGINT        NOT NULL AUTO_INCREMENT,
-                                          `document_chunk_id`  BIGINT        NOT NULL,
-                                          `exam_scope_node_id` BIGINT        NOT NULL,
-                                          `confidence_score`   DECIMAL(5,4)  NOT NULL,
-                                          `mapping_reason`     VARCHAR(1000) NULL,
-                                          `created_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                          `updated_at`         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                          `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                          `document_chunk_id` BIGINT NOT NULL,
+                                          `exam_scope_node_id` BIGINT NOT NULL,
+                                          `rank_no` INT NOT NULL,
+                                          `confidence_score` DECIMAL(5,4) NOT NULL,
+                                          `mapping_reason` TEXT NULL,
+                                          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                               ON UPDATE CURRENT_TIMESTAMP,
 
                                           PRIMARY KEY (`id`),
 
-                                          UNIQUE KEY `uk_dsm_chunk_scope`
+                                          UNIQUE KEY `uk_mapping_chunk_scope`
                                               (`document_chunk_id`, `exam_scope_node_id`),
+                                          UNIQUE KEY `uk_mapping_chunk_rank`
+                                              (`document_chunk_id`, `rank_no`),
 
-                                          CONSTRAINT `fk_dsm_document_chunk_id`
+                                          INDEX `idx_mapping_chunk`
+                                              (`document_chunk_id`),
+                                          INDEX `idx_mapping_scope_node`
+                                              (`exam_scope_node_id`),
+                                          INDEX `idx_mapping_confidence`
+                                              (`confidence_score`),
+
+                                          CONSTRAINT `fk_mapping_document_chunk`
                                               FOREIGN KEY (`document_chunk_id`)
                                                   REFERENCES `document_chunk` (`id`)
                                                   ON DELETE CASCADE,
-
-                                          CONSTRAINT `fk_dsm_exam_scope_node_id`
+                                          CONSTRAINT `fk_mapping_exam_scope_node`
                                               FOREIGN KEY (`exam_scope_node_id`)
                                                   REFERENCES `exam_scope_node` (`id`)
                                                   ON DELETE CASCADE,
-
-                                          CONSTRAINT `chk_dsm_confidence_score`
-                                              CHECK (
-                                                  `confidence_score` >= 0
-                                                      AND `confidence_score` <= 1
-                                                  )
+                                          CONSTRAINT `chk_mapping_rank_no`
+                                              CHECK (`rank_no` >= 1),
+                                          CONSTRAINT `chk_mapping_confidence_score`
+                                              CHECK (`confidence_score` >= 0 AND `confidence_score` <= 1)
 );
 
 

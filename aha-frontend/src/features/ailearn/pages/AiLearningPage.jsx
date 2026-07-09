@@ -443,7 +443,7 @@ function AiLearningPage() {
                                     <h3>학습 문서를 업로드해 주세요</h3>
 
                                     <p className="upload-description">
-                                        PDF 파일을 선택해 개념 학습을 시작하세요.
+                                        PDF, Word, TXT 파일을 선택해 개념 학습을 시작하세요.
                                     </p>
 
                                     <button
@@ -479,11 +479,11 @@ function AiLearningPage() {
                                                 strokeLinecap="round"
                                             />
                                         </svg>
-                                        <span>PDF 업로드</span>
+                                        <span>문서 업로드</span>
                                     </button>
 
                                     <span className="upload-hint">
-                                        여러 개의 PDF 파일을 한 번에 선택할 수 있습니다.
+                                        PDF, DOC, DOCX, TXT 파일을 여러 개 선택할 수 있습니다.
                                     </span>
                                 </div>
                             </div>
@@ -492,7 +492,7 @@ function AiLearningPage() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".pdf,application/pdf"
+                            accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                             multiple
                             className="upload-file-input"
                             onChange={handleFileChange}
