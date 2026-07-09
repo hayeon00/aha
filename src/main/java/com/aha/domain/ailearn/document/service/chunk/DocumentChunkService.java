@@ -81,12 +81,33 @@ public class DocumentChunkService {
         List<DocumentChunk> chunks = new ArrayList<>();
         int chunkOrder = 1;
 
+        log.info(
+                "청크 생성 입력 확인. sourceDocumentId={}, blockCount={}",
+                sourceDocument.getId(),
+                blocks.size()
+        );
+
         for (DocumentBlock block : blocks) {
             if (block == null || block.isBlank()) {
                 continue;
             }
 
+            log.info(
+                    "DocumentBlock 확인. sourceDocumentId={}, contentType={}, textLength={}, preview={}",
+                    sourceDocument.getId(),
+                    block.contentType(),
+                    block.text() == null ? 0 : block.text().length(),
+                    preview(block.text())
+            );
+
             List<String> chunkTexts = splitIntoChunks(block.text());
+
+            log.info(
+                    "DocumentBlock 분할 결과. sourceDocumentId={}, contentType={}, splitChunkCount={}",
+                    sourceDocument.getId(),
+                    block.contentType(),
+                    chunkTexts.size()
+            );
 
             for (String chunkText : chunkTexts) {
                 DocumentChunk chunk = createDocumentChunk(
@@ -102,6 +123,20 @@ public class DocumentChunkService {
 
         return chunks;
     }
+
+    private String preview(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+
+        String normalizedText = text.replace("\n", " ").trim();
+
+        return normalizedText.substring(
+                0,
+                Math.min(200, normalizedText.length())
+        );
+    }
+
 
     private DocumentChunk createDocumentChunk(
             SourceDocument sourceDocument,

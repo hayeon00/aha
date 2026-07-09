@@ -2,7 +2,7 @@ package com.aha.domain.ailearn.document.service.processing;
 
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStep;
 import com.aha.domain.ailearn.document.service.content.DocumentLearningContentBatchGenerationService;
-import com.aha.domain.ailearn.document.service.extraction.DocumentExtractionService;
+import com.aha.domain.ailearn.document.service.extraction.DocumentExtractionPipelineService;
 import com.aha.domain.ailearn.document.service.mapping.DocumentScopeMappingService;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class DocumentProcessingWorkerService {
 
     private final DocumentProcessingStatusService processingStatusService;
-    private final DocumentExtractionService extractionService;
+    private final DocumentExtractionPipelineService extractionService;
     private final DocumentScopeMappingService documentScopeMappingService;
     private final DocumentLearningContentBatchGenerationService learningContentBatchGenerationService;
 

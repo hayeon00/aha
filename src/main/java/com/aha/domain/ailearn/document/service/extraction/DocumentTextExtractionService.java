@@ -60,16 +60,101 @@ public class DocumentTextExtractionService {
                 documentPath
         );
 
+        log.info(
+                "문서 텍스트 추출 결과. sourceDocumentId={}, fileName={}, fullTextLength={}, blockCount={}, preview={}",
+                sourceDocument.getId(),
+                sourceDocument.getOriginalFileName(),
+                extractedDocument.fullText() == null ? 0 : extractedDocument.fullText().length(),
+                extractedDocument.blocks() == null ? 0 : extractedDocument.blocks().size(),
+                preview(extractedDocument.fullText())
+        );
+
         ExtractedDocument normalizedDocument =
                 normalizeExtractedDocument(extractedDocument);
 
+        log.info(
+                "문서 정규화 결과. sourceDocumentId={}, fullTextLength={}, blockCount={}, blockTextLength={}",
+                sourceDocument.getId(),
+                normalizedDocument.fullText() == null ? 0 : normalizedDocument.fullText().length(),
+                normalizedDocument.blocks() == null ? 0 : normalizedDocument.blocks().size(),
+                calculateTextLength(normalizedDocument.blocks())
+        );
+
         List<DocumentBlock> classifiedBlocks =
                 documentBlockClassifier.classify(normalizedDocument.blocks());
+
+        log.info(
+                "문서 블록 분류 결과. sourceDocumentId={}, classifiedBlockCount={}, classifiedTextLength={}",
+                sourceDocument.getId(),
+                classifiedBlocks == null ? 0 : classifiedBlocks.size(),
+                calculateTextLength(classifiedBlocks)
+        );
+
+        if (shouldFallbackToNormalizedDocument(normalizedDocument, classifiedBlocks)) {
+            log.warn(
+                    "문서 블록 분류 결과가 원문 대비 부족하여 원본 TEXT 블록으로 fallback 처리합니다. sourceDocumentId={}, originalLength={}, classifiedLength={}, classifiedBlockCount={}",
+                    sourceDocument.getId(),
+                    calculateTextLength(normalizedDocument.blocks()),
+                    calculateTextLength(classifiedBlocks),
+                    classifiedBlocks == null ? 0 : classifiedBlocks.size()
+            );
+
+            return normalizedDocument;
+        }
 
         return ExtractedDocument.of(
                 normalizedDocument.fullText(),
                 classifiedBlocks
         );
+    }
+
+    private String preview(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+
+        String normalizedText = text.replace("\n", " ").trim();
+
+        return normalizedText.substring(
+                0,
+                Math.min(300, normalizedText.length())
+        );
+    }
+
+
+
+
+
+    private boolean shouldFallbackToNormalizedDocument(
+            ExtractedDocument normalizedDocument,
+            List<DocumentBlock> classifiedBlocks
+    ) {
+        if (classifiedBlocks == null || classifiedBlocks.isEmpty()) {
+            return true;
+        }
+
+        int originalLength = calculateTextLength(normalizedDocument.blocks());
+        int classifiedLength = calculateTextLength(classifiedBlocks);
+
+        if (originalLength == 0) {
+            return true;
+        }
+
+        double remainingRatio = (double) classifiedLength / originalLength;
+
+        return remainingRatio < 0.5;
+    }
+
+
+    private int calculateTextLength(List<DocumentBlock> blocks) {
+        if (blocks == null || blocks.isEmpty()) {
+            return 0;
+        }
+
+        return blocks.stream()
+                .filter(block -> block != null && block.text() != null)
+                .mapToInt(block -> block.text().length())
+                .sum();
     }
 
     private void validateSourceDocument(SourceDocument sourceDocument) {

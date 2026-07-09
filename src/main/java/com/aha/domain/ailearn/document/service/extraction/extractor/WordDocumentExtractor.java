@@ -37,6 +37,7 @@ public class WordDocumentExtractor implements DocumentExtractor {
     );
 
     private final Tika tika = new Tika();
+    private static final int MAX_EXTRACTED_TEXT_LENGTH = 5_000_000;
 
     @Override
     public boolean supports(String extension) {
@@ -59,7 +60,11 @@ public class WordDocumentExtractor implements DocumentExtractor {
                     sourceDocument.getOriginalFileName()
             );
 
-            String extractedText = tika.parseToString(inputStream, metadata);
+            String extractedText = tika.parseToString(
+                    inputStream,
+                    metadata,
+                    MAX_EXTRACTED_TEXT_LENGTH
+            );
 
             validateExtractedText(sourceDocument, extractedText);
 
