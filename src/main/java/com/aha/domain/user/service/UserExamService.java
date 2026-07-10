@@ -1,6 +1,7 @@
 package com.aha.domain.user.service;
 
 import com.aha.domain.exam.entity.ExamVersion;
+import com.aha.domain.exam.entity.ExamVersionStatus;
 import com.aha.domain.exam.repository.ExamVersionRepository;
 import com.aha.domain.user.dto.response.UserExamResponseDto;
 import com.aha.domain.user.entity.User;
@@ -20,8 +21,6 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class UserExamService {
 
-    private static final String ACTIVE_STATUS = "ACTIVE";
-
     private final UserRepository userRepository;
     private final ExamVersionRepository examVersionRepository;
     private final UserExamRepository userExamRepository;
@@ -32,7 +31,8 @@ public class UserExamService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         List<ExamVersion> activeExamVersions =
-                examVersionRepository.findAllByStatusOrderByExam_IdAscVersionNoDesc(ACTIVE_STATUS);
+                examVersionRepository.findAllByStatusOrderByExam_IdAscVersionNoDesc(
+                    ExamVersionStatus.ACTIVE);
 
         for (ExamVersion examVersion : activeExamVersions) {
             boolean alreadyExists = userExamRepository.existsByUser_IdAndExamVersion_Id(
