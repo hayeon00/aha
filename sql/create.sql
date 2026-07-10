@@ -6,6 +6,8 @@ DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk`;
 DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `document_processing_group`;
+DROP TABLE IF EXISTS `document_chunk_embedding`;
+DROP TABLE IF EXISTS `exam_scope_node_embedding`;
 
 DROP TABLE IF EXISTS `refresh_tokens`;
 
@@ -181,6 +183,37 @@ CREATE TABLE `exam_scope_node` (
                                        CHECK (`display_order` >= 0)
 );
 
+CREATE TABLE `exam_scope_node_embedding` (
+                                             `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                             `exam_scope_node_id` BIGINT NOT NULL,
+                                             `embedding_model` VARCHAR(100) NOT NULL,
+                                             `embedding_json` JSON NOT NULL,
+                                             `embedding_dimension` INT NOT NULL,
+                                             `embedding_text_hash` VARCHAR(64) NOT NULL,
+                                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                             PRIMARY KEY (`id`),
+
+                                             UNIQUE KEY `uk_scope_node_embedding_scope_model`
+                                                 (`exam_scope_node_id`, `embedding_model`),
+
+                                             INDEX `idx_scope_node_embedding_scope`
+                                                 (`exam_scope_node_id`),
+                                             INDEX `idx_scope_node_embedding_model`
+                                                 (`embedding_model`),
+                                             INDEX `idx_scope_node_embedding_text_hash`
+                                                 (`embedding_text_hash`),
+
+                                             CONSTRAINT `fk_scope_node_embedding_scope_node`
+                                                 FOREIGN KEY (`exam_scope_node_id`)
+                                                     REFERENCES `exam_scope_node` (`id`)
+                                                     ON DELETE CASCADE,
+
+                                             CONSTRAINT `chk_scope_node_embedding_dimension`
+                                                 CHECK (`embedding_dimension` > 0)
+);
+
 
 CREATE TABLE `user_exam` (
                              `id`              BIGINT   NOT NULL AUTO_INCREMENT,
@@ -334,6 +367,37 @@ CREATE TABLE `document_chunk` (
                                           `code_language` IS NULL
                                               OR `content_type` IN ('CODE', 'COMMAND', 'CONFIG')
                                           )
+);
+
+CREATE TABLE `document_chunk_embedding` (
+                                            `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                            `document_chunk_id` BIGINT NOT NULL,
+                                            `embedding_model` VARCHAR(100) NOT NULL,
+                                            `embedding_json` JSON NOT NULL,
+                                            `embedding_dimension` INT NOT NULL,
+                                            `embedding_text_hash` VARCHAR(64) NOT NULL,
+                                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                            PRIMARY KEY (`id`),
+
+                                            UNIQUE KEY `uk_document_chunk_embedding_chunk_model`
+                                                (`document_chunk_id`, `embedding_model`),
+
+                                            INDEX `idx_document_chunk_embedding_chunk`
+                                                (`document_chunk_id`),
+                                            INDEX `idx_document_chunk_embedding_model`
+                                                (`embedding_model`),
+                                            INDEX `idx_document_chunk_embedding_text_hash`
+                                                (`embedding_text_hash`),
+
+                                            CONSTRAINT `fk_document_chunk_embedding_chunk`
+                                                FOREIGN KEY (`document_chunk_id`)
+                                                    REFERENCES `document_chunk` (`id`)
+                                                    ON DELETE CASCADE,
+
+                                            CONSTRAINT `chk_document_chunk_embedding_dimension`
+                                                CHECK (`embedding_dimension` > 0)
 );
 
 CREATE TABLE `document_scope_mapping` (
