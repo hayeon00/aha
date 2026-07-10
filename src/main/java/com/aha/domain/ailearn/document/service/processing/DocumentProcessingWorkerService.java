@@ -1,7 +1,6 @@
 package com.aha.domain.ailearn.document.service.processing;
 
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStep;
-import com.aha.domain.ailearn.document.service.content.DocumentLearningContentBatchGenerationService;
 import com.aha.domain.ailearn.document.service.extraction.DocumentExtractionPipelineService;
 import com.aha.domain.ailearn.document.service.mapping.DocumentScopeMappingService;
 import com.aha.global.exception.BusinessException;
@@ -19,7 +18,6 @@ public class DocumentProcessingWorkerService {
     private final DocumentProcessingStatusService processingStatusService;
     private final DocumentExtractionPipelineService extractionService;
     private final DocumentScopeMappingService documentScopeMappingService;
-    private final DocumentLearningContentBatchGenerationService learningContentBatchGenerationService;
 
     @Async("documentProcessingTaskExecutor")
     public void process(Long processingGroupId) {
@@ -45,7 +43,7 @@ public class DocumentProcessingWorkerService {
 
             mapDocumentScopes(processingGroupId);
 
-            generateLearningContents(processingGroupId);
+            //generateLearningContents(processingGroupId);
 
             processingStatusService.complete(processingGroupId);
 
@@ -77,7 +75,7 @@ public class DocumentProcessingWorkerService {
         log.info("문서 목차 매핑 완료. processingGroupId={}", processingGroupId);
     }
 
-
+/*
     private void generateLearningContents(Long processingGroupId) {
 
         processingStatusService.updateStep(processingGroupId, DocumentProcessingStep.LEARNING_CONTENT_GENERATING);
@@ -88,6 +86,8 @@ public class DocumentProcessingWorkerService {
 
         log.info("목차별 개념 설명 생성 완료. processingGroupId={}", processingGroupId);
     }
+
+ */
 
 
 

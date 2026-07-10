@@ -12,14 +12,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
-/**
- * Please explain the class!!!
- *
- * @author : rlagkdus
- * @filename : DocumentScopeMappingResponseParser
- * @since : 2026. 6. 24. 수요일
- */
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -27,22 +19,22 @@ public class DocumentScopeMappingResponseParser {
 
     private final ObjectMapper objectMapper;
 
-    public List<ScopeMappingAiResultResponseDto> parse(String aiResponse){
-
-        if(aiResponse==null || aiResponse.isBlank()){
+    public List<ScopeMappingAiResultResponseDto> parse(String aiResponse) {
+        if (aiResponse == null || aiResponse.isBlank()) {
             throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
         }
 
-        try{
-            ScopeMappingAiResponseDto response = objectMapper.readValue(aiResponse, ScopeMappingAiResponseDto.class);
+        try {
+            ScopeMappingAiResponseDto response =
+                    objectMapper.readValue(aiResponse, ScopeMappingAiResponseDto.class);
 
-            if(response.mappings() == null || response.mappings().isEmpty()){
-                throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            if (response.mappings() == null) {
+                return List.of();
             }
 
             return response.mappings();
 
-        }catch (JacksonException exception){
+        } catch (JacksonException exception) {
             log.error(
                     "AI 목차 매핑 응답 파싱 실패. aiResponse={}",
                     aiResponse,

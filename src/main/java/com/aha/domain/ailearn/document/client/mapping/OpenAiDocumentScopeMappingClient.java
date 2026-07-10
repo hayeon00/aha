@@ -1,7 +1,6 @@
 package com.aha.domain.ailearn.document.client.mapping;
 
-import com.aha.domain.ailearn.document.dto.mapping.request.ChunkMappingRequestDto;
-import com.aha.domain.ailearn.document.dto.mapping.request.ScopeCandidateRequestDto;
+import com.aha.domain.ailearn.document.dto.mapping.request.ChunkScopeMappingRequestDto;
 import com.aha.domain.ailearn.document.dto.mapping.response.ScopeMappingAiResultResponseDto;
 import com.aha.domain.ailearn.document.service.processing.DocumentProcessingRetryExecutor;
 import com.aha.global.exception.BusinessException;
@@ -23,42 +22,51 @@ public class OpenAiDocumentScopeMappingClient implements DocumentScopeMappingCli
     private final DocumentScopeMappingResponseParser responseParser;
     private final DocumentProcessingRetryExecutor retryExecutor;
 
-    public OpenAiDocumentScopeMappingClient(ChatClient.Builder chatClientBuilder, DocumentScopeMappingPromptBuilder promptBuilder, DocumentScopeMappingResponseParser responseParser,DocumentProcessingRetryExecutor retryExecutor) {
-
+    public OpenAiDocumentScopeMappingClient(
+            ChatClient.Builder chatClientBuilder,
+            DocumentScopeMappingPromptBuilder promptBuilder,
+            DocumentScopeMappingResponseParser responseParser,
+            DocumentProcessingRetryExecutor retryExecutor
+    ) {
         this.chatClient = chatClientBuilder.build();
         this.promptBuilder = promptBuilder;
         this.responseParser = responseParser;
         this.retryExecutor = retryExecutor;
-
     }
 
     @Override
-    public List<ScopeMappingAiResultResponseDto> mapChunks(List<ChunkMappingRequestDto>  chunks, List<ScopeCandidateRequestDto> scopeCandidates){
+    public List<ScopeMappingAiResultResponseDto> mapChunks(
+            List<ChunkScopeMappingRequestDto> requests
+    ) {
+        validateInput(requests);
 
-        validateInput(chunks, scopeCandidates);
+        String prompt = promptBuilder.build(requests);
 
-        String prompt =  promptBuilder.build(chunks, scopeCandidates);
+        int candidateCount = requests.stream()
+                .mapToInt(request -> request.scopeCandidates() == null ? 0 : request.scopeCandidates().size())
+                .sum();
 
         log.info(
-                "OpenAI 목차 매핑 요청 시작. chunkCount={}, scopeNodeCount={}",
-                chunks.size(),
-                scopeCandidates.size()
+                "OpenAI 목차 매핑 요청 시작. requestCount={}, totalCandidateCount={}",
+                requests.size(),
+                candidateCount
         );
 
         String aiResponse;
 
-        try{
+        try {
             aiResponse = retryExecutor.execute(
                     "document-scope-mapping",
                     () -> chatClient.prompt()
                             .user(prompt)
                             .call()
-                            .content());
+                            .content()
+            );
 
-        }catch (BusinessException exception){
+        } catch (BusinessException exception) {
             throw exception;
 
-        } catch (Exception exception){
+        } catch (Exception exception) {
             log.error(
                     "OpenAI 목차 매핑 요청 실패.",
                     exception
@@ -67,8 +75,7 @@ public class OpenAiDocumentScopeMappingClient implements DocumentScopeMappingCli
             throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
         }
 
-        if(aiResponse == null || aiResponse.isBlank()){
-
+        if (aiResponse == null || aiResponse.isBlank()) {
             throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
         }
 
@@ -82,18 +89,19 @@ public class OpenAiDocumentScopeMappingClient implements DocumentScopeMappingCli
         return results;
     }
 
-    private void validateInput(List<ChunkMappingRequestDto> chunks, List<ScopeCandidateRequestDto> scopeCandidates) {
-
-        if(chunks == null || chunks.isEmpty()){
-
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
-        }
-
-        if(scopeCandidates == null || scopeCandidates.isEmpty()){
-
+    private void validateInput(List<ChunkScopeMappingRequestDto> requests) {
+        if (requests == null || requests.isEmpty()) {
             throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
         }
+
+        for (ChunkScopeMappingRequestDto request : requests) {
+            if (request == null || request.chunk() == null) {
+                throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            }
+
+            if (request.scopeCandidates() == null || request.scopeCandidates().isEmpty()) {
+                throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            }
+        }
     }
-
-
 }
