@@ -1,42 +1,31 @@
 package com.aha.domain.ailearn.document.controller;
 
-import com.aha.domain.ailearn.document.dto.content.response.DocumentBasedLearningContentResponseDto;
-import com.aha.domain.ailearn.document.service.content.DocumentBasedLearningContentGenerationService;
+import com.aha.domain.ailearn.document.dto.content.response.MappedDocumentChunkResponseDto;
+import com.aha.domain.ailearn.document.service.mapping.DocumentScopeMappingQueryService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-/**
- * Please explain the class!!!
- *
- * @author : rlagkdus
- * @filename : DocumentLearningContentController
- * @since : 2026. 6. 25. 목요일
- */
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/ai-learning/document-contents")
 @RequiredArgsConstructor
 public class DocumentLearningContentController {
 
-    private final DocumentBasedLearningContentGenerationService generationService;
+    private final DocumentScopeMappingQueryService documentScopeMappingQueryService;
 
-    @PostMapping("/user-exams/{userExamId}/scope-nodes/{examScopeNodeId}/generate")
-    public ResponseEntity<ApiResponse<DocumentBasedLearningContentResponseDto>>
-    generateLearningContent(
+    @GetMapping("/user-exams/{userExamId}/scope-nodes/{examScopeNodeId}/mapped-chunks")
+    public ResponseEntity<ApiResponse<List<MappedDocumentChunkResponseDto>>> getMappedDocumentChunks(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long userExamId,
             @PathVariable Long examScopeNodeId
     ) {
-        DocumentBasedLearningContentResponseDto response =
-                generationService.generate(
-                        userDetails.getId(),
+        List<MappedDocumentChunkResponseDto> response =
+                documentScopeMappingQueryService.getMappedDocumentChunks(
                         userExamId,
                         examScopeNodeId
                 );
@@ -44,10 +33,9 @@ public class DocumentLearningContentController {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         200,
-                        "선택한 목차의 개념 설명 생성 및 저장이 완료되었습니다.",
+                        "선택한 목차에 매핑된 문서 내용을 조회했습니다.",
                         response
                 )
         );
     }
-
 }
