@@ -1,5 +1,6 @@
 package com.aha.domain.ailearn.document.entity;
 
+import com.aha.domain.ailearn.document.enums.DocumentChunkCodeLanguage;
 import com.aha.domain.ailearn.document.enums.DocumentChunkContentType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -72,6 +73,10 @@ public class DocumentChunk {
     @Column(name = "content_type", nullable = false, length = 30)
     private DocumentChunkContentType contentType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "code_language", length = 30)
+    private DocumentChunkCodeLanguage codeLanguage;
+
     @Lob
     @Column(name = "content_text", nullable = false, columnDefinition = "LONGTEXT")
     private String contentText;
@@ -109,6 +114,7 @@ public class DocumentChunk {
             String sectionTitle,
             String headingPath,
             DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage,
             String contentText,
             String rawText,
             String summary,
@@ -122,14 +128,15 @@ public class DocumentChunk {
         validateContentText(contentText);
         validateTokenCount(tokenCount);
 
+        DocumentChunkContentType resolvedContentType = resolveContentType(contentType);
+
         this.sourceDocument = sourceDocument;
         this.chunkOrder = chunkOrder;
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
         this.headingPath = normalizeNullableText(headingPath);
-        this.contentType = contentType != null
-                ? contentType
-                : DocumentChunkContentType.TEXT;
+        this.contentType = resolvedContentType;
+        this.codeLanguage = resolveCodeLanguage(resolvedContentType, codeLanguage);
         this.contentText = contentText.trim();
         this.rawText = normalizeNullableText(rawText);
         this.summary = normalizeNullableText(summary);
@@ -148,22 +155,55 @@ public class DocumentChunk {
             String sectionTitle,
             String headingPath,
             DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage,
             String structureJson
     ) {
         validatePageNo(pageNo);
 
+        DocumentChunkContentType resolvedContentType = resolveContentType(contentType);
+
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
         this.headingPath = normalizeNullableText(headingPath);
-        this.contentType = contentType != null
-                ? contentType
-                : DocumentChunkContentType.TEXT;
+        this.contentType = resolvedContentType;
+        this.codeLanguage = resolveCodeLanguage(resolvedContentType, codeLanguage);
         this.structureJson = normalizeNullableText(structureJson);
     }
 
     public void updateTokenCount(Integer tokenCount) {
         validateTokenCount(tokenCount);
         this.tokenCount = tokenCount;
+    }
+
+    private DocumentChunkContentType resolveContentType(
+            DocumentChunkContentType contentType
+    ) {
+        if (contentType == null) {
+            return DocumentChunkContentType.TEXT;
+        }
+
+        return contentType;
+    }
+
+    private DocumentChunkCodeLanguage resolveCodeLanguage(
+            DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage
+    ) {
+        if (!supportsCodeLanguage(contentType)) {
+            return null;
+        }
+
+        if (codeLanguage == null) {
+            return DocumentChunkCodeLanguage.UNKNOWN;
+        }
+
+        return codeLanguage;
+    }
+
+    private boolean supportsCodeLanguage(DocumentChunkContentType contentType) {
+        return contentType == DocumentChunkContentType.CODE
+                || contentType == DocumentChunkContentType.COMMAND
+                || contentType == DocumentChunkContentType.CONFIG;
     }
 
     private void validateSourceDocument(

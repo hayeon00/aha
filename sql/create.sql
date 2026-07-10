@@ -1,33 +1,11 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
-
-DROP TABLE IF EXISTS `ai_reference`;
-DROP TABLE IF EXISTS `ai_message`;
-DROP TABLE IF EXISTS `learning_problem_attempt`;
-DROP TABLE IF EXISTS `learning_session`;
-DROP TABLE IF EXISTS `user`;
-
-DROP TABLE IF EXISTS `learning_content_body`;
-DROP TABLE IF EXISTS `ai_generated_learning_content_body`;
-DROP TABLE IF EXISTS `learning_content`;
-DROP TABLE IF EXISTS `learning_content_unit_item`;
-DROP TABLE IF EXISTS `learning_content_unit`;
-
-DROP TABLE IF EXISTS `learning_source_document`;
-
-
-
-DROP TABLE IF EXISTS `learning_coach`;
-DROP TABLE IF EXISTS `learning_memo`;
 DROP TABLE IF EXISTS `learning_content_reference`;
 DROP TABLE IF EXISTS `user_learning_content`;
 DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk`;
-DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `document_processing_group`;
-DROP TABLE IF EXISTS `extracted_content`;
-
 
 DROP TABLE IF EXISTS `refresh_tokens`;
 
@@ -316,6 +294,7 @@ CREATE TABLE `document_chunk` (
                                   `section_title` VARCHAR(255) NULL,
                                   `heading_path` VARCHAR(1000) NULL,
                                   `content_type` VARCHAR(30) NOT NULL DEFAULT 'TEXT',
+                                  `code_language` VARCHAR(30) NULL,
                                   `content_text` LONGTEXT NOT NULL,
                                   `raw_text` LONGTEXT NULL,
                                   `summary` TEXT NULL,
@@ -335,6 +314,8 @@ CREATE TABLE `document_chunk` (
                                       (`source_document_id`, `page_no`),
                                   INDEX `idx_document_chunk_content_type`
                                       (`content_type`),
+                                  INDEX `idx_document_chunk_code_language`
+                                      (`code_language`),
                                   INDEX `idx_document_chunk_heading_path`
                                       (`source_document_id`, `heading_path`(255)),
 
@@ -347,7 +328,12 @@ CREATE TABLE `document_chunk` (
                                   CONSTRAINT `chk_document_chunk_page_no`
                                       CHECK (`page_no` IS NULL OR `page_no` >= 1),
                                   CONSTRAINT `chk_document_chunk_token_count`
-                                      CHECK (`token_count` IS NULL OR `token_count` >= 0)
+                                      CHECK (`token_count` IS NULL OR `token_count` >= 0),
+                                  CONSTRAINT `chk_document_chunk_code_language`
+                                      CHECK (
+                                          `code_language` IS NULL
+                                              OR `content_type` IN ('CODE', 'COMMAND', 'CONFIG')
+                                          )
 );
 
 CREATE TABLE `document_scope_mapping` (
