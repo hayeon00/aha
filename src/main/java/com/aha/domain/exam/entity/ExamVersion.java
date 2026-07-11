@@ -3,6 +3,8 @@ package com.aha.domain.exam.entity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -76,8 +78,9 @@ public class ExamVersion {
   @Column(name = "subject_fail_threshold")
   private Integer subjectFailThreshold;
 
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
-  private String status;
+  private ExamVersionStatus status;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
@@ -94,7 +97,7 @@ public class ExamVersion {
   public ExamVersion(Exam exam, Integer versionNo, String versionName, Integer defaultQuestionCount,
       String durationType, Integer defaultDurationSeconds, Integer totalScore,
       String passingRuleType, Integer passingScore, boolean hasSubjectFailRule,
-      Integer subjectFailThreshold, String status) {
+      Integer subjectFailThreshold, ExamVersionStatus status) {
     this.exam = exam;
     this.versionNo = versionNo;
     this.versionName = versionName;
