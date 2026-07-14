@@ -1,7 +1,10 @@
 package com.aha.domain.exam.entity;
 
+import com.aha.domain.exam.enums.ExamPartCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -42,8 +45,9 @@ public class ExamPart {
   @OnDelete(action = OnDeleteAction.CASCADE)
   private ExamVersion examVersion;
 
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 50)
-  private String code;
+  private ExamPartCode code;
 
   @Column(nullable = false, length = 100)
   private String name;
@@ -78,11 +82,11 @@ public class ExamPart {
   private LocalDateTime updatedAt;
 
   @Builder
-  public ExamPart(ExamVersion examVersion, String code, String name, Integer defaultQuestionCount,
+  public ExamPart(ExamVersion examVersion, ExamPart code, String name, Integer defaultQuestionCount,
       Integer defaultDurationSeconds, Integer totalScore, boolean isSubjectFailTarget,
       Integer subjectFailThresholdScore, boolean isActive, Integer displayOrder) {
     this.examVersion = examVersion;
-    this.code = code;
+    this.code = code.getCode();
     this.name = name;
     this.defaultQuestionCount = defaultQuestionCount;
     this.defaultDurationSeconds = defaultDurationSeconds;

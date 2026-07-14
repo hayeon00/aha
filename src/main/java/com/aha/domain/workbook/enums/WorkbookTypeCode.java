@@ -1,4 +1,4 @@
-package com.aha.domain.workbook.entity;
+package com.aha.domain.workbook.enums;
 
 
 import lombok.Getter;

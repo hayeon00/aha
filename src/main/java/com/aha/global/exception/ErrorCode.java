@@ -46,10 +46,24 @@ public enum ErrorCode {
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
     //EXAM
-    EXAM_VERSION_NOT_FOUND(400,"EXAM_VERSION_001","잘못된 요청입니다.");
+    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
+    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
 
     //WORKBOOK
+    WORKBOOK_NOT_FOUND(404,"WORKBOOK_001","워크북에 접근할 수 없습니다."),
+    WORKBOOK_NOT_PUBLISHED(409,"WORKBOOK_002","워크북에 접근할 수 없습니다." ),
+    ATTEMPT_ALREADY_SOLVING(409,"WORKBOOK_003","워크북을 시작할 수 없습니다." ),
+    ATTEMPT_NOT_FOUND(422,"WORKBOOK_004", "워크북에 접근할 수 없습니다."),
+    WORKBOOK_ITEM_COUNT_MISMATCH(500,"WORKBOOK_005","워크북에 문제가 발생했습니다." ),
+    WORKBOOK_NOT_INCLUDE_PROBLEM(404,"WORKBOOK_006","문제를 찾을 수 없습니다." ),
+    WORKBOOK_NOT_MATCH_PAST(500,"WORKBOOK_007","서버 내부 오류입니다."),
+    ATTEMPT_EXCEEDED_TIME_LIMIT(422,"WORKBOOK_008","풀이를 진행할 수 없습니다."),
+    ATTEMPT_ALREADY_GRADED(409,"WORKBOOK_009" ,"풀이를 진행할 수 없습니다."),
+    WORKBOOK_TYPE_NOT_SUPPORTED( 404, "WORKBOOK_010","지원하지 않는 워크북 타입입니다." ),
 
+    //PROBLEM
+    PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." );
 
     private final int status;
     private final String code;

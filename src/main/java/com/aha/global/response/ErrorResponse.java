@@ -8,6 +8,7 @@ import java.util.List;
 public record ErrorResponse(
         String code,
         String message,
+        Object data,
         List<FieldError> errors
 ) {
 
@@ -15,7 +16,17 @@ public record ErrorResponse(
         return new ErrorResponse(
                 errorCode.getCode(),
                 errorCode.getMessage(),
+                null,
                 List.of()
+        );
+    }
+
+    public static ErrorResponse of(ErrorCode errorCode, Object data) {
+        return new ErrorResponse(
+            errorCode.getCode(),
+            errorCode.getMessage(),
+            data,
+            List.of()
         );
     }
 
@@ -23,6 +34,7 @@ public record ErrorResponse(
         return new ErrorResponse(
                 errorCode.getCode(),
                 errorCode.getMessage(),
+                null,
                 FieldError.of(bindingResult)
         );
     }

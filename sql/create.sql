@@ -484,7 +484,11 @@ CREATE TABLE `problem` (
                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                            `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
                            CONSTRAINT `fk_problem_exam_scope_node_id`
-                               FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
+                               FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
+                           CONSTRAINT `chk_problem_score`
+                                CHECK(`score`>0),
+                           CONSTRAINT `chk_problem_choice_count`
+                                CHECK(`choice_count`>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `workbook` (
@@ -492,6 +496,7 @@ CREATE TABLE `workbook` (
                             `exam_version_id` BIGINT NOT NULL,
                             `workbook_type_id` BIGINT NOT NULL,
                             `status` VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+                            `total_problem_count` INT NOT NULL,
                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                             `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
                             CONSTRAINT `fk_workbook_workbook_type_id`
@@ -506,7 +511,6 @@ CREATE TABLE `past_exam_workbook` (
                                       `year` INT NOT NULL,
                                       `round_no` INT NOT NULL,
                                       `time_limit` INT NOT NULL,
-                                      `total_problem_count` INT NOT NULL,
                                       `exam_date` DATETIME NOT NULL,
                                       `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                       `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
@@ -527,25 +531,29 @@ CREATE TABLE `workbook_item` (
                                  CONSTRAINT `fk_workbook_item_workbook_id`
                                      FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
                                  CONSTRAINT `fk_workbook_item_problem_id`
-                                     FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
+                                     FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+                                 CONSTRAINT `chk_workbook_item_sort_order`
+                                     CHECK (`sort_order` >= 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `workbook_attempt` (
                                     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
                                     `user_id` BIGINT NOT NULL,
                                     `workbook_id` BIGINT NOT NULL,
-                                    `status` VARCHAR(30) NOT NULL,
+                                    `status` VARCHAR(30) NOT NULL DEFAULT 'SOLVING',
                                     `total_score` INT NULL DEFAULT NULL,
                                     `is_passed` TINYINT(1) NULL DEFAULT NULL,
                                     `result_message` VARCHAR(255) NULL DEFAULT NULL,
                                     `stat_json` JSON NULL DEFAULT NULL,
-                                    `elapsed_time` INT NOT NULL DEFAULT 0,
+                                    `elapsed_time` INT,
                                     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                     `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
                                     CONSTRAINT `fk_workbook_attempt_user_id`
                                         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
                                     CONSTRAINT `fk_workbook_attempt_workbook_id`
-                                        FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`)
+                                        FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
+                                    CONSTRAINT `chk_workbook_attempt_total_score`
+                                        CHECK (`total_score` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE UNIQUE INDEX `uk_sub_user_workbook_solving`
@@ -560,8 +568,8 @@ CREATE TABLE `user_answer` (
                                `workbook_attempt_id` BIGINT NOT NULL,
                                `problem_id` BIGINT NOT NULL,
                                `answer` VARCHAR(500) NULL,
-                               `is_correct` TINYINT(1) NOT NULL,
-                               `is_checked` TINYINT(1) NULL DEFAULT NULL,
+                               `is_correct` TINYINT(1) NOT NULL DEFAULT FALSE,
+                               `is_checked` TINYINT(1) NOT NULL DEFAULT FALSE,
                                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
                                UNIQUE KEY `uk_user_answer_attempt_problem` (`workbook_attempt_id`, `problem_id`),
@@ -580,5 +588,7 @@ CREATE TABLE `problem_choice` (
                                   `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
                                   UNIQUE KEY `uk_problem_choice_order` (`problem_id`, `sort_order`),
                                   CONSTRAINT `fk_problem_choice_problem_id`
-                                      FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
+                                      FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+                                  CONSTRAINT `chk_problem_choice_sort_order`
+                                    CHECK (`sort_order` >= 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

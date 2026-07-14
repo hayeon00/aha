@@ -1,15 +1,17 @@
 package com.aha.domain.workbook.entity;
 
-import com.aha.domain.workbook.enums.WorkbookTypeCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.Min;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -18,35 +20,31 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Table(
-    name = "workbook_type",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_workbook_type_code",
-            columnNames = {"code"}
-        ),
-        @UniqueConstraint(
-            name = "uk_workbook_type_display_order",
-            columnNames = {"display_order"}
-        )}
+    name="problem_choice",
+    uniqueConstraints = @UniqueConstraint(
+        name = "uk_problem_choice_order",
+        columnNames = {"problem_id","sort_order"}
+    )
 )
 @Entity
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class WorkbookType {
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ProblemChoice {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "code", length = 50, nullable = false)
-    private WorkbookTypeCode code;
+    @ManyToOne(fetch = FetchType.LAZY,optional = false)
+    @JoinColumn(name = "problem_id",nullable = false,foreignKey = @ForeignKey(name="fk_problem_choice_problem_id"))
+    private Problem problem;
 
-    @Column(name = "name", length = 100, nullable = false)
-    private String name;
+    @Min(1)
+    @Column(name="sort_order",nullable = false)
+    private Integer sortOrder;
 
-    @Column(name = "display_order", nullable = false)
-    private Integer displayOrder;
+    @Column(name="content",nullable = false,length = 500)
+    private String content;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

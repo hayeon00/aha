@@ -327,8 +327,72 @@
 }
 
 .workbook-id {
-    padding-top: 10px;
+    min-width: 0;
+}
+
+.workbook-item-footer {
+    padding-top: 12px;
     border-top: 1px solid #f1f3f5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.workbook-start-button {
+    min-width: 96px;
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid #ff6a00;
+    border-radius: 7px;
+    background: #ff6a00;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+            background 0.16s ease,
+            border-color 0.16s ease,
+            box-shadow 0.16s ease,
+            transform 0.16s ease;
+}
+
+.workbook-start-button:hover:not(:disabled) {
+    background: #ed6200;
+    border-color: #ed6200;
+    box-shadow: 0 8px 18px rgba(255, 106, 0, 0.2);
+    transform: translateY(-1px);
+}
+
+.workbook-start-button:focus-visible {
+    outline: 3px solid rgba(255, 106, 0, 0.22);
+    outline-offset: 2px;
+}
+
+.workbook-start-button:disabled {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: default;
+}
+
+.workbook-attempt-feedback {
+    margin: -8px 0 0;
+    padding: 9px 11px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.workbook-attempt-feedback.success {
+    background: #fff4ea;
+    color: #d95a00;
+}
+
+.workbook-attempt-feedback.error {
+    background: #fef2f2;
+    color: #b91c1c;
 }
 
 @media (max-width: 980px) {

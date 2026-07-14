@@ -53,9 +53,6 @@ public class PastExamWorkbook {
     @Column(name = "time_limit", nullable = false)
     private Integer timeLimit;
 
-    @Column(name = "total_problem_count", nullable = false)
-    private Integer totalProblemCount;
-
     @Column(name = "exam_date", nullable = false)
     private LocalDateTime examDate;
 
