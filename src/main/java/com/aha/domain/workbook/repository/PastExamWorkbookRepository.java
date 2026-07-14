@@ -1,7 +1,7 @@
 package com.aha.domain.workbook.repository;
 
 import com.aha.domain.workbook.entity.PastExamWorkbook;
-import com.aha.domain.workbook.entity.WorkbookStatus;
+import com.aha.domain.workbook.enums.WorkbookStatus;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
