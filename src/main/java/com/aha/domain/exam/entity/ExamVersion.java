@@ -39,79 +39,84 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ExamVersion {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "exam_id", nullable = false, foreignKey = @ForeignKey(name = "fk_exam_version_exam_id"))
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  private Exam exam;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "exam_id", nullable = false, foreignKey = @ForeignKey(name = "fk_exam_version_exam_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Exam exam;
 
-  @Column(name = "version_no", nullable = false)
-  private Integer versionNo;
+    @Column(name = "version_no", nullable = false)
+    private Integer versionNo;
 
-  @Column(name = "version_name", nullable = false, length = 100)
-  private String versionName;
+    @Column(name = "version_name", nullable = false, length = 100)
+    private String versionName;
 
-  @Column(name = "default_question_count", nullable = false)
-  private Integer defaultQuestionCount;
+    @Column(name = "default_question_count", nullable = false)
+    private Integer defaultQuestionCount;
 
-  @Column(name = "duration_type", nullable = false, length = 50)
-  private String durationType;
+    @Column(name = "duration_type", nullable = false, length = 50)
+    private String durationType;
 
-  @Column(name = "default_duration_seconds")
-  private Integer defaultDurationSeconds;
+    @Column(name = "default_duration_seconds")
+    private Integer defaultDurationSeconds;
 
-  @Column(name = "total_score", nullable = false)
-  private Integer totalScore;
+    @Column(name = "total_score", nullable = false)
+    private Integer totalScore;
 
-  @Column(name = "passing_rule_type", nullable = false, length = 50)
-  private String passingRuleType;
+    @Column(name = "passing_rule_type", nullable = false, length = 50)
+    private String passingRuleType;
 
-  @Column(name = "passing_score", nullable = false)
-  private Integer passingScore;
+    @Column(name = "passing_score", nullable = false)
+    private Integer passingScore;
 
-  @Column(name = "has_subject_fail_rule", nullable = false)
-  private boolean hasSubjectFailRule;
+    @Column(name = "has_subject_fail_rule", nullable = false)
+    private boolean hasSubjectFailRule;
 
-  @Column(name = "subject_fail_threshold")
-  private Integer subjectFailThreshold;
+    @Column(name = "subject_fail_threshold")
+    private Integer subjectFailThreshold;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
-  private ExamVersionStatus status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ExamVersionStatus status;
 
-  @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
-  private LocalDateTime createdAt;
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-  @UpdateTimestamp
-  @Column(name = "updated_at")
-  private LocalDateTime updatedAt;
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-  @OneToMany(mappedBy = "examVersion", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<ExamPart> parts = new ArrayList<>();
+    @OneToMany(mappedBy = "examVersion", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ExamPart> parts = new ArrayList<>();
 
-  @Builder
-  public ExamVersion(Exam exam, Integer versionNo, String versionName, Integer defaultQuestionCount,
-      String durationType, Integer defaultDurationSeconds, Integer totalScore,
-      String passingRuleType, Integer passingScore, boolean hasSubjectFailRule,
-      Integer subjectFailThreshold, ExamVersionStatus status) {
-    this.exam = exam;
-    this.versionNo = versionNo;
-    this.versionName = versionName;
-    this.defaultQuestionCount = defaultQuestionCount;
-    this.durationType = durationType;
-    this.defaultDurationSeconds = defaultDurationSeconds;
-    this.totalScore = totalScore;
-    this.passingRuleType = passingRuleType;
-    this.passingScore = passingScore;
-    this.hasSubjectFailRule = hasSubjectFailRule;
-    this.subjectFailThreshold = subjectFailThreshold;
-    this.status = status;
-    if (exam != null) {
-      exam.getVersions().add(this);
+    @Builder
+    public ExamVersion(Exam exam, Integer versionNo, String versionName,
+        Integer defaultQuestionCount,
+        String durationType, Integer defaultDurationSeconds, Integer totalScore,
+        String passingRuleType, Integer passingScore, boolean hasSubjectFailRule,
+        Integer subjectFailThreshold, ExamVersionStatus status) {
+        this.exam = exam;
+        this.versionNo = versionNo;
+        this.versionName = versionName;
+        this.defaultQuestionCount = defaultQuestionCount;
+        this.durationType = durationType;
+        this.defaultDurationSeconds = defaultDurationSeconds;
+        this.totalScore = totalScore;
+        this.passingRuleType = passingRuleType;
+        this.passingScore = passingScore;
+        this.hasSubjectFailRule = hasSubjectFailRule;
+        this.subjectFailThreshold = subjectFailThreshold;
+        this.status = status;
+        if (exam != null) {
+            exam.getVersions().add(this);
+        }
     }
-  }
+
+    public boolean isActive() {
+        return status==ExamVersionStatus.ACTIVE;
+    }
 }
