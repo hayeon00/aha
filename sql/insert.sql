@@ -76,12 +76,12 @@ SET @exam_version_id = (SELECT `id` FROM `exam_version` WHERE `version_name` = '
 SET @workbook_type_id = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
 -- 3) '2025년 제1회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `created_at`, `updated_at`)
-VALUES (@exam_version_id, @workbook_type_id, 'PUBLISHED', NOW(), NOW());
+INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `total_problem_count`,`created_at`, `updated_at`)
+VALUES (@exam_version_id, @workbook_type_id, 'PUBLISHED', 10, NOW(), NOW());
 SET @workbook_id = LAST_INSERT_ID();
 
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `total_problem_count`, `time_limit`, `created_at`, `updated_at`,`exam_date`)
-VALUES (@workbook_id, 1, 2025, 1, 10,5400, NOW(), NOW(),'2026-03-01 09:00:00');
+INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`,`exam_date`)
+VALUES (@workbook_id, 1, 2025, 1, 5400, NOW(), NOW(),'2026-03-01 09:00:00');
 
 
 -- =================================================================
@@ -462,13 +462,13 @@ SET @exam_version_id_2 = (SELECT `id` FROM `exam_version` WHERE `version_name` =
 SET @workbook_type_id_2 = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
 -- '2025년 제2회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `created_at`, `updated_at`)
-VALUES (@exam_version_id_2, @workbook_type_id_2, 'PUBLISHED', NOW(), NOW());
+INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`,`total_problem_count`, `created_at`, `updated_at`)
+VALUES (@exam_version_id_2, @workbook_type_id_2, 'PUBLISHED', 10,NOW(), NOW());
 SET @workbook_id_2 = LAST_INSERT_ID();
 
 -- 2회차 기출 세부 마스터 등록 (시험일자: 2026-06-01 기준 예시)
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `total_problem_count`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
-VALUES (@workbook_id_2, 1, 2025, 2, 10, 5400, NOW(), NOW(), '2026-06-01 09:00:00');
+INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
+VALUES (@workbook_id_2, 1, 2025, 2, 5400, NOW(), NOW(), '2026-06-01 09:00:00');
 
 
 -- =================================================================
@@ -643,13 +643,13 @@ SET @exam_version_id_3 = (SELECT `id` FROM `exam_version` WHERE `version_name` =
 SET @workbook_type_id_3 = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
 -- '2025년 제3회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `created_at`, `updated_at`)
-VALUES (@exam_version_id_3, @workbook_type_id_3, 'PUBLISHED', NOW(), NOW());
+INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `total_problem_count`,`created_at`, `updated_at`)
+VALUES (@exam_version_id_3, @workbook_type_id_3, 'PUBLISHED', 10,NOW(), NOW());
 SET @workbook_id_3 = LAST_INSERT_ID();
 
 -- 3회차 기출 세부 마스터 등록 (시험일자: 2026-09-01 기준 예시)
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `total_problem_count`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
-VALUES (@workbook_id_3, 1, 2025, 3, 10, 5400, NOW(), NOW(), '2026-09-01 09:00:00');
+INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
+VALUES (@workbook_id_3, 1, 2025, 3,  5400, NOW(), NOW(), '2026-09-01 09:00:00');
 
 
 -- =================================================================
