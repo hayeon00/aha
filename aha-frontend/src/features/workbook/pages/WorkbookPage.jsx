@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     getWorkbookExams,
     getWorkbooks,
     getWorkbookTypes,
+    startWorkbookAttempt,
 } from "../api/workbookApi.js";
 import "./WorkbookPage.css";
 
@@ -63,7 +65,23 @@ const formatProblemCount = (totalProblemCount) => {
     return `${totalProblemCount}문항`;
 };
 
+const getAttemptErrorMessage = (errorCode) => {
+    switch (errorCode) {
+        case "WORKBOOK_001":
+        case "WORKBOOK_002":
+            return "지금은 이 문제집을 시작할 수 없습니다.";
+        case "EXAM_VERSION_001":
+        case "EXAM_001":
+            return "시험 정보가 변경되었습니다. 목록을 새로 확인해 주세요.";
+        case "WORKBOOK_003":
+            return "이미 풀이 중인 문제집입니다.";
+        default:
+            return "풀이를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+};
+
 function WorkbookPage() {
+    const navigate = useNavigate();
     const [exams, setExams] = useState([]);
     const [selectedExam, setSelectedExam] = useState(null);
     const [workbookTypes, setWorkbookTypes] = useState([]);
@@ -77,6 +95,8 @@ function WorkbookPage() {
     const [statusText, setStatusText] = useState("시험 목록을 불러오는 중");
     const [lastQuery, setLastQuery] = useState("");
     const [silentRefreshCount, setSilentRefreshCount] = useState(0);
+    const [startingWorkbookId, setStartingWorkbookId] = useState(null);
+    const [attemptFeedback, setAttemptFeedback] = useState(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -219,6 +239,59 @@ function WorkbookPage() {
         });
     };
 
+    const handleStartAttempt = async (workbook) => {
+        if (startingWorkbookId !== null) {
+            return;
+        }
+
+        const workbookId = workbook.id;
+        const workbookTitle = getWorkbookTitle(workbook);
+
+        setStartingWorkbookId(workbookId);
+        setAttemptFeedback(null);
+        sessionStorage.setItem(`workbook-title-${workbookId}`, workbookTitle);
+
+        try {
+            const response = await startWorkbookAttempt(workbookId);
+            const attemptId = response.data?.id ?? response.data?.attemptId;
+
+            if (!attemptId) {
+                throw new Error("풀이 시작 응답에 attemptId가 없습니다.");
+            }
+
+            setAttemptFeedback({
+                workbookId,
+                type: "success",
+                message: "풀이 준비가 완료되었습니다.",
+                attempt: response.data,
+            });
+            navigate(`/problems/${workbookId}/attempts/${attemptId}`, {
+                state: { workbookTitle },
+            });
+        } catch (error) {
+            if (error.errorCode === "WORKBOOK_003") {
+                const existingAttemptId =
+                    error.data?.attemptId ??
+                    (typeof error.data === "number" ? error.data : null);
+
+                if (existingAttemptId) {
+                    navigate(`/problems/${workbookId}/attempts/${existingAttemptId}`, {
+                        state: { workbookTitle },
+                    });
+                    return;
+                }
+            }
+            console.error("문제집 풀이 시작 실패:", error);
+            setAttemptFeedback({
+                workbookId,
+                type: "error",
+                message: getAttemptErrorMessage(error.errorCode),
+            });
+        } finally {
+            setStartingWorkbookId(null);
+        }
+    };
+
     const isSelected = Boolean(selectedExam);
 
     return (
@@ -344,7 +417,35 @@ function WorkbookPage() {
                                 </div>
                             </div>
 
-                            <span className="workbook-id">ID {workbook.id}</span>
+                            <div className="workbook-item-footer">
+                                <span className="workbook-id">ID {workbook.id}</span>
+                                <button
+                                    type="button"
+                                    className="workbook-start-button"
+                                    disabled={
+                                        startingWorkbookId !== null ||
+                                        (attemptFeedback?.workbookId === workbook.id &&
+                                            attemptFeedback.type === "success")
+                                    }
+                                    onClick={() => handleStartAttempt(workbook)}
+                                >
+                                    {startingWorkbookId === workbook.id
+                                        ? "시작 중..."
+                                        : attemptFeedback?.workbookId === workbook.id &&
+                                            attemptFeedback.type === "success"
+                                          ? "준비 완료"
+                                          : "풀이 시작"}
+                                </button>
+                            </div>
+
+                            {attemptFeedback?.workbookId === workbook.id && (
+                                <p
+                                    className={`workbook-attempt-feedback ${attemptFeedback.type}`}
+                                    role={attemptFeedback.type === "error" ? "alert" : "status"}
+                                >
+                                    {attemptFeedback.message}
+                                </p>
+                            )}
                         </article>
                     ))}
 
