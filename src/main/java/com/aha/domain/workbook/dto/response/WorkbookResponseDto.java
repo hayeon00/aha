@@ -22,7 +22,7 @@ public record WorkbookResponseDto(
             .year(pew.getYear())
             .roundNo(pew.getRoundNo())
             .timeLimit(pew.getTimeLimit())
-            .totalProblemCount(pew.getTotalProblemCount())
+            .totalProblemCount(pew.getWorkbook().getTotalProblemCount())
             .examDate(pew.getExamDate())
             .build();
     }
