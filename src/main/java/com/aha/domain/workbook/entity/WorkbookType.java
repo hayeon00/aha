@@ -1,5 +1,6 @@
 package com.aha.domain.workbook.entity;
 
+import com.aha.domain.workbook.enums.WorkbookTypeCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
