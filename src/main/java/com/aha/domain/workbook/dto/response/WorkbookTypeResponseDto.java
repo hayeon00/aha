@@ -1,7 +1,7 @@
 package com.aha.domain.workbook.dto.response;
 
 import com.aha.domain.workbook.entity.WorkbookType;
-import com.aha.domain.workbook.entity.WorkbookTypeCode;
+import com.aha.domain.workbook.enums.WorkbookTypeCode;
 
 public record WorkbookTypeResponseDto(
     WorkbookTypeCode code,
