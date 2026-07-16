@@ -53,7 +53,6 @@ public enum ErrorCode {
     //WORKBOOK
     WORKBOOK_NOT_FOUND(404,"WORKBOOK_001","워크북에 접근할 수 없습니다."),
     WORKBOOK_NOT_PUBLISHED(409,"WORKBOOK_002","워크북에 접근할 수 없습니다." ),
-    ATTEMPT_ALREADY_SOLVING(409,"WORKBOOK_003","워크북을 시작할 수 없습니다." ),
     ATTEMPT_NOT_FOUND(422,"WORKBOOK_004", "워크북에 접근할 수 없습니다."),
     WORKBOOK_ITEM_COUNT_MISMATCH(500,"WORKBOOK_005","워크북에 문제가 발생했습니다." ),
     WORKBOOK_NOT_INCLUDE_PROBLEM(404,"WORKBOOK_006","문제를 찾을 수 없습니다." ),

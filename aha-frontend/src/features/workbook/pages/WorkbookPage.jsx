@@ -73,8 +73,6 @@ const getAttemptErrorMessage = (errorCode) => {
         case "EXAM_VERSION_001":
         case "EXAM_001":
             return "시험 정보가 변경되었습니다. 목록을 새로 확인해 주세요.";
-        case "WORKBOOK_003":
-            return "이미 풀이 중인 문제집입니다.";
         default:
             return "풀이를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.";
     }
@@ -269,18 +267,6 @@ function WorkbookPage() {
                 state: { workbookTitle },
             });
         } catch (error) {
-            if (error.errorCode === "WORKBOOK_003") {
-                const existingAttemptId =
-                    error.data?.attemptId ??
-                    (typeof error.data === "number" ? error.data : null);
-
-                if (existingAttemptId) {
-                    navigate(`/problems/${workbookId}/attempts/${existingAttemptId}`, {
-                        state: { workbookTitle },
-                    });
-                    return;
-                }
-            }
             console.error("문제집 풀이 시작 실패:", error);
             setAttemptFeedback({
                 workbookId,

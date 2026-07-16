@@ -21,9 +21,10 @@ import com.aha.domain.workbook.repository.WorkbookRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.security.CustomUserDetails;
+import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -64,7 +65,7 @@ public class WorkbookService {
     }
 
     @Transactional
-    public AttemptStartResponseDto startAttempt(Long workbookId,
+    public AttemptStartResponseDto startOrResumeAttempt(Long workbookId,
         CustomUserDetails userDetails) {
         Workbook workbook = workbookRepository.findByIdWithExamVersionAndPastExamWorkBook(
                 workbookId)
@@ -72,16 +73,29 @@ public class WorkbookService {
 
         workbook.validateStartAttempt();
 
-        workbookAttemptRepository.findByWorkbookIdAndUserIdStatus(workbookId, userDetails.getId(),
-                AttemptStatus.SOLVING)
-            .ifPresent(wa -> {
-                throw new BusinessException(ErrorCode.ATTEMPT_ALREADY_SOLVING,
-                    Map.of("attemptId", wa.getId()));
-            });
+        Optional<WorkbookAttempt> existedAttempt = workbookAttemptRepository.findByWorkbookIdAndUserIdStatus(workbookId, userDetails.getId(),
+                AttemptStatus.SOLVING);
+        if(existedAttempt.isPresent()){
+            return AttemptStartResponseDto.of(existedAttempt.get(), workbook);
+        }
 
         WorkbookAttempt workbookAttempt = workbookAttemptRepository.save(
             WorkbookAttempt.create(userDetails.getId(), workbook));
         return AttemptStartResponseDto.of(workbookAttempt, workbook);
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptStartResponseDto getExistingAttempt(Long workbookId, CustomUserDetails userDetails) {
+        Workbook workbook = workbookRepository.findByIdWithExamVersionAndPastExamWorkBook(
+                workbookId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.WORKBOOK_NOT_FOUND));
+
+        workbook.validateStartAttempt();
+
+        WorkbookAttempt existingAttempt = workbookAttemptRepository.findByWorkbookIdAndUserIdStatus(workbookId, userDetails.getId(),
+            AttemptStatus.SOLVING).orElseThrow(()->new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
+
+        return AttemptStartResponseDto.of(existingAttempt, workbook);
     }
 
     @Transactional(readOnly = true)
