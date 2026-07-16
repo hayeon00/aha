@@ -10,7 +10,7 @@ import com.aha.global.security.CustomUserDetails;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,11 +45,15 @@ public class WorkbookController {
     public ResponseEntity<ApiResponse<AttemptStartResponseDto>> startAttempt(
         @Min(1) @PathVariable Long workbookId,
         @AuthenticationPrincipal CustomUserDetails userDetails
-    ){
-        AttemptStartResponseDto response = workbookService.startAttempt(workbookId,userDetails);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ApiResponse.success(201,"풀이를 시작했습니다.",response));
+    ) {
+        AttemptStartResponseDto response = null;
+        try {
+            response = workbookService.startOrResumeAttempt(workbookId, userDetails);
+        }catch (DataIntegrityViolationException e) {
+            response = workbookService.getExistingAttempt(workbookId, userDetails);
+        }
+        return ResponseEntity.ok()
+            .body(ApiResponse.success(200, "풀이 세션이 성공적으로 연결되었습니다.", response));
     }
 
 
@@ -62,7 +66,6 @@ public class WorkbookController {
         List<WorkbookItemResponseDto> response = workbookService.getWorkbookItems(workbookId,userDetails);
         return ResponseEntity.ok().body(ApiResponse.success(200,"워크북 문항 목록 조회 성공",response));
     }
-
 
 
 }
