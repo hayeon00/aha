@@ -60,6 +60,7 @@ public class PdfDocumentExtractor implements DocumentExtractor {
                     null,
                     null,
                     DocumentChunkContentType.TEXT,
+                    null,
                     extractedText,
                     extractedText
             );

@@ -252,6 +252,7 @@ public class DocumentTextExtractionService {
                             null,
                             null,
                             DocumentChunkContentType.TEXT,
+                            null,
                             normalizedFullText,
                             normalizedFullText
                     )
@@ -280,6 +281,7 @@ public class DocumentTextExtractionService {
                 normalizeNullableText(block.headingPath()),
                 normalizeNullableText(block.sectionTitle()),
                 contentType,
+                block.resolvedCodeLanguage(),
                 normalizedText,
                 normalizedRawText
         );

@@ -1,7 +1,6 @@
 package com.aha.domain.ailearn.document.service.mapping;
 
-import com.aha.domain.ailearn.document.entity.DocumentChunk;
-import com.aha.domain.ailearn.document.entity.DocumentScopeMapping;
+import com.aha.domain.ailearn.document.dto.content.response.MappedDocumentChunkResponseDto;
 import com.aha.domain.ailearn.document.repository.DocumentScopeMappingRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -12,14 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Please explain the class!!!
- *
- * @author : rlagkdus
- * @filename : DocumentScopeMappingQueryService
- * @since : 2026. 6. 25. 목요일
- */
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,24 +19,15 @@ public class DocumentScopeMappingQueryService {
 
     private final DocumentScopeMappingRepository documentScopeMappingRepository;
 
-    public List<DocumentChunk> getMappedChunks(Long userExamId, Long examScopeNodeId) {
-
-        validateInput(userExamId, examScopeNodeId);
-
-        List<DocumentScopeMapping> mappings = documentScopeMappingRepository.findAllByUserExamIdAndExamScopeNodeId(userExamId, examScopeNodeId);
-
-        return mappings.stream()
-                .map(DocumentScopeMapping::getDocumentChunk)
-                .distinct()
-                .toList();
-    }
-
-    private void validateInput(Long userExamId, Long examScopeNodeId) {
-
-        if (userExamId == null || examScopeNodeId == null) {
+    public List<MappedDocumentChunkResponseDto> getMappedDocumentChunks(Long id, Long userExamId, Long examScopeNodeId) {
+        if (id == null || userExamId == null || examScopeNodeId == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
+
+        return documentScopeMappingRepository
+                .findMappedChunks(id, userExamId, examScopeNodeId)
+                .stream()
+                .map(MappedDocumentChunkResponseDto::from)
+                .toList();
     }
-
-
 }

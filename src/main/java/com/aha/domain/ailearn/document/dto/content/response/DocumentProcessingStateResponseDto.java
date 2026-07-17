@@ -19,20 +19,23 @@ public class DocumentProcessingStateResponseDto {
     private Long processingGroupId;
     private String status;
     private DocumentProcessingStep currentStep;
+    private String stepMessage;
     private int progressRate;
     private int completedFileCount;
     private int totalFileCount;
     private int failedFileCount;
+    private String errorMessage;
 
     public static DocumentProcessingStateResponseDto idle() {
         return DocumentProcessingStateResponseDto.builder()
                 .processingGroupId(null)
                 .status("IDLE")
                 .currentStep(null)
+                .stepMessage(null)
                 .progressRate(0)
                 .completedFileCount(0)
                 .totalFileCount(0)
-                .failedFileCount(0)
+                .errorMessage(null)
                 .build();
     }
 
@@ -43,10 +46,9 @@ public class DocumentProcessingStateResponseDto {
                 .processingGroupId(processingGroup.getId())
                 .status(processingGroup.getStatus().name())
                 .currentStep(processingGroup.getCurrentStep())
-                .progressRate(processingGroup.getProgressRate())
-                .completedFileCount(processingGroup.getCompletedFileCount())
+                .stepMessage(processingGroup.getCurrentStep().getMessage())
                 .totalFileCount(processingGroup.getTotalFileCount())
-                .failedFileCount(processingGroup.getFailedFileCount())
+                .errorMessage(processingGroup.getErrorMessage())
                 .build();
     }
 }

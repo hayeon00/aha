@@ -10,6 +10,11 @@ package com.aha.domain.ailearn.document.dto.mapping.request;
 
 public record ChunkMappingRequestDto(
         Long documentChunkId,
+        Integer chunkOrder,
+        String sectionTitle,
+        String headingPath,
+        String contentType,
+        String codeLanguage,
         String contentText
 ) {
 }

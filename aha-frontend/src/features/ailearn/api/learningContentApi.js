@@ -5,6 +5,15 @@ export const getUserLearningContent = (
     examScopeNodeId
 ) => {
     return axiosInstance.get(
-        `/api/v1/ai-learning/learning-contents/user-exams/${userExamId}/scope-nodes/${examScopeNodeId}`
+        `/api/v1/ai-learning/learning-contents/user-exams/${userExamId}/topics/${examScopeNodeId}`
+    );
+};
+
+export const getMappedDocumentChunks = (
+    userExamId,
+    examScopeNodeId
+) => {
+    return axiosInstance.get(
+        `/api/v1/ai-learning/document-mappings/user-exams/${userExamId}/scope-nodes/${examScopeNodeId}/chunks`
     );
 };

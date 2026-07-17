@@ -1,6 +1,8 @@
 package com.aha.domain.ailearn.document.entity;
 
+import com.aha.domain.ailearn.document.enums.DocumentChunkCodeLanguage;
 import com.aha.domain.ailearn.document.enums.DocumentChunkContentType;
+import com.aha.domain.ailearn.document.enums.DocumentChunkMappingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,6 +26,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Getter
 @Entity
@@ -72,6 +75,10 @@ public class DocumentChunk {
     @Column(name = "content_type", nullable = false, length = 30)
     private DocumentChunkContentType contentType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "code_language", length = 30)
+    private DocumentChunkCodeLanguage codeLanguage;
+
     @Lob
     @Column(name = "content_text", nullable = false, columnDefinition = "LONGTEXT")
     private String contentText;
@@ -93,6 +100,13 @@ public class DocumentChunk {
     @Column(name = "token_count")
     private Integer tokenCount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mapping_status", nullable = false, length = 30)
+    private DocumentChunkMappingStatus mappingStatus;
+
+    @Column(name = "mapping_confidence", precision = 5, scale = 4)
+    private BigDecimal mappingConfidence;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -109,6 +123,7 @@ public class DocumentChunk {
             String sectionTitle,
             String headingPath,
             DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage,
             String contentText,
             String rawText,
             String summary,
@@ -122,20 +137,48 @@ public class DocumentChunk {
         validateContentText(contentText);
         validateTokenCount(tokenCount);
 
+        DocumentChunkContentType resolvedContentType = resolveContentType(contentType);
+
         this.sourceDocument = sourceDocument;
         this.chunkOrder = chunkOrder;
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
         this.headingPath = normalizeNullableText(headingPath);
-        this.contentType = contentType != null
-                ? contentType
-                : DocumentChunkContentType.TEXT;
+        this.contentType = resolvedContentType;
+        this.codeLanguage = resolveCodeLanguage(resolvedContentType, codeLanguage);
         this.contentText = contentText.trim();
         this.rawText = normalizeNullableText(rawText);
         this.summary = normalizeNullableText(summary);
         this.keywordsJson = normalizeNullableText(keywordsJson);
         this.structureJson = normalizeNullableText(structureJson);
         this.tokenCount = tokenCount;
+        this.mappingStatus = DocumentChunkMappingStatus.UNASSIGNED;
+        this.mappingConfidence = null;
+    }
+
+    public void markUnassigned(BigDecimal confidence) {
+        this.mappingStatus = DocumentChunkMappingStatus.UNASSIGNED;
+        this.mappingConfidence = normalizeConfidence(confidence);
+    }
+
+    public void markAutoMapped(BigDecimal confidence) {
+        this.mappingStatus = DocumentChunkMappingStatus.AUTO_MAPPED;
+        this.mappingConfidence = normalizeConfidence(confidence);
+    }
+
+    public void markManualMapped() {
+        this.mappingStatus = DocumentChunkMappingStatus.MANUAL_MAPPED;
+        this.mappingConfidence = BigDecimal.ONE.setScale(4);
+    }
+
+    private BigDecimal normalizeConfidence(BigDecimal confidence) {
+        if (confidence == null) {
+            return null;
+        }
+        if (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException("매핑 신뢰도는 0 이상 1 이하여야 합니다.");
+        }
+        return confidence.setScale(4, java.math.RoundingMode.HALF_UP);
     }
 
     public void updateContentText(String contentText) {
@@ -148,22 +191,55 @@ public class DocumentChunk {
             String sectionTitle,
             String headingPath,
             DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage,
             String structureJson
     ) {
         validatePageNo(pageNo);
 
+        DocumentChunkContentType resolvedContentType = resolveContentType(contentType);
+
         this.pageNo = pageNo;
         this.sectionTitle = normalizeNullableText(sectionTitle);
         this.headingPath = normalizeNullableText(headingPath);
-        this.contentType = contentType != null
-                ? contentType
-                : DocumentChunkContentType.TEXT;
+        this.contentType = resolvedContentType;
+        this.codeLanguage = resolveCodeLanguage(resolvedContentType, codeLanguage);
         this.structureJson = normalizeNullableText(structureJson);
     }
 
     public void updateTokenCount(Integer tokenCount) {
         validateTokenCount(tokenCount);
         this.tokenCount = tokenCount;
+    }
+
+    private DocumentChunkContentType resolveContentType(
+            DocumentChunkContentType contentType
+    ) {
+        if (contentType == null) {
+            return DocumentChunkContentType.TEXT;
+        }
+
+        return contentType;
+    }
+
+    private DocumentChunkCodeLanguage resolveCodeLanguage(
+            DocumentChunkContentType contentType,
+            DocumentChunkCodeLanguage codeLanguage
+    ) {
+        if (!supportsCodeLanguage(contentType)) {
+            return null;
+        }
+
+        if (codeLanguage == null) {
+            return DocumentChunkCodeLanguage.UNKNOWN;
+        }
+
+        return codeLanguage;
+    }
+
+    private boolean supportsCodeLanguage(DocumentChunkContentType contentType) {
+        return contentType == DocumentChunkContentType.CODE
+                || contentType == DocumentChunkContentType.COMMAND
+                || contentType == DocumentChunkContentType.CONFIG;
     }
 
     private void validateSourceDocument(

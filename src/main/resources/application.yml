@@ -30,6 +30,7 @@ jwt:
 openai:
   api-key: ${OPENAI_API_KEY:}
   model: ${OPENAI_MODEL:gpt-4.1-mini}
+  embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
 
 file:
   profile-upload-dir: ${PROFILE_UPLOAD_DIR:uploads/profile}
