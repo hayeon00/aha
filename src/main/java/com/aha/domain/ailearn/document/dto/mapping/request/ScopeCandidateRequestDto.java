@@ -12,7 +12,8 @@ public record ScopeCandidateRequestDto(
         String code,
         String title,
         String description,
-        String keywordsJson
+        String keywordsJson,
+        Double similarityScore
 ){
 
 }
