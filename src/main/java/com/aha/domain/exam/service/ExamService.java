@@ -3,6 +3,7 @@ package com.aha.domain.exam.service;
 import com.aha.domain.exam.dto.response.ExamResponseDto;
 import com.aha.domain.exam.entity.Exam;
 import com.aha.domain.exam.entity.ExamVersion;
+import com.aha.domain.exam.entity.ExamVersionStatus;
 import com.aha.domain.exam.enums.ExamStatus;
 import com.aha.domain.exam.repository.ExamRepository;
 import com.aha.domain.exam.repository.ExamVersionRepository;
@@ -17,7 +18,6 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ExamService {
 
-    private static final String ACTIVE_VERSION_STATUS = "ACTIVE";
 
     private final ExamRepository examRepository;
     private final ExamVersionRepository examVersionRepository;
@@ -30,7 +30,7 @@ public class ExamService {
                     ExamVersion activeVersion = examVersionRepository
                             .findFirstByExam_IdAndStatusOrderByVersionNoDesc(
                                     exam.getId(),
-                                    ACTIVE_VERSION_STATUS
+                                    ExamVersionStatus.ACTIVE
                             )
                             .orElse(null);
 

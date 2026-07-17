@@ -1,23 +1,41 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
+
+DROP TABLE IF EXISTS `ai_reference`;
+DROP TABLE IF EXISTS `ai_message`;
+DROP TABLE IF EXISTS `learning_problem_attempt`;
+DROP TABLE IF EXISTS `learning_session`;
+DROP TABLE IF EXISTS `user`;
+
+DROP TABLE IF EXISTS `learning_content_body`;
+DROP TABLE IF EXISTS `ai_generated_learning_content_body`;
+DROP TABLE IF EXISTS `learning_content`;
+DROP TABLE IF EXISTS `learning_content_unit_item`;
+DROP TABLE IF EXISTS `learning_content_unit`;
+
+DROP TABLE IF EXISTS `learning_source_document`;
+
+
+
+DROP TABLE IF EXISTS `learning_coach`;
+DROP TABLE IF EXISTS `learning_memo`;
 DROP TABLE IF EXISTS `learning_content_reference`;
 DROP TABLE IF EXISTS `user_document_concept`;
 DROP TABLE IF EXISTS `user_learning_content`;
 DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk`;
+DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `document_processing_group`;
 DROP TABLE IF EXISTS `document_chunk_embedding`;
 DROP TABLE IF EXISTS `exam_scope_node_embedding`;
 
 DROP TABLE IF EXISTS `refresh_tokens`;
-
-DROP TABLE IF EXISTS `workbook_item_result`;
-DROP TABLE IF EXISTS `workbook_part_result`;
-DROP TABLE IF EXISTS `workbook_answer`;
+DROP TABLE IF EXISTS `user_answer`;
 DROP TABLE IF EXISTS `workbook_attempt`;
 DROP TABLE IF EXISTS `workbook_result`;
 DROP TABLE IF EXISTS `workbook_item`;
+DROP TABLE IF EXISTS `past_exam_workbook`;
 DROP TABLE IF EXISTS `workbook`;
 DROP TABLE IF EXISTS `exam_workbook_type`;
 DROP TABLE IF EXISTS `workbook_type`;
@@ -247,7 +265,10 @@ CREATE TABLE `document_processing_group` (
                                              `user_exam_id`         BIGINT        NOT NULL,
                                              `status`               VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
                                              `current_step`         VARCHAR(50)   NOT NULL DEFAULT 'UPLOAD_PENDING',
+                                             `progress_rate`        INT           NOT NULL DEFAULT 0,
                                              `total_file_count`     INT           NOT NULL DEFAULT 0,
+                                             `completed_file_count` INT           NOT NULL DEFAULT 0,
+                                             `failed_file_count`    INT           NOT NULL DEFAULT 0,
                                              `error_message`        VARCHAR(1000)     NULL,
                                              `started_at`           DATETIME          NULL,
                                              `completed_at`         DATETIME          NULL,
@@ -539,3 +560,137 @@ CREATE TABLE `refresh_tokens` (
                                       FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
                                           ON DELETE CASCADE
 );
+
+
+
+CREATE TABLE `workbook_type` (
+                                 `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                 `code` VARCHAR(50) NOT NULL,
+                                 `name` VARCHAR(100) NOT NULL,
+                                 `display_order` INT NOT NULL,
+                                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                 UNIQUE KEY `uk_workbook_type_code` (`code`),
+                                 UNIQUE KEY `uk_workbook_type_display_order` (`display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `problem` (
+                           `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                           `exam_scope_node_id` BIGINT NOT NULL,
+                           `format` VARCHAR(30) NOT NULL,
+                           `content` TEXT NOT NULL,
+                           `score` INT NOT NULL,
+                           `answer` VARCHAR(500) NOT NULL,
+                           `explanation` TEXT NOT NULL,
+                           `choice_count` INT NOT NULL,
+                           `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                           `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                           CONSTRAINT `fk_problem_exam_scope_node_id`
+                               FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
+                           CONSTRAINT `chk_problem_score`
+                                CHECK(`score`>0),
+                           CONSTRAINT `chk_problem_choice_count`
+                                CHECK(`choice_count`>=0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `workbook` (
+                            `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            `exam_version_id` BIGINT NOT NULL,
+                            `workbook_type_id` BIGINT NOT NULL,
+                            `status` VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+                            `total_problem_count` INT NOT NULL,
+                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                            CONSTRAINT `fk_workbook_workbook_type_id`
+                                FOREIGN KEY (`workbook_type_id`) REFERENCES `workbook_type` (`id`),
+                            CONSTRAINT `fk_workbook_exam_version_id`
+                                FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `past_exam_workbook` (
+                                      `workbook_id`BIGINT PRIMARY KEY,
+                                      `is_reviewed` TINYINT(1) NOT NULL DEFAULT 0,
+                                      `year` INT NOT NULL,
+                                      `round_no` INT NOT NULL,
+                                      `time_limit` INT NOT NULL,
+                                      `exam_date` DATETIME NOT NULL,
+                                      `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                      `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                      UNIQUE KEY `uk_past_year_no`  (year,round_no),
+                                      CONSTRAINT `fk_past_exam_workbook_workbook_id`
+                                          FOREIGN KEY(`workbook_id`) REFERENCES `workbook` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `workbook_item` (
+                                 `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                 `workbook_id` BIGINT NOT NULL,
+                                 `problem_id` BIGINT NOT NULL,
+                                 `sort_order` INT NOT NULL,
+                                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                 UNIQUE KEY `uk_workbook_item_pair` (`workbook_id`, `problem_id`),
+                                 UNIQUE KEY `uk_workbook_item_order` (`workbook_id`, `sort_order`),
+                                 CONSTRAINT `fk_workbook_item_workbook_id`
+                                     FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
+                                 CONSTRAINT `fk_workbook_item_problem_id`
+                                     FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+                                 CONSTRAINT `chk_workbook_item_sort_order`
+                                     CHECK (`sort_order` >= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `workbook_attempt` (
+                                    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                    `user_id` BIGINT NOT NULL,
+                                    `workbook_id` BIGINT NOT NULL,
+                                    `status` VARCHAR(30) NOT NULL DEFAULT 'SOLVING',
+                                    `total_score` INT NULL DEFAULT NULL,
+                                    `is_passed` TINYINT(1) NULL DEFAULT NULL,
+                                    `result_message` VARCHAR(255) NULL DEFAULT NULL,
+                                    `stat_json` JSON NULL DEFAULT NULL,
+                                    `elapsed_time` INT,
+                                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                    `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                    CONSTRAINT `fk_workbook_attempt_user_id`
+                                        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+                                    CONSTRAINT `fk_workbook_attempt_workbook_id`
+                                        FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
+                                    CONSTRAINT `chk_workbook_attempt_total_score`
+                                        CHECK (`total_score` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE UNIQUE INDEX `uk_sub_user_workbook_solving`
+    ON `workbook_attempt` (
+                           `user_id`,
+                           `workbook_id`,
+        (CASE WHEN `status` = 'SOLVING' THEN 'SOLVING' ELSE NULL END)
+        );
+
+CREATE TABLE `user_answer` (
+                               `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                               `workbook_attempt_id` BIGINT NOT NULL,
+                               `problem_id` BIGINT NOT NULL,
+                               `answer` VARCHAR(500) NULL,
+                               `is_correct` TINYINT(1) NOT NULL DEFAULT FALSE,
+                               `is_checked` TINYINT(1) NOT NULL DEFAULT FALSE,
+                               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                               `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                               UNIQUE KEY `uk_user_answer_attempt_problem` (`workbook_attempt_id`, `problem_id`),
+                               CONSTRAINT `fk_user_answer_workbook_attempt_id`
+                                   FOREIGN KEY (`workbook_attempt_id`) REFERENCES `workbook_attempt` (`id`),
+                               CONSTRAINT `fk_user_answer_problem_id`
+                                   FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `problem_choice` (
+                                  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                  `problem_id` BIGINT NOT NULL,
+                                  `sort_order` INT NOT NULL,
+                                  `content` VARCHAR(500) NOT NULL,
+                                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+                                  UNIQUE KEY `uk_problem_choice_order` (`problem_id`, `sort_order`),
+                                  CONSTRAINT `fk_problem_choice_problem_id`
+                                      FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+                                  CONSTRAINT `chk_problem_choice_sort_order`
+                                    CHECK (`sort_order` >= 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
