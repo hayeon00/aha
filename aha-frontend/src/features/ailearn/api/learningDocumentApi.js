@@ -19,7 +19,7 @@ export const uploadLearningDocuments = async (
     });
 
     const response = await axiosInstance.post(
-        "/api/v1/ai-learning/documents/upload",
+        "/api/v1/ai-learning/document-uploads",
         formData,
         {
             params: {
@@ -33,10 +33,12 @@ export const uploadLearningDocuments = async (
 };
 
 export const getDocumentProcessingStatus = (
-    processingGroupId
+    processingGroupId,
+    config = {}
 ) => {
     return axiosInstance.get(
-        `/api/v1/ai-learning/documents/processing-groups/${processingGroupId}`
+        `/api/v1/ai-learning/document-processings/${processingGroupId}`,
+        config
     );
 };
 
@@ -44,6 +46,22 @@ export const getUserExamDocumentState = (
     userExamId
 ) => {
     return axiosInstance.get(
-        `/api/v1/ai-learning/documents/user-exams/${userExamId}/state`
+        `/api/v1/ai-learning/document-processings/user-exams/${userExamId}/latest`
+    );
+};
+
+export const retryDocumentProcessing = (processingGroupId) => {
+    if (!processingGroupId) {
+        throw new Error("processingGroupId가 필요합니다.");
+    }
+
+    return axiosInstance.post(
+        `/api/v1/ai-learning/document-processings/${processingGroupId}/retry`
+    );
+};
+
+export const getActiveDocumentProcessings = () => {
+    return axiosInstance.get(
+        "/api/v1/ai-learning/document-processings/active"
     );
 };
