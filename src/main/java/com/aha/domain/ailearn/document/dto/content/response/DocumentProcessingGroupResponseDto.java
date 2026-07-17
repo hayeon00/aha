@@ -23,11 +23,9 @@ public class DocumentProcessingGroupResponseDto {
 
     private String status;
     private String currentStep;
-    private int progressRate;
+    private String stepMessage;
 
     private int totalFileCount;
-    private int completedFileCount;
-    private int failedFileCount;
 
     private String errorMessage;
 
@@ -43,10 +41,8 @@ public class DocumentProcessingGroupResponseDto {
                 .userExamId(processingGroup.getUserExam().getId())
                 .status(processingGroup.getStatus().name())
                 .currentStep(processingGroup.getCurrentStep().name())
-                .progressRate(processingGroup.getProgressRate())
+                .stepMessage(processingGroup.getCurrentStep().getMessage())
                 .totalFileCount(processingGroup.getTotalFileCount())
-                .completedFileCount(processingGroup.getCompletedFileCount())
-                .failedFileCount(processingGroup.getFailedFileCount())
                 .errorMessage(processingGroup.getErrorMessage())
                 .startedAt(processingGroup.getStartedAt())
                 .completedAt(processingGroup.getCompletedAt())

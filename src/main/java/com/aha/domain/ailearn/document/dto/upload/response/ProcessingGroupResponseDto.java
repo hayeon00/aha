@@ -7,10 +7,7 @@ public record ProcessingGroupResponseDto(
         Long userExamId,
         String status,
         String currentStep,
-        Integer progressRate,
         Integer totalFileCount,
-        Integer completedFileCount,
-        Integer failedFileCount,
         String errorMessage
 ) {
 
@@ -22,10 +19,7 @@ public record ProcessingGroupResponseDto(
                 processingGroup.getUserExam().getId(),
                 processingGroup.getStatus().name(),
                 processingGroup.getCurrentStep().name(),
-                processingGroup.getProgressRate(),
                 processingGroup.getTotalFileCount(),
-                processingGroup.getCompletedFileCount(),
-                processingGroup.getFailedFileCount(),
                 processingGroup.getErrorMessage()
         );
     }
