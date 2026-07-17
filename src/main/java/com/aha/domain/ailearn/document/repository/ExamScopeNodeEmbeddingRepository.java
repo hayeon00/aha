@@ -9,26 +9,9 @@ import java.util.Optional;
 
 public interface ExamScopeNodeEmbeddingRepository extends JpaRepository<ExamScopeNodeEmbedding, Long> {
 
-    Optional<ExamScopeNodeEmbedding> findByExamScopeNode_IdAndEmbeddingModel(
-            Long examScopeNodeId,
-            String embeddingModel
-    );
-
     List<ExamScopeNodeEmbedding> findAllByExamScopeNode_IdInAndEmbeddingModel(
             Collection<Long> examScopeNodeIds,
             String embeddingModel
     );
 
-    List<ExamScopeNodeEmbedding> findAllByExamScopeNode_ExamVersion_IdAndEmbeddingModel(
-            Long examVersionId,
-            String embeddingModel
-    );
-
-    boolean existsByExamScopeNode_IdAndEmbeddingModelAndEmbeddingTextHash(
-            Long examScopeNodeId,
-            String embeddingModel,
-            String embeddingTextHash
-    );
-
-    void deleteAllByExamScopeNode_IdIn(Collection<Long> examScopeNodeIds);
 }

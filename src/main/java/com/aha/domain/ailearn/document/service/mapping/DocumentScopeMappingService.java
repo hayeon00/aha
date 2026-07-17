@@ -30,7 +30,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DocumentScopeMappingService {
 
-    private static final BigDecimal MIN_MAPPING_CONFIDENCE = BigDecimal.valueOf(0.5);
+    private static final double MIN_VECTOR_SIMILARITY = 0.6;
+    private static final BigDecimal MIN_MAPPING_CONFIDENCE = BigDecimal.valueOf(0.6);
     private static final int MAX_MAPPING_REASON_LENGTH = 1000;
     private static final int CHUNK_MAPPING_BATCH_SIZE = 5;
     private static final int TOP_SCOPE_CANDIDATE_COUNT = 5;
@@ -73,9 +74,16 @@ public class DocumentScopeMappingService {
         List<ScopeMappingAiResultResponseDto> aiResults =
                 requestAiMappingsInBatches(mappingRequests);
 
-        List<DocumentScopeMapping> mappings = createMappings(aiResults, chunkMap, scopeNodeMap);
+        List<DocumentScopeMapping> mappings = createMappings(
+                aiResults,
+                chunkMap,
+                scopeNodeMap,
+                topCandidatesByChunkId
+        );
 
         documentScopeMappingPersistenceService.replaceMappings(processingGroupId, mappings);
+        updateChunkMappingStatuses(chunks, mappings, topCandidatesByChunkId);
+        documentChunkRepository.saveAll(chunks);
 
         if (mappings.isEmpty()) {
             log.info(
@@ -118,8 +126,8 @@ public class DocumentScopeMappingService {
 
             List<ScopeCandidateRequestDto> scopeCandidates = topCandidates.stream()
                     .filter(Objects::nonNull)
-                    .map(ScopeCandidateSearchResultDto::examScopeNode)
-                    .filter(Objects::nonNull)
+                    .filter(candidate -> candidate.similarityScore() >= MIN_VECTOR_SIMILARITY)
+                    .filter(candidate -> candidate.examScopeNode() != null)
                     .map(this::toScopeCandidateRequestDto)
                     .toList();
 
@@ -137,10 +145,6 @@ public class DocumentScopeMappingService {
             ));
         }
 
-        if (requests.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
-        }
-
         return requests;
     }
 
@@ -148,6 +152,10 @@ public class DocumentScopeMappingService {
             List<ChunkScopeMappingRequestDto> mappingRequests
     ) {
         List<ScopeMappingAiResultResponseDto> aiResults = new ArrayList<>();
+
+        if (mappingRequests.isEmpty()) {
+            return aiResults;
+        }
 
         for (int start = 0; start < mappingRequests.size(); start += CHUNK_MAPPING_BATCH_SIZE) {
             int end = Math.min(start + CHUNK_MAPPING_BATCH_SIZE, mappingRequests.size());
@@ -197,7 +205,8 @@ public class DocumentScopeMappingService {
         );
     }
 
-    private ScopeCandidateRequestDto toScopeCandidateRequestDto(ExamScopeNode scopeNode) {
+    private ScopeCandidateRequestDto toScopeCandidateRequestDto(ScopeCandidateSearchResultDto candidate) {
+        ExamScopeNode scopeNode = candidate.examScopeNode();
         if (scopeNode == null
                 || scopeNode.getId() == null
                 || scopeNode.getTitle() == null
@@ -210,14 +219,16 @@ public class DocumentScopeMappingService {
                 scopeNode.getCode(),
                 scopeNode.getTitle(),
                 scopeNode.getDescription(),
-                scopeNode.getKeywordsJson()
+                scopeNode.getKeywordsJson(),
+                candidate.similarityScore()
         );
     }
 
     private List<DocumentScopeMapping> createMappings(
             List<ScopeMappingAiResultResponseDto> aiResults,
             Map<Long, DocumentChunk> chunkMap,
-            Map<Long, ExamScopeNode> scopeNodeMap
+            Map<Long, ExamScopeNode> scopeNodeMap,
+            Map<Long, List<ScopeCandidateSearchResultDto>> topCandidatesByChunkId
     ) {
         if (aiResults == null || aiResults.isEmpty()) {
             return List.of();
@@ -236,7 +247,23 @@ public class DocumentScopeMappingService {
 
             DocumentChunk documentChunk = chunkMap.get(aiResult.documentChunkId());
             ExamScopeNode examScopeNode = scopeNodeMap.get(aiResult.examScopeNodeId());
-            BigDecimal confidenceScore = normalizeConfidenceScore(aiResult.confidenceScore());
+            BigDecimal rerankerScore = normalizeConfidenceScore(aiResult.confidenceScore());
+            BigDecimal vectorScore = findVectorScore(
+                    aiResult.documentChunkId(),
+                    aiResult.examScopeNodeId(),
+                    topCandidatesByChunkId
+            );
+
+            if (vectorScore.compareTo(BigDecimal.valueOf(MIN_VECTOR_SIMILARITY)) < 0) {
+                log.warn(
+                        "AI가 임계값을 통과한 후보 밖의 목차를 반환하여 제외합니다. documentChunkId={}, examScopeNodeId={}",
+                        aiResult.documentChunkId(),
+                        aiResult.examScopeNodeId()
+                );
+                continue;
+            }
+
+            BigDecimal confidenceScore = combineScores(vectorScore, rerankerScore);
 
             if (documentChunk == null) {
                 log.warn(
@@ -294,6 +321,54 @@ public class DocumentScopeMappingService {
         }
 
         return mappings;
+    }
+
+    private BigDecimal findVectorScore(
+            Long chunkId,
+            Long scopeNodeId,
+            Map<Long, List<ScopeCandidateSearchResultDto>> candidatesByChunkId
+    ) {
+        return candidatesByChunkId.getOrDefault(chunkId, List.of()).stream()
+                .filter(candidate -> candidate.examScopeNode() != null)
+                .filter(candidate -> Objects.equals(candidate.examScopeNode().getId(), scopeNodeId))
+                .findFirst()
+                .map(candidate -> BigDecimal.valueOf(candidate.similarityScore()))
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal combineScores(BigDecimal vectorScore, BigDecimal rerankerScore) {
+        return vectorScore.multiply(BigDecimal.valueOf(0.35))
+                .add(rerankerScore.multiply(BigDecimal.valueOf(0.65)))
+                .setScale(4, java.math.RoundingMode.HALF_UP);
+    }
+
+    private void updateChunkMappingStatuses(
+            List<DocumentChunk> chunks,
+            List<DocumentScopeMapping> mappings,
+            Map<Long, List<ScopeCandidateSearchResultDto>> candidatesByChunkId
+    ) {
+        Map<Long, BigDecimal> mappedScoreByChunkId = mappings.stream()
+                .collect(Collectors.toMap(
+                        mapping -> mapping.getDocumentChunk().getId(),
+                        DocumentScopeMapping::getConfidenceScore,
+                        BigDecimal::max
+                ));
+
+        for (DocumentChunk chunk : chunks) {
+            BigDecimal mappedScore = mappedScoreByChunkId.get(chunk.getId());
+            if (mappedScore != null) {
+                chunk.markAutoMapped(mappedScore);
+                continue;
+            }
+
+            BigDecimal bestVectorScore = candidatesByChunkId
+                    .getOrDefault(chunk.getId(), List.of())
+                    .stream()
+                    .map(candidate -> BigDecimal.valueOf(candidate.similarityScore()))
+                    .max(BigDecimal::compareTo)
+                    .orElse(null);
+            chunk.markUnassigned(bestVectorScore);
+        }
     }
 
     private String normalizeMappingReason(String mappingReason) {

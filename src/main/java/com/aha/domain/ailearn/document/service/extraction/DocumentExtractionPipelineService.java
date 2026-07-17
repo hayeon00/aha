@@ -4,25 +4,23 @@ import com.aha.domain.ailearn.document.entity.SourceDocument;
 import com.aha.domain.ailearn.document.repository.SourceDocumentRepository;
 import com.aha.domain.ailearn.document.service.chunk.DocumentChunkService;
 import com.aha.domain.ailearn.document.service.extraction.model.ExtractedDocument;
+import com.aha.domain.ailearn.document.service.extraction.model.ExtractedDocumentContext;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- PDF/DOC/DOCX/TXT
- → 텍스트 추출
- → 표 추출
- → OCR
- → 레이아웃 분석
- → DocumentBlock 생성
+ * 업로드된 문서의 텍스트와 구조를 추출하고,
+ * 추출 결과를 기반으로 문서 청크를 생성하는 파이프라인이다.
+ *
+ * 텍스트 추출과 청크 생성을 각각 분리하여
+ * 상위 Worker가 실제 작업 경계에 맞게 처리 단계를 변경할 수 있도록 한다.
  */
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -32,41 +30,142 @@ public class DocumentExtractionPipelineService {
     private final DocumentTextExtractionService documentTextExtractionService;
     private final DocumentChunkService documentChunkService;
 
-    @Transactional
-    public void extractDocuments(Long processingGroupId) {
-
-        if (processingGroupId == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-
+    /**
+     * 처리 그룹에 포함된 모든 문서에서 텍스트와 구조 블록을 추출한다.
+     */
+    public List<ExtractedDocumentContext> extractDocuments(
+            Long processingGroupId
+    ) {
         List<SourceDocument> sourceDocuments =
-                sourceDocumentRepository.findAllByProcessingGroup_IdOrderByIdAsc(processingGroupId);
+                getSourceDocuments(processingGroupId);
 
-        if (sourceDocuments.isEmpty()) {
-            throw new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND);
-        }
+        List<ExtractedDocumentContext> extractedDocuments =
+                new ArrayList<>(sourceDocuments.size());
 
         for (SourceDocument sourceDocument : sourceDocuments) {
-            extractAndCreateChunks(sourceDocument);
+            ExtractedDocument extractedDocument =
+                    extractDocument(sourceDocument);
+
+            extractedDocuments.add(
+                    new ExtractedDocumentContext(
+                            sourceDocument,
+                            extractedDocument
+                    )
+            );
+        }
+
+        return List.copyOf(extractedDocuments);
+    }
+
+    /**
+     * 추출된 문서 블록을 분석하여 청크를 생성하고 저장한다.
+     */
+    public void createChunks(
+            List<ExtractedDocumentContext> extractedDocuments
+    ) {
+        validateExtractedDocuments(extractedDocuments);
+
+        for (ExtractedDocumentContext context : extractedDocuments) {
+            createDocumentChunks(context);
         }
     }
 
-    private void extractAndCreateChunks(SourceDocument sourceDocument) {
-
+    private ExtractedDocument extractDocument(
+            SourceDocument sourceDocument
+    ) {
         log.info(
-                "문서 추출 파이프라인 시작. sourceDocumentId={}, fileName={}",
+                "문서 텍스트 추출 시작. sourceDocumentId={}, fileName={}",
                 sourceDocument.getId(),
                 sourceDocument.getOriginalFileName()
         );
 
-        ExtractedDocument extractedDocument = documentTextExtractionService.extract(sourceDocument);
-
-        int chunkCount = documentChunkService.createChunks(sourceDocument, extractedDocument.blocks());
+        ExtractedDocument extractedDocument =
+                documentTextExtractionService.extract(
+                        sourceDocument
+                );
 
         log.info(
-                "문서 추출 파이프라인 완료. sourceDocumentId={}, chunkCount={}",
+                "문서 텍스트 추출 완료. sourceDocumentId={}, blockCount={}",
+                sourceDocument.getId(),
+                extractedDocument.blocks().size()
+        );
+
+        return extractedDocument;
+    }
+
+    private void createDocumentChunks(
+            ExtractedDocumentContext context
+    ) {
+        SourceDocument sourceDocument =
+                context.sourceDocument();
+
+        ExtractedDocument extractedDocument =
+                context.extractedDocument();
+
+        log.info(
+                "문서 청크 생성 시작. sourceDocumentId={}, fileName={}",
+                sourceDocument.getId(),
+                sourceDocument.getOriginalFileName()
+        );
+
+        int chunkCount =
+                documentChunkService.createChunks(
+                        sourceDocument,
+                        extractedDocument.blocks()
+                );
+
+        log.info(
+                "문서 청크 생성 완료. sourceDocumentId={}, chunkCount={}",
                 sourceDocument.getId(),
                 chunkCount
         );
+    }
+
+    private List<SourceDocument> getSourceDocuments(
+            Long processingGroupId
+    ) {
+        validateProcessingGroupId(processingGroupId);
+
+        List<SourceDocument> sourceDocuments =
+                sourceDocumentRepository
+                        .findAllByProcessingGroup_IdOrderByIdAsc(
+                                processingGroupId
+                        );
+
+        if (sourceDocuments.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.SOURCE_DOCUMENT_NOT_FOUND
+            );
+        }
+
+        return sourceDocuments;
+    }
+
+    private void validateProcessingGroupId(
+            Long processingGroupId
+    ) {
+        if (processingGroupId == null
+                || processingGroupId <= 0) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
+        }
+    }
+
+    private void validateExtractedDocuments(
+            List<ExtractedDocumentContext> extractedDocuments
+    ) {
+        if (extractedDocuments == null
+                || extractedDocuments.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.SOURCE_DOCUMENT_NOT_FOUND
+            );
+        }
+
+        if (extractedDocuments.stream().anyMatch(context -> context == null)) {
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_TEXT_EXTRACTION_FAILED
+            );
+        }
     }
 }

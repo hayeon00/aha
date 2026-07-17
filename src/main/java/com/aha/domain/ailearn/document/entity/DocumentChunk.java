@@ -2,6 +2,7 @@ package com.aha.domain.ailearn.document.entity;
 
 import com.aha.domain.ailearn.document.enums.DocumentChunkCodeLanguage;
 import com.aha.domain.ailearn.document.enums.DocumentChunkContentType;
+import com.aha.domain.ailearn.document.enums.DocumentChunkMappingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,6 +26,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 @Getter
 @Entity
@@ -98,6 +100,13 @@ public class DocumentChunk {
     @Column(name = "token_count")
     private Integer tokenCount;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mapping_status", nullable = false, length = 30)
+    private DocumentChunkMappingStatus mappingStatus;
+
+    @Column(name = "mapping_confidence", precision = 5, scale = 4)
+    private BigDecimal mappingConfidence;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -143,6 +152,33 @@ public class DocumentChunk {
         this.keywordsJson = normalizeNullableText(keywordsJson);
         this.structureJson = normalizeNullableText(structureJson);
         this.tokenCount = tokenCount;
+        this.mappingStatus = DocumentChunkMappingStatus.UNASSIGNED;
+        this.mappingConfidence = null;
+    }
+
+    public void markUnassigned(BigDecimal confidence) {
+        this.mappingStatus = DocumentChunkMappingStatus.UNASSIGNED;
+        this.mappingConfidence = normalizeConfidence(confidence);
+    }
+
+    public void markAutoMapped(BigDecimal confidence) {
+        this.mappingStatus = DocumentChunkMappingStatus.AUTO_MAPPED;
+        this.mappingConfidence = normalizeConfidence(confidence);
+    }
+
+    public void markManualMapped() {
+        this.mappingStatus = DocumentChunkMappingStatus.MANUAL_MAPPED;
+        this.mappingConfidence = BigDecimal.ONE.setScale(4);
+    }
+
+    private BigDecimal normalizeConfidence(BigDecimal confidence) {
+        if (confidence == null) {
+            return null;
+        }
+        if (confidence.compareTo(BigDecimal.ZERO) < 0 || confidence.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException("매핑 신뢰도는 0 이상 1 이하여야 합니다.");
+        }
+        return confidence.setScale(4, java.math.RoundingMode.HALF_UP);
     }
 
     public void updateContentText(String contentText) {

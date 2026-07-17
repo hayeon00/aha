@@ -16,28 +16,45 @@ public class DocumentScopeMappingPromptBuilder {
 
     private final ObjectMapper objectMapper;
 
-    public String build(List<ChunkScopeMappingRequestDto> requests) {
-        if (requests == null || requests.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
-        }
+    /**
+     * 문서 청크와 청크별 목차 후보를 AI 요청 프롬프트로 변환한다.
+     */
+    public String build(
+            List<ChunkScopeMappingRequestDto> requests
+    ) {
+        validateRequests(requests);
 
         try {
-            String requestsJson = objectMapper.writeValueAsString(requests);
+            String requestsJson =
+                    objectMapper.writeValueAsString(requests);
 
             return """
-                    당신은 자격증 학습 문서를 시험 목차에 매핑하는 시스템입니다.
+                    당신은 자격증 학습 문서의 내용을 시험 목차와 연결하는 시스템입니다.
 
-                    각 문서 청크를 가장 관련 있는 시험 목차에 매핑하세요.
+                    전달된 각 문서 청크를 검토하고,
+                    해당 청크와 가장 관련성이 높은 시험 목차 후보를 선택하세요.
 
-                    매우 중요한 규칙:
-                    1. 각 chunk는 반드시 같은 객체 안에 있는 scopeCandidates 목록 중에서만 매핑하세요.
-                    2. 다른 chunk의 scopeCandidates를 참조하면 안 됩니다.
-                    3. 후보 목록에 없는 examScopeNodeId를 반환하면 안 됩니다.
-                    4. 관련성이 낮은 청크는 결과에서 제외하세요.
-                    5. confidenceScore는 0 이상 1 이하로 반환하세요.
-                    6. 동일한 documentChunkId와 examScopeNodeId 조합을 중복 반환하지 마세요.
-                    7. 반드시 JSON 형식으로만 응답하세요.
-                    8. 설명 문장이나 마크다운 코드 블록을 포함하지 마세요.
+                    반드시 지켜야 할 규칙:
+
+                    1. 입력에 포함된 documentChunkId만 사용하세요.
+                    2. 각 청크에 포함된 scopeCandidates 안의 examScopeNodeId만 사용하세요.
+                    3. 관련성이 충분하지 않은 청크는 mappings 결과에서 제외하세요.
+                    4. 동일한 documentChunkId와 examScopeNodeId 조합을 중복 반환하지 마세요.
+                    5. confidenceScore는 반드시 JSON 숫자로 반환하세요.
+                    6. confidenceScore의 범위는 0 이상 1 이하입니다.
+                    7. confidenceScore에 문자열, 단위 또는 영문 숫자 단어를 넣지 마세요.
+                    8. mappingReason은 해당 목차를 선택한 이유를 짧고 명확하게 작성하세요.
+                    9. 반드시 유효한 JSON 객체만 반환하세요.
+                    10. 마크다운 코드 블록이나 JSON 외부 설명을 포함하지 마세요.
+
+                    confidenceScore 올바른 예:
+                    "confidenceScore": 0.9
+
+                    confidenceScore 잘못된 예:
+                    "confidenceScore": "0.9"
+                    "confidenceScore": 0. nine
+                    "confidenceScore": "높음"
+                    "confidenceScore": 90
 
                     응답 형식:
                     {
@@ -46,19 +63,29 @@ public class DocumentScopeMappingPromptBuilder {
                           "documentChunkId": 1,
                           "examScopeNodeId": 10,
                           "confidenceScore": 0.92,
-                          "mappingReason": "매핑 이유"
+                          "mappingReason": "청크 내용이 해당 목차의 핵심 개념과 직접적으로 일치함"
                         }
                       ]
                     }
 
-                    입력 데이터:
-                    각 항목은 chunk 1개와 해당 chunk에 대한 Top 후보 목차 목록입니다.
-
+                    문서 청크별 목차 후보:
                     %s
                     """.formatted(requestsJson);
 
         } catch (JacksonException exception) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
+        }
+    }
+
+    private void validateRequests(
+            List<ChunkScopeMappingRequestDto> requests
+    ) {
+        if (requests == null || requests.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
     }
 }
