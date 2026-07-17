@@ -9,10 +9,8 @@ public record BatchUploadResponseDto(
         Long userExamId,
         String status,
         String currentStep,
-        Integer progressRate,
+        String stepMessage,
         Integer totalFileCount,
-        Integer completedFileCount,
-        Integer failedFileCount,
         List<UploadedResponseDto> documents
 ) {
 
@@ -25,10 +23,8 @@ public record BatchUploadResponseDto(
                 processingGroup.getUserExam().getId(),
                 processingGroup.getStatus().name(),
                 processingGroup.getCurrentStep().name(),
-                processingGroup.getProgressRate(),
+                processingGroup.getCurrentStep().getMessage(),
                 processingGroup.getTotalFileCount(),
-                processingGroup.getCompletedFileCount(),
-                processingGroup.getFailedFileCount(),
                 documents
         );
     }

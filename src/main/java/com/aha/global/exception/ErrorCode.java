@@ -24,9 +24,28 @@ public enum ErrorCode {
     // USER_EXAM
     USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다."),
 
-    // AILEARN DOCUMENT
-    DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_001", "문서 업로드에 실패했습니다."),
-    INVALID_DOCUMENT_FILE(400, "DOCUMENT_002", "지원하지 않는 문서 파일입니다."),
+    // DOCUMENT UPLOAD
+    DOCUMENT_FILE_COUNT_EXCEEDED(400, "DOCUMENT_UPLOAD_001", "업로드 가능한 문서 파일 개수를 초과했습니다."),
+    DOCUMENT_FILE_REQUIRED(400, "DOCUMENT_UPLOAD_002", "업로드할 문서 파일이 필요합니다."),
+    DOCUMENT_FILE_EMPTY(400, "DOCUMENT_UPLOAD_003", "빈 문서 파일은 업로드할 수 없습니다."),
+    DOCUMENT_FILE_SIZE_EXCEEDED(400, "DOCUMENT_UPLOAD_004", "업로드 가능한 문서 파일 크기를 초과했습니다."),
+    DOCUMENT_TOTAL_FILE_SIZE_EXCEEDED(400, "DOCUMENT_UPLOAD_005", "업로드 가능한 전체 문서 파일 크기를 초과했습니다."),
+    INVALID_DOCUMENT_FILE_NAME(400, "DOCUMENT_UPLOAD_06", "문서 파일명이 올바르지 않습니다."),
+    INVALID_DOCUMENT_FILE_EXTENSION(400, "DOCUMENT_UPLOAD_07", "문서 파일의 확장자가 올바르지 않습니다."),
+    INVALID_DOCUMENT_MIME_TYPE(400, "DOCUMENT_UPLOAD_08", "문서의 MIME 타입이 올바르지 않습니다."),
+
+
+    DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_UPLOAD_001", "문서 업로드에 실패했습니다."),
+    INVALID_DOCUMENT_FILE(400, "DOCUMENT_UPLOAD_002", "지원하지 않는 문서 파일입니다."),
+
+    LEARNING_CONTENT_NOT_FOUND(404, "LEARNING_CONTENT_001", "개념설명을 찾을 수 없습니다."),
+
+    INVALID_EXAM_SCOPE_NODE_TYPE(400, "EXAM_SCOPE_002", "개념설명을 생성할 수 없는 시험 목차 유형입니다."),
+
+
+
+
+
     DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
     DOCUMENT_TEXT_EXTRACTION_FAILED(500, "DOCUMENT_004", "문서 텍스트 추출에 실패했습니다."),
     DOCUMENT_TEXT_EMPTY(422, "DOCUMENT_005", "문서에서 추출할 수 있는 텍스트가 없습니다."),
@@ -39,9 +58,7 @@ public enum ErrorCode {
     LEARNING_CONTENT_GENERATION_FAILED(500, "DOCUMENT_012", "목차별 개념 설명 생성에 실패했습니다."),
     USER_LEARNING_CONTENT_SAVE_FAILED(500, "DOCUMENT_013", "생성된 개념 설명을 저장하지 못했습니다."),
     USER_LEARNING_CONTENT_NOT_FOUND(404, "DOCUMENT_014", "해당 목차에 생성된 개념 설명이 없습니다."),
-    INVALID_DOCUMENT_FILE_NAME(400, "DOCUMENT_015", "문서 파일명이 올바르지 않습니다."),
-    INVALID_DOCUMENT_MIME_TYPE(400, "DOCUMENT_016", "문서의 MIME 타입이 올바르지 않습니다."),
-    INVALID_DOCUMENT_FILE_EXTENSION(400, "DOCUMENT_017", "문서 파일의 확장자가 올바르지 않습니다."),
+
     SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
