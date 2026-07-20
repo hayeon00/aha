@@ -1,7 +1,6 @@
 package com.aha.domain.workbook.controller;
 
 import com.aha.domain.workbook.dto.response.AttemptStartResponseDto;
-import com.aha.domain.workbook.dto.response.WorkbookItemResponseDto;
 import com.aha.domain.workbook.dto.response.WorkbookResponseDto;
 import com.aha.domain.workbook.enums.WorkbookTypeCode;
 import com.aha.domain.workbook.service.WorkbookService;
@@ -55,17 +54,4 @@ public class WorkbookController {
         return ResponseEntity.ok()
             .body(ApiResponse.success(200, "풀이 세션이 성공적으로 연결되었습니다.", response));
     }
-
-
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/workbooks/{workbookId}/items")
-    public ResponseEntity<ApiResponse<List<WorkbookItemResponseDto>>> getWorkbookItems(
-        @Min(1) @PathVariable Long workbookId,
-        @AuthenticationPrincipal CustomUserDetails userDetails
-    ){
-        List<WorkbookItemResponseDto> response = workbookService.getWorkbookItems(workbookId,userDetails);
-        return ResponseEntity.ok().body(ApiResponse.success(200,"워크북 문항 목록 조회 성공",response));
-    }
-
-
 }
