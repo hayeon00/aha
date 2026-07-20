@@ -143,4 +143,8 @@ public class WorkbookAttempt {
             throw new BusinessException(ErrorCode.ATTEMPT_NOT_GRADED);
         }
     }
+
+    public boolean isSolving() {
+        return status == AttemptStatus.SOLVING;
+    }
 }
