@@ -1,6 +1,17 @@
 package com.aha.domain.workbook.service;
 
+import com.aha.domain.exam.entity.ExamPart;
+import com.aha.domain.exam.entity.ExamScopeNode;
+import com.aha.domain.exam.entity.ExamVersion;
+import com.aha.domain.exam.enums.ExamScopeNodeType;
+import com.aha.domain.exam.repository.ExamPartRepository;
+import com.aha.domain.exam.repository.ExamScopeNodeRepository;
+import com.aha.domain.workbook.aggregation.AttemptPartResult;
+import com.aha.domain.workbook.aggregation.AttemptSectionResult;
+import com.aha.domain.workbook.aggregation.SectionAggregator;
 import com.aha.domain.workbook.dto.request.UserAnswerRequestDto;
+import com.aha.domain.workbook.dto.response.AttemptResultResponseDto;
+import com.aha.domain.workbook.dto.response.AttemptSubmitResponseDto;
 import com.aha.domain.workbook.dto.response.UserAnswerResponseDto;
 import com.aha.domain.workbook.entity.Problem;
 import com.aha.domain.workbook.entity.UserAnswer;
@@ -16,8 +27,13 @@ import com.aha.domain.workbook.repository.WorkbookItemRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.security.CustomUserDetails;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,12 +47,14 @@ public class WorkbookAttemptService {
     private final ProblemRepository problemRepository;
     private final WorkbookItemRepository workbookItemRepository;
     private final PastExamWorkbookRepository pastExamWorkbookRepository;
+    private final ExamPartRepository examPartRepository;
+    private final ExamScopeNodeRepository examScopeNodeRepository;
 
     @Transactional(readOnly = true)
     public List<UserAnswerResponseDto> getUserAnswers(Long attemptId,
         CustomUserDetails userDetails) {
         Long userId = userDetails.getId();
-        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdWithWorkbookAndWorkbookTypeExamVersionAndExam(
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
                 attemptId, userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
         workbookAttempt.getWorkbook().validateGetUserAnswers();
@@ -52,7 +70,7 @@ public class WorkbookAttemptService {
     public void saveUserAnswer(Long attemptId, Long problemId, CustomUserDetails userDetails,
         UserAnswerRequestDto requestDto) {
         Long userId = userDetails.getId();
-        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdWithWorkbookAndWorkbookTypeExamVersionAndExam(
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
                 attemptId, userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
         Workbook workbook = workbookAttempt.getWorkbook();
@@ -88,7 +106,7 @@ public class WorkbookAttemptService {
     @Transactional
     public void checkUserAnswer(Long attemptId, Long problemId, CustomUserDetails userDetails) {
         Long userId = userDetails.getId();
-        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdWithWorkbookAndWorkbookTypeExamVersionAndExam(
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
                 attemptId, userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
         Workbook workbook = workbookAttempt.getWorkbook();
@@ -119,5 +137,124 @@ public class WorkbookAttemptService {
         }
     }
 
+    @Transactional
+    public AttemptSubmitResponseDto submitAttempt(CustomUserDetails userDetails, Long attemptId) {
+        Long userId = userDetails.getId();
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
+                attemptId, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
 
+        Workbook workbook = workbookAttempt.getWorkbook();
+        workbook.validateSubmitAttempt();
+
+        int userAnswerCount = userAnswerRepository.countByWorkbookAttempt_Id(attemptId);
+
+        workbookAttempt.validateSubmitAttempt(userAnswerCount);
+
+
+        List<UserAnswer> userAnswers = userAnswerRepository.findByAttempt_IdWithProblemAndExamScopeNode(
+            attemptId);
+        for (UserAnswer userAnswer : userAnswers) {
+            Problem problem = userAnswer.getProblem();
+            problem.grade(userAnswer);
+        }
+
+        List<ExamPart> examParts = examPartRepository.findByExamVersion_IdWithExamScopeNodes(
+            workbook.getExamVersion().getId());
+        Map<Long, ExamPart> partMap = examParts.stream()
+            .collect(Collectors.toMap(ExamPart::getId, ep -> ep));
+
+        Map<Long, Map<Long, SectionAggregator>> aggregatorMap = new HashMap<>();
+        for (ExamPart examPart : examParts) {
+            List<ExamScopeNode> sectionNodes = examPart.getExamScopeNodes().stream()
+                .filter(esn -> esn.getNodeType() == ExamScopeNodeType.SECTION)
+                .toList();
+            HashMap<Long, SectionAggregator> map = new HashMap<>();
+            for (ExamScopeNode examScopeNode : sectionNodes) {
+                map.put(examScopeNode.getId(), SectionAggregator.create(examScopeNode));
+            }
+            aggregatorMap.put(examPart.getId(), map);
+        }
+
+        for (UserAnswer userAnswer : userAnswers) {
+            Problem problem = userAnswer.getProblem();
+            ExamScopeNode examScopeNode = problem.getExamScopeNode();
+            ExamScopeNode sectionNode = examScopeNode.findSectionNode();
+            SectionAggregator aggregator = aggregatorMap.get(sectionNode.getExamPart().getId())
+                .get(sectionNode.getId());
+            int problemScore = problem.getScore();
+            if (userAnswer.isCorrect()) {
+                aggregator.increaseUserScore(problemScore);
+                aggregator.increaseCorrectQuestionCount();
+            }
+            aggregator.increaseTotalQuestionCount();
+            aggregator.increaseTotalScore(problemScore);
+        }
+        boolean isPassed = true;
+        String failedSubject = "";
+        String resultMessage = "";
+        int totalUserScore = 0;
+        List<AttemptPartResult> partResults = new ArrayList<>();
+
+        for (Map.Entry<Long, Map<Long, SectionAggregator>> entry : aggregatorMap.entrySet()) {
+            Long partId = entry.getKey();
+            ExamPart examPart = partMap.get(partId);
+            List<SectionAggregator> aggregators = new ArrayList<>(entry.getValue().values());
+            int partUserScore = 0;
+            partUserScore += aggregators.stream().mapToInt(SectionAggregator::getUserScore).sum();
+            totalUserScore += partUserScore;
+            List<AttemptSectionResult> sectionResults = aggregators.stream().map(
+                    AttemptSectionResult::create)
+                .sorted(Comparator.comparing(AttemptSectionResult::displayOrder)).toList();
+            if (examPart.isSubjectFailTarget()) {
+                int threshold = examPart.getSubjectFailThresholdScore();
+                if (threshold > partUserScore) {
+                    isPassed = false;
+                    failedSubject += examPart.getName() + " ";
+                }
+            }
+
+            partResults.add(AttemptPartResult.create(examPart, sectionResults));
+        }
+
+        partResults.sort(Comparator.comparing(AttemptPartResult::displayOrder));
+
+        ExamVersion examVersion = workbook.getExamVersion();
+        int passingScore = examVersion.getPassingScore();
+        if (examVersion.getPassingRuleType().equals("TOTAL")) {
+            if (passingScore > totalUserScore) {
+                isPassed = false;
+                resultMessage = "총점 미달입니다.";
+            }
+        } else {
+            if ((double) passingScore > (double) totalUserScore / aggregatorMap.size()) {
+                isPassed = false;
+                resultMessage = "평균 미달입니다.";
+            }
+        }
+
+        if (resultMessage.isEmpty()) {
+            if (isPassed) {
+                resultMessage = "축하합니다. 합격입니다!";
+            } else {
+                resultMessage = failedSubject + "에서 과락입니다.";
+            }
+        }
+
+        workbookAttempt.updateAfterGrade(partResults, isPassed, resultMessage);
+
+        return AttemptSubmitResponseDto.from(workbookAttempt);
+    }
+
+    @Transactional(readOnly = true)
+    public AttemptResultResponseDto getResult(CustomUserDetails userDetails, Long attemptId) {
+
+        Long userId = userDetails.getId();
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
+                attemptId, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
+        workbookAttempt.validateGetResult();
+
+        return AttemptResultResponseDto.from(workbookAttempt);
+    }
 }
