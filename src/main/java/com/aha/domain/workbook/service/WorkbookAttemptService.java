@@ -13,11 +13,14 @@ import com.aha.domain.workbook.dto.request.UserAnswerRequestDto;
 import com.aha.domain.workbook.dto.response.AttemptResultResponseDto;
 import com.aha.domain.workbook.dto.response.AttemptSubmitResponseDto;
 import com.aha.domain.workbook.dto.response.UserAnswerResponseDto;
+import com.aha.domain.workbook.dto.response.WorkbookItemResponseDto;
 import com.aha.domain.workbook.entity.Problem;
+import com.aha.domain.workbook.entity.ProblemChoice;
 import com.aha.domain.workbook.entity.UserAnswer;
 import com.aha.domain.workbook.entity.Workbook;
 import com.aha.domain.workbook.entity.WorkbookAttempt;
 import com.aha.domain.workbook.entity.WorkbookType;
+import com.aha.domain.workbook.enums.AttemptStatus;
 import com.aha.domain.workbook.enums.WorkbookTypeCode;
 import com.aha.domain.workbook.repository.PastExamWorkbookRepository;
 import com.aha.domain.workbook.repository.ProblemRepository;
@@ -49,6 +52,32 @@ public class WorkbookAttemptService {
     private final PastExamWorkbookRepository pastExamWorkbookRepository;
     private final ExamPartRepository examPartRepository;
     private final ExamScopeNodeRepository examScopeNodeRepository;
+
+    @Transactional(readOnly = true)
+    public List<WorkbookItemResponseDto> getItems(Long attemptId,
+        CustomUserDetails userDetails) {
+
+        Long userId = userDetails.getId();
+        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(
+                attemptId, userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
+        if(workbookAttempt.isSolving()){
+            Workbook workbook = workbookAttempt.getWorkbook();
+            workbook.validateGetItems();
+            return workbookItemRepository.findByWorkbook_IdWithProblemAndExamScopeNodeAndExamPartAndProblemChoices(workbook.getId()).stream()
+                .map(wi -> {
+                    Problem problem = wi.getProblem();
+                    List<ProblemChoice> problemChoices = problem.getProblemChoices();
+                    ExamScopeNode examScopeNode = problem.getExamScopeNode();
+                    ExamPart examPart = examScopeNode.getExamPart();
+                    return WorkbookItemResponseDto.ofSolving(wi, problem, problemChoices, examPart);
+                }).toList();
+        }else{
+            //워크북 검증 x
+            //추후 작성 예정
+            return null;
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<UserAnswerResponseDto> getUserAnswers(Long attemptId,
