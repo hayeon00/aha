@@ -4,6 +4,7 @@ import com.aha.domain.workbook.dto.request.UserAnswerRequestDto;
 import com.aha.domain.workbook.dto.response.AttemptResultResponseDto;
 import com.aha.domain.workbook.dto.response.AttemptSubmitResponseDto;
 import com.aha.domain.workbook.dto.response.UserAnswerResponseDto;
+import com.aha.domain.workbook.dto.response.WorkbookItemResponseDto;
 import com.aha.domain.workbook.service.WorkbookAttemptService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
@@ -29,6 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class WorkbookAttemptController {
 
     private final WorkbookAttemptService workbookAttemptService;
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{attemptId}/items")
+    public ResponseEntity<ApiResponse<List<WorkbookItemResponseDto>>> getWorkbookItems(
+        @Min(1) @PathVariable Long attemptId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+        List<WorkbookItemResponseDto> response = workbookAttemptService.getItems(attemptId,userDetails);
+        return ResponseEntity.ok().body(ApiResponse.success(200,"워크북 문항 목록 조회 성공",response));
+    }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{attemptId}/answers")
