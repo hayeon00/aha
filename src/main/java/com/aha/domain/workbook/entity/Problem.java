@@ -71,4 +71,10 @@ public class Problem {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    public void grade(UserAnswer userAnswer) {
+        String target = userAnswer.getAnswer();
+        if(target!=null && target.strip().equals(answer)){
+            userAnswer.mark(true);
+        }
+    }
 }
