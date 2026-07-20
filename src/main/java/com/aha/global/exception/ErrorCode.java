@@ -66,6 +66,7 @@ public enum ErrorCode {
     EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
     EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
     EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
+    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
 
     //WORKBOOK
     WORKBOOK_NOT_FOUND(404,"WORKBOOK_001","워크북에 접근할 수 없습니다."),
