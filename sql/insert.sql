@@ -5,15 +5,13 @@ SET @exam_id=LAST_INSERT_ID();
 
 INSERT INTO `exam_version` (`exam_id`,`version_no`,`version_name`,`default_question_count`,`duration_type`,`default_duration_seconds`,`total_score`,`passing_rule_type`,`passing_score`,`has_subject_fail_rule`,`subject_fail_threshold`,`status`) VALUES (@exam_id,2025,'SQLD 2025 개정판',50,'TOTAL',5400,100,'TOTAL',60,1,40,'ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`version_name`=VALUES(`version_name`),`default_question_count`=VALUES(`default_question_count`),`duration_type`=VALUES(`duration_type`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`passing_rule_type`=VALUES(`passing_rule_type`),`passing_score`=VALUES(`passing_score`),`has_subject_fail_rule`=VALUES(`has_subject_fail_rule`),`subject_fail_threshold`=VALUES(`subject_fail_threshold`),`status`=VALUES(`status`);
 SET @exam_version_id=LAST_INSERT_ID();
-INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('INFOPRO', '정보처리기사', 'ACTIVE');
+INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('INFOPRO', '정보처리기사', 'ACTIVE')
+ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`), `name`=VALUES(`name`), `status`=VALUES(`status`);
 SET @infra_id = LAST_INSERT_ID();
 
-INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('ADSP', '데이터분석 준전문가(ADsP)', 'ACTIVE');
+INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('ADSP', '데이터분석 준전문가(ADsP)', 'ACTIVE')
+ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`), `name`=VALUES(`name`), `status`=VALUES(`status`);
 SET @adsp_id = LAST_INSERT_ID();
-
-INSERT INTO `exam_version` (`exam_id`, `version_no`, `version_name`, `default_question_count`, `duration_type`, `default_duration_seconds`, `total_score`, `passing_rule_type`, `passing_score`, `has_subject_fail_rule`, `subject_fail_threshold`, `status`)
-VALUES (@exam_id, 2025, 'SQLD 2025 개정판', 50, 'TOTAL', 5400, 100, 'TOTAL', 60, 1, 40, 'ACTIVE');
-SET @exam_version_id = LAST_INSERT_ID();
 
 INSERT INTO `exam_part` (`exam_version_id`,`code`,`name`,`default_question_count`,`default_duration_seconds`,`total_score`,`is_subject_fail_target`,`subject_fail_threshold_score`,`is_active`,`display_order`) VALUES (@exam_version_id,'SUBJECT_1','1과목 데이터 모델링의 이해',10,NULL,20,1,8,1,1),(@exam_version_id,'SUBJECT_2','2과목 SQL 기본 및 활용',40,NULL,80,1,32,1,2) ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`default_question_count`=VALUES(`default_question_count`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`is_subject_fail_target`=VALUES(`is_subject_fail_target`),`subject_fail_threshold_score`=VALUES(`subject_fail_threshold_score`),`is_active`=VALUES(`is_active`),`display_order`=VALUES(`display_order`);
 
@@ -26,24 +24,13 @@ INSERT INTO `exam_scope_node` (`exam_version_id`,`exam_part_id`,`code`,`parent_i
 
 INSERT INTO `exam_scope_node` (`exam_version_id`,`exam_part_id`,`code`,`parent_id`,`node_type`,`depth`,`title`,`description`,`keywords_json`,`is_leaf`,`is_active`,`display_order`) SELECT p.`exam_version_id`,p.`exam_part_id`,x.`code`,p.`id`,'TOPIC',2,x.`title`,x.`description`,x.`keywords_json`,1,1,x.`display_order` FROM `exam_scope_node` p JOIN (SELECT 'SQLD-SQL-01' parent_code,'SQLD-SQL-01-01' code,'관계형 데이터베이스 개요' title,'관계형 데이터베이스의 특징, 테이블, 행, 컬럼, 기본키, 외래키, 무결성 제약조건의 기초를 학습합니다.' description,JSON_ARRAY('관계형 데이터베이스','테이블','행','컬럼','PK','FK','무결성','제약조건') keywords_json,1 display_order UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-02','SELECT 기본 구조','SELECT 문의 기본 구조와 SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY 절의 실행 흐름을 학습합니다.',JSON_ARRAY('SELECT','FROM','WHERE','GROUP BY','HAVING','ORDER BY','조회'),2 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-03','컬럼 별칭과 산술 표현식','컬럼 별칭, AS, 산술 연산자, 문자열 결합, SELECT 절 표현식 사용 방법을 학습합니다.',JSON_ARRAY('별칭','AS','산술 표현식','연산자','컬럼 표현식','문자열 결합'),3 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-04','DISTINCT와 중복 제거','DISTINCT를 사용한 중복 행 제거 방식과 SELECT 결과에서 중복이 판단되는 기준을 학습합니다.',JSON_ARRAY('DISTINCT','중복 제거','중복 행','SELECT 결과'),4 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-05','WHERE 절과 비교 조건','WHERE 절의 역할, 비교 연산자, 논리 연산자, BETWEEN, IN, LIKE 조건식을 학습합니다.',JSON_ARRAY('WHERE','비교 연산자','논리 연산자','BETWEEN','IN','LIKE','조건절'),5 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-06','NULL 처리','NULL의 의미, IS NULL, IS NOT NULL, NULL 연산 결과, NVL, COALESCE 등 NULL 처리 함수를 학습합니다.',JSON_ARRAY('NULL','IS NULL','IS NOT NULL','NVL','COALESCE','NULL 연산'),6 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-07','SQL 함수','문자 함수, 숫자 함수, 날짜 함수, 변환 함수, NULL 관련 함수의 사용 방법을 학습합니다.',JSON_ARRAY('문자 함수','숫자 함수','날짜 함수','변환 함수','SUBSTR','ROUND','TO_CHAR','TO_DATE'),7 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-08','집계 함수','COUNT, SUM, AVG, MIN, MAX 등 집계 함수의 특징과 NULL 처리 방식, 전체 집계와 그룹 집계를 학습합니다.',JSON_ARRAY('COUNT','SUM','AVG','MIN','MAX','집계 함수','NULL 제외'),8 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-09','GROUP BY와 HAVING','GROUP BY를 이용한 그룹화, HAVING을 이용한 그룹 조건 필터링, WHERE와 HAVING의 차이를 학습합니다.',JSON_ARRAY('GROUP BY','HAVING','그룹화','그룹 조건','WHERE와 HAVING 차이'),9 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-10','ORDER BY','ORDER BY 절의 정렬 기준, ASC, DESC, NULL 정렬, SELECT 절 별칭과 위치 번호 사용을 학습합니다.',JSON_ARRAY('ORDER BY','ASC','DESC','정렬','NULL 정렬','별칭 정렬'),10 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-11','JOIN 기본','조인의 개념, INNER JOIN, OUTER JOIN, CROSS JOIN, SELF JOIN의 기본 원리와 결과 차이를 학습합니다.',JSON_ARRAY('JOIN','INNER JOIN','OUTER JOIN','CROSS JOIN','SELF JOIN','조인 조건'),11 UNION ALL SELECT 'SQLD-SQL-01','SQLD-SQL-01-12','표준 조인','ANSI 표준 조인 문법, INNER JOIN, LEFT OUTER JOIN, RIGHT OUTER JOIN, FULL OUTER JOIN, NATURAL JOIN, USING 절을 학습합니다.',JSON_ARRAY('ANSI JOIN','INNER JOIN','LEFT OUTER JOIN','RIGHT OUTER JOIN','FULL OUTER JOIN','NATURAL JOIN','USING'),12 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-01','서브쿼리','단일행 서브쿼리, 다중행 서브쿼리, 다중컬럼 서브쿼리, 상관 서브쿼리, EXISTS, IN, ANY, ALL을 학습합니다.',JSON_ARRAY('서브쿼리','단일행 서브쿼리','다중행 서브쿼리','상관 서브쿼리','EXISTS','IN','ANY','ALL'),1 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-02','집합 연산자','UNION, UNION ALL, INTERSECT, EXCEPT 또는 MINUS의 차이와 집합 연산자의 정렬 및 중복 처리 방식을 학습합니다.',JSON_ARRAY('UNION','UNION ALL','INTERSECT','EXCEPT','MINUS','집합 연산자','중복 제거'),2 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-03','그룹 함수','ROLLUP, CUBE, GROUPING SETS, GROUPING 함수처럼 소계와 합계를 생성하는 그룹 함수를 학습합니다.',JSON_ARRAY('ROLLUP','CUBE','GROUPING SETS','GROUPING','소계','합계'),3 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-04','윈도우 함수','OVER 절, PARTITION BY, ORDER BY, ROW_NUMBER, RANK, DENSE_RANK, SUM OVER 등 윈도우 함수를 학습합니다.',JSON_ARRAY('윈도우 함수','OVER','PARTITION BY','ROW_NUMBER','RANK','DENSE_RANK','LEAD','LAG'),4 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-05','Top N 쿼리','상위 N개 행을 조회하는 Top N 쿼리, ROWNUM, ROW_NUMBER, ORDER BY와의 관계를 학습합니다.',JSON_ARRAY('Top N','ROWNUM','ROW_NUMBER','ORDER BY','상위 N개'),5 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-06','계층형 질의와 셀프 조인','START WITH, CONNECT BY, PRIOR, LEVEL을 사용하는 계층형 질의와 동일 테이블을 조인하는 셀프 조인을 학습합니다.',JSON_ARRAY('계층형 질의','START WITH','CONNECT BY','PRIOR','LEVEL','셀프 조인'),6 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-07','PIVOT과 UNPIVOT','행과 열을 전환하는 PIVOT, UNPIVOT의 개념과 집계 결과를 열로 변환하는 방법을 학습합니다.',JSON_ARRAY('PIVOT','UNPIVOT','행 열 변환','집계 결과 변환'),7 UNION ALL SELECT 'SQLD-SQL-02','SQLD-SQL-02-08','정규 표현식','REGEXP_LIKE, REGEXP_REPLACE, REGEXP_SUBSTR 등 정규 표현식 함수와 패턴 매칭을 학습합니다.',JSON_ARRAY('정규 표현식','REGEXP_LIKE','REGEXP_REPLACE','REGEXP_SUBSTR','패턴 매칭'),8 UNION ALL SELECT 'SQLD-SQL-03','SQLD-SQL-03-01','DML','INSERT, UPDATE, DELETE, MERGE 등 데이터를 조작하는 DML 명령어와 사용 시 주의점을 학습합니다.',JSON_ARRAY('DML','INSERT','UPDATE','DELETE','MERGE','데이터 조작어'),1 UNION ALL SELECT 'SQLD-SQL-03','SQLD-SQL-03-02','TCL','COMMIT, ROLLBACK, SAVEPOINT 등 트랜잭션을 제어하는 TCL 명령어와 트랜잭션 특성을 학습합니다.',JSON_ARRAY('TCL','COMMIT','ROLLBACK','SAVEPOINT','트랜잭션 제어어'),2 UNION ALL SELECT 'SQLD-SQL-03','SQLD-SQL-03-03','DDL','CREATE, ALTER, DROP, TRUNCATE, RENAME 등 데이터베이스 객체를 정의하고 변경하는 DDL 명령어를 학습합니다.',JSON_ARRAY('DDL','CREATE','ALTER','DROP','TRUNCATE','RENAME','데이터 정의어'),3 UNION ALL SELECT 'SQLD-SQL-03','SQLD-SQL-03-04','DCL','GRANT, REVOKE 등 사용자 권한을 부여하거나 회수하는 DCL 명령어와 권한 관리 방식을 학습합니다.',JSON_ARRAY('DCL','GRANT','REVOKE','권한','사용자 권한','데이터 제어어'),4) x ON p.`code`=x.`parent_code` WHERE p.`exam_version_id`=@exam_version_id AND p.`node_type`='SECTION' ON DUPLICATE KEY UPDATE `exam_part_id`=VALUES(`exam_part_id`),`parent_id`=VALUES(`parent_id`),`node_type`=VALUES(`node_type`),`depth`=VALUES(`depth`),`title`=VALUES(`title`),`description`=VALUES(`description`),`keywords_json`=VALUES(`keywords_json`),`is_leaf`=VALUES(`is_leaf`),`is_active`=VALUES(`is_active`),`display_order`=VALUES(`display_order`);
 
-INSERT INTO `workbook_type` (`code`, `name`, `display_order`, `created_at`, `updated_at`)
-VALUES
-    ('PAST', '복원기출', 1, NOW(), NOW()),
-    ('TYPE2', '테스트유형2', 2, NOW(), NOW()),
-    ('TYPE3', '테스트유형3', 3, NOW(), NOW());
-
-
--- 2) 개정판 시험 정보 및 기출 타입 바인딩
+-- 2) 개정판 시험 버전 조회
 SET @exam_version_id = (SELECT `id` FROM `exam_version` WHERE `version_name` = 'SQLD 2025 개정판' LIMIT 1);
-SET @workbook_type_id = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
--- 3) '2025년 제1회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `total_problem_count`,`created_at`, `updated_at`)
-VALUES (@exam_version_id, @workbook_type_id, 'PUBLISHED', 10, NOW(), NOW());
-SET @workbook_id = LAST_INSERT_ID();
-
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`,`exam_date`)
-VALUES (@workbook_id, 1, 2025, 1, 5400, NOW(), NOW(),'2026-03-01 09:00:00');
+-- 3) '2025년 제1회 복원기출' 신규 등록
+INSERT INTO `past_paper` (`exam_version_id`, `status`, `total_item_count`, `is_reviewed`, `year`, `round_no`, `time_limit`, `exam_date`, `created_at`, `updated_at`)
+VALUES (@exam_version_id, 'PUBLISHED', 10, 1, 2025, 1, 5400, '2026-03-01', NOW(), NOW());
+SET @past_paper_id = LAST_INSERT_ID();
 
 
 -- =================================================================
@@ -94,8 +81,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_1, 3, '업무의 처리 방법에 따라 데이터가 어떻게 변화하는지 분석하는 **상관 관점**', NOW(), NOW()),
                                                                                                      (@prob_id_1, 4, '전체 데이터 아키텍처의 무결성을 실시간 제어하고 보안을 감시하는 **통제 관점**', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_1, 1, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_1, 1, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -127,8 +114,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2, 3, '업무 행위에 의해 동적으로 끊임없이 발생하는 `행위 엔터티(Active Entity)`', NOW(), NOW()),
                                                                                                      (@prob_id_2, 4, '물리적인 형체 없이 개념적인 형태로만 존재하는 `무형 엔터티(Conceptual Entity)`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_2, 2, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_2, 2, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -155,8 +142,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3, 3, '속성도 인스턴스와 마찬가지로 속성이 가질 수 있는 값의 범위인 도메인(Domain)을 지닌다.', NOW(), NOW()),
                                                                                                      (@prob_id_3, 4, '사원 엔터티의 `사원번호`처럼 주식별자에 식별되거나 종속되는 성격을 띤다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_3, 3, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_3, 3, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -186,8 +173,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_4, 3, '속성의 수 - `단일 식별자`, `복합 식별자`', NOW(), NOW()),
                                                                                                      (@prob_id_4, 4, '대체 여부 - `본질 식별자`, `인조 식별자`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_4, 4, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_4, 4, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -225,8 +212,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_5, 3, '주식별자에 종속되지 않는 비식별자 간의 이행적 함수 종속을 분리하는 `제3정규화(3NF)`', NOW(), NOW()),
                                                                                                      (@prob_id_5, 4, '결정자 구조가 후보키에 포함되지 않는 복합 구조를 개선하는 `BCNF(Boyce-Codd Regularity)`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_5, 5, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_5, 5, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -270,8 +257,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_6, 3, '3개', NOW(), NOW()),
                                                                                                      (@prob_id_6, 4, '0개 (에러 발생)', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_6, 6, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_6, 6, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -311,8 +298,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_7, 3, '`OR` 연산자가 전체 비교문에서 가장 높은 우선순위를 지닌다.', NOW(), NOW()),
                                                                                                      (@prob_id_7, 4, '우선순위가 동일하므로 DBMS 옵티마이저가 임의로 해석 순서를 결정한다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_7, 7, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_7, 7, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -340,8 +327,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_8, 3, '`SELECT dept_id, AVG(salary) FROM employee WHERE salary >= 3000000 GROUP BY dept_id;`', NOW(), NOW()),
                                                                                                      (@prob_id_8, 4, '`SELECT job_code, COUNT(*) FROM employee GROUP BY job_code HAVING COUNT(*) >= 5;`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_8, 8, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_8, 8, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -367,8 +354,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_9, 3, '`EXISTS`는 메인쿼리의 데이터가 서브쿼리의 조건을 충족하는지 존재 유무만을 판별하여 불리언 값을 도출한다.', NOW(), NOW()),
                                                                                                      (@prob_id_9, 4, '다중 행 서브쿼리는 단일 행 연산자(예: `=`, `>`, `<`)와 혼용하여 직접 비교할 수 없다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_9, 9, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_9, 9, NOW(), NOW());
 
 
 -- -----------------------------------------------------------------
@@ -410,27 +397,22 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_10, 3, '`DENSE_RANK()` 함수를 사용하면 이영희와 공동 순위가 발생하여 박민수의 순위는 3위가 된다.', NOW(), NOW()),
                                                                                                      (@prob_id_10, 4, '`DENSE_RANK()` 함수 적용 시 박민수의 순위는 중복 순위를 축소하여 2위가 된다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id, @prob_id_10, 10, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id, @prob_id_10, 10, NOW(), NOW());
 
 COMMIT;
 
 START TRANSACTION;
 
 -- =================================================================
--- 1. 2회차 워크북 마스터 정보 등록
+-- 1. 2회차 복원기출 정보 등록
 -- =================================================================
 SET @exam_version_id_2 = (SELECT `id` FROM `exam_version` WHERE `version_name` = 'SQLD 2025 개정판' LIMIT 1);
-SET @workbook_type_id_2 = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
--- '2025년 제2회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`,`total_problem_count`, `created_at`, `updated_at`)
-VALUES (@exam_version_id_2, @workbook_type_id_2, 'PUBLISHED', 10,NOW(), NOW());
-SET @workbook_id_2 = LAST_INSERT_ID();
-
--- 2회차 기출 세부 마스터 등록 (시험일자: 2026-06-01 기준 예시)
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
-VALUES (@workbook_id_2, 1, 2025, 2, 5400, NOW(), NOW(), '2026-06-01 09:00:00');
+-- '2025년 제2회 복원기출' 신규 등록
+INSERT INTO `past_paper` (`exam_version_id`, `status`, `total_item_count`, `is_reviewed`, `year`, `round_no`, `time_limit`, `exam_date`, `created_at`, `updated_at`)
+VALUES (@exam_version_id_2, 'PUBLISHED', 10, 1, 2025, 2, 5400, '2026-06-01', NOW(), NOW());
+SET @past_paper_id_2 = LAST_INSERT_ID();
 
 
 -- =================================================================
@@ -463,7 +445,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_1, 3, '정밀화: 현실세계의 비즈니스 프로세스 전반을 왜곡 없이 최대한 구체적이고 정밀하게 누적 묘사한다.', NOW(), NOW()),
                                                                                                      (@prob_id_2_1, 4, '명확화: 대상에 대한 모호함을 제거하고 정확하게 현상을 해석할 수 있도록 설계한다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_1, 1, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_1, 1, NOW(), NOW());
 
 
 -- [문제 2] 제3정규화 대상 식별 (이행적 함수 종속)
@@ -477,7 +459,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_2, 3, '식별자가 타 엔터티의 주식별자를 참조하여 관계선 상에서 외부 식별자로 공유되는 경우', NOW(), NOW()),
                                                                                                      (@prob_id_2_2, 4, '일반 비식별자 속성인 `부서명`이 주식별자가 아닌 또 다른 일반 속성 `부서코드`에 종속되어 있는 경우', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_2, 2, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_2, 2, NOW(), NOW());
 
 
 -- [문제 3] SELECT 문 문자열 함수 연산
@@ -491,7 +473,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_3, 3, '`EXAM`', NOW(), NOW()),
                                                                                                      (@prob_id_2_3, 4, '`SQL`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_3, 3, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_3, 3, NOW(), NOW());
 
 
 -- [문제 4] WHERE 절 NULL 비교 문법 오류 단골
@@ -505,7 +487,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_4, 3, '`WHERE COMM = ''''`', NOW(), NOW()),
                                                                                                      (@prob_id_2_4, 4, '`WHERE COMM IN (NULL)`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_4, 4, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_4, 4, NOW(), NOW());
 
 
 -- [문제 5] GROUP BY 절 수행 시 SELECT 제한 규칙
@@ -519,7 +501,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_5, 3, '`salary` (개별 급여 컬럼)', NOW(), NOW()),
                                                                                                      (@prob_id_2_5, 4, '`dept_id`를 제외한 나머지 모든 테이블 컬럼들', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_5, 5, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_5, 5, NOW(), NOW());
 
 
 -- [문제 6] NATURAL JOIN의 특징
@@ -533,7 +515,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_6, 3, '식별을 보다 명확히 처리하기 위해 `ON` 조건절을 추가하여 조인 대상을 선언할 수 있다.', NOW(), NOW()),
                                                                                                      (@prob_id_2_6, 4, '조인 결과 데이터에서 기준이 된 공통 컬럼은 단 하나만 표현된다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_6, 6, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_6, 6, NOW(), NOW());
 
 
 -- [문제 7] 스칼라 서브쿼리 특징
@@ -547,7 +529,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_7, 3, '주로 WHERE 절에서 복합 집합 데이터를 필터링하기 위해 선언된다.', NOW(), NOW()),
                                                                                                      (@prob_id_2_7, 4, '성능 최적화를 위해 내부적으로 항상 다중 행 연산자(`IN`) 구조로 변환된다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_7, 7, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_7, 7, NOW(), NOW());
 
 
 -- [문제 8] 그룹 함수 ROLLUP 데이터 집계
@@ -561,7 +543,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_8, 3, '`(A, B)`, `(B)`, `()`', NOW(), NOW()),
                                                                                                      (@prob_id_2_8, 4, '`(A)`, `(B)`, `()`', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_8, 8, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_8, 8, NOW(), NOW());
 
 
 -- [문제 9] ROWNUM vs TOP N 절 주의점
@@ -575,7 +557,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_9, 3, '`SELECT * FROM employee ORDER BY salary DESC FETCH FIRST 3 ROWS ONLY;`', NOW(), NOW()),
                                                                                                      (@prob_id_2_9, 4, '인라인 뷰 서브쿼리로 내부에서 정렬을 종결한 뒤 서브쿼리 외부에서 ROWNUM을 차단한 필터링 구문', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_9, 9, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_9, 9, NOW(), NOW());
 
 
 -- [문제 10] TCL 트랜잭션 병합 관계 (ROLLBACK 범위)
@@ -589,7 +571,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_2_10, 3, '`ROLLBACK`이 실행되면 현재 트랜잭션 중에 발생한 비저장 데이터 변경분이 모두 초기화된다.', NOW(), NOW()),
                                                                                                      (@prob_id_2_10, 4, '트랜잭션 관리 도중 DDL 문이 실행되면 명시적 커밋 없이도 이전 내역들이 자동 커밋 처리되는 경우가 있다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_2, @prob_id_2_10, 10, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_2, @prob_id_2_10, 10, NOW(), NOW());
 
 
 COMMIT;
@@ -599,19 +581,14 @@ COMMIT;
 START TRANSACTION;
 
 -- =================================================================
--- 1. 3회차 워크북 마스터 정보 등록
+-- 1. 3회차 복원기출 정보 등록
 -- =================================================================
 SET @exam_version_id_3 = (SELECT `id` FROM `exam_version` WHERE `version_name` = 'SQLD 2025 개정판' LIMIT 1);
-SET @workbook_type_id_3 = (SELECT `id` FROM `workbook_type` WHERE `code` = 'PAST' LIMIT 1);
 
--- '2025년 제3회 복원기출문제집' 신규 등록
-INSERT INTO `workbook` (`exam_version_id`, `workbook_type_id`, `status`, `total_problem_count`,`created_at`, `updated_at`)
-VALUES (@exam_version_id_3, @workbook_type_id_3, 'PUBLISHED', 10,NOW(), NOW());
-SET @workbook_id_3 = LAST_INSERT_ID();
-
--- 3회차 기출 세부 마스터 등록 (시험일자: 2026-09-01 기준 예시)
-INSERT INTO `past_exam_workbook` (`workbook_id`, `is_reviewed`, `year`, `round_no`, `time_limit`, `created_at`, `updated_at`, `exam_date`)
-VALUES (@workbook_id_3, 1, 2025, 3,  5400, NOW(), NOW(), '2026-09-01 09:00:00');
+-- '2025년 제3회 복원기출' 신규 등록
+INSERT INTO `past_paper` (`exam_version_id`, `status`, `total_item_count`, `is_reviewed`, `year`, `round_no`, `time_limit`, `exam_date`, `created_at`, `updated_at`)
+VALUES (@exam_version_id_3, 'PUBLISHED', 10, 1, 2025, 3, 5400, '2026-09-01', NOW(), NOW());
+SET @past_paper_id_3 = LAST_INSERT_ID();
 
 
 -- =================================================================
@@ -644,7 +621,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_1, 3, '논리적 데이터 모델링: 데이터 아키텍처 구조의 성능 최적화를 위해 물리적 테이블 스페이스와 세부 인덱스 저장을 직접 결정한다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_1, 4, '물리적 데이터 모델링: 논리 모델을 기반으로 특정 데이터베이스 하드웨어 및 DBMS 스펙에 맞게 테이블과 컬럼 구조를 변환한다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_1, 1, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_1, 1, NOW(), NOW());
 
 
 -- [문제 2] 구성 속성의 수에 따른 식별자 분류
@@ -658,7 +635,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_2, 3, '내부 식별자, 외부 식별자', NOW(), NOW()),
                                                                                                      (@prob_id_3_2, 4, '본질 식별자, 인조 식별자', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_2, 2, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_2, 2, NOW(), NOW());
 
 
 -- [문제 3] 제1정규화 대상 식별 (원자성 위배)
@@ -677,7 +654,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_3, 3, '`보유자격증` 컬럼이 도메인 원자성을 만족하지 못하고 복수의 다중값(Multi-value)을 포함하기 때문에', NOW(), NOW()),
                                                                                                      (@prob_id_3_3, 4, '결정자 구조가 후보키 집합에 포함되지 않아 외래키 참조 무결성이 깨지기 때문에', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_3, 3, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_3, 3, NOW(), NOW());
 
 
 -- [문제 4] SELECT 문 NULL 변환 함수 (NVL, COALESCE) 차이점
@@ -691,7 +668,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_4, 3, 'MySQL에서 `IFNULL(NULL, 100)`의 결과값은 `100`이다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_4, 4, '표준 SQL 구문에서 `COALESCE(NULL, NULL, ''SQLD'')`의 결과값은 `NULL`이다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_4, 4, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_4, 4, NOW(), NOW());
 
 
 -- [문제 5] 표준 조인 USING 절 식별자 사용 제약 조건
@@ -705,7 +682,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_5, 3, 'USING 절을 사용하면 내부적으로 반드시 OUTER JOIN 구조로만 강제 연동된다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_5, 4, '상호 호환성을 위해 `USING` 절과 `ON` 절을 하나의 JOIN 문법 안에서 동시에 선언하여 복합 결합해야 한다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_5, 5, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_5, 5, NOW(), NOW());
 
 
 -- [문제 6] 집합 연산자 UNION vs UNION ALL 중복 및 정렬 특성
@@ -719,7 +696,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_6, 3, '`MINUS`(Oracle) 또는 `EXCEPT`(SQL Server)는 첫 번째 집합에서 두 번째 집합의 결과 데이터를 제외한 차집합을 반환한다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_6, 4, '집합 연산자로 연결되는 두 쿼리의 SELECT 절 컬럼 수와 데이터 타입 순서는 서로 상호 호환되도록 일치해야 한다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_6, 6, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_6, 6, NOW(), NOW());
 
 
 -- [문제 7] 그룹 함수 CUBE 다차원 데이터 집계 조합 개수 구하기
@@ -733,7 +710,7 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_7, 3, '4개', NOW(), NOW()),
                                                                                                      (@prob_id_3_7, 4, '8개', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@workbook_id_3, @prob_id_3_7, 7, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`) VALUES (@past_paper_id_3, @prob_id_3_7, 7, NOW(), NOW());
 
 -- [문제 8] 계층형 질의 PRIOR 연산자 위치에 따른 방향성 판별
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
@@ -764,8 +741,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_8, 3, 'PRIOR 연산자가 양쪽 컬럼에 영향을 주어 무한 루프 사이클을 유발하는 에러 구문이다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_8, 4, 'START WITH 절의 조건과 상충되어 어떠한 행도 결과로 도출하지 못하는 무효 구문이다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id_3, @prob_id_3_8, 8, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id_3, @prob_id_3_8, 8, NOW(), NOW());
 
 
 -- [문제 9] PIVOT 절과 UNPIVOT 절의 기능적 특성
@@ -791,8 +768,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_9, 3, '`UNPIVOT` 절은 PIVOT과 반대로 다중 열(Column) 구조를 단일 행(Row) 집합으로 가로에서 세로로 전개한다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_9, 4, '`UNPIVOT` 연산을 수행하면 다차원 집계인 CUBE 연산과 동일하게 각 그룹별 합계 데이터 행이 하단에 자동 생성된다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id_3, @prob_id_3_9, 9, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id_3, @prob_id_3_9, 9, NOW(), NOW());
 
 
 -- [문제 10] DDL 문 명령어 특징 (TRUNCATE vs DROP vs DELETE 비교)
@@ -819,8 +796,8 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
                                                                                                      (@prob_id_3_10, 3, '`DELETE` 명령어는 DML문으로 행 단위 삭감을 수행하며, 조건절(WHERE)을 부여하여 특정 행만 골라 제거할 수 있다.', NOW(), NOW()),
                                                                                                      (@prob_id_3_10, 4, '`TRUNCATE`는 디스크 공간을 초기화 상태로 반납시키고 테이블 정의 및 스키마 구조는 그대로 남겨둔다.', NOW(), NOW());
 
-INSERT INTO `workbook_item` (`workbook_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
-VALUES (@workbook_id_3, @prob_id_3_10, 10, NOW(), NOW());
+INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
+VALUES (@past_paper_id_3, @prob_id_3_10, 10, NOW(), NOW());
 
 
 -- =================================================================
