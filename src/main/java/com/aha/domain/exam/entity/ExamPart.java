@@ -12,10 +12,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -81,22 +83,6 @@ public class ExamPart {
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
-  @Builder
-  public ExamPart(ExamVersion examVersion, ExamPart code, String name, Integer defaultQuestionCount,
-      Integer defaultDurationSeconds, Integer totalScore, boolean isSubjectFailTarget,
-      Integer subjectFailThresholdScore, boolean isActive, Integer displayOrder) {
-    this.examVersion = examVersion;
-    this.code = code.getCode();
-    this.name = name;
-    this.defaultQuestionCount = defaultQuestionCount;
-    this.defaultDurationSeconds = defaultDurationSeconds;
-    this.totalScore = totalScore;
-    this.isSubjectFailTarget = isSubjectFailTarget;
-    this.subjectFailThresholdScore = subjectFailThresholdScore;
-    this.isActive = isActive;
-    this.displayOrder = displayOrder;
-    if (examVersion != null) {
-      examVersion.getParts().add(this);
-    }
-  }
+  @OneToMany(fetch = FetchType.LAZY,mappedBy = "examPart")
+  private List<ExamScopeNode> examScopeNodes = new ArrayList<>();
 }
