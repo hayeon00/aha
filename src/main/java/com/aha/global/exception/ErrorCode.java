@@ -60,7 +60,8 @@ public enum ErrorCode {
     ATTEMPT_EXCEEDED_TIME_LIMIT(422,"WORKBOOK_008","풀이를 진행할 수 없습니다."),
     ATTEMPT_ALREADY_GRADED(409,"WORKBOOK_009" ,"풀이를 진행할 수 없습니다."),
     WORKBOOK_TYPE_NOT_SUPPORTED( 404, "WORKBOOK_010","지원하지 않는 워크북 타입입니다." ),
-
+    UNANSWERED_ITEMS_EXIST(422,"WORKBOOK_011","미응답 문항이 있습니다." ),
+    ATTEMPT_NOT_GRADED(409,"WORKBOOK_012" , "채점 완료 상태가 아닙니다."),
     //PROBLEM
     PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." );
 
