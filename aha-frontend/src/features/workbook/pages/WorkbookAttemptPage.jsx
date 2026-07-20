@@ -88,7 +88,7 @@ function WorkbookAttemptPage() {
 
         try {
             const [itemsResponse, answersResponse] = await Promise.all([
-                getWorkbookItems(workbookId),
+                getWorkbookItems(attemptId),
                 getWorkbookAttemptAnswers(attemptId),
             ]);
             const sortedItems = [...itemsResponse.data]
@@ -111,7 +111,7 @@ function WorkbookAttemptPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [attemptId, workbookId]);
+    }, [attemptId]);
 
     useEffect(() => {
         queueMicrotask(() => {

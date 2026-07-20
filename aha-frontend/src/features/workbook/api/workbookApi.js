@@ -86,10 +86,10 @@ export const getWorkbooks = async ({
     }
 };
 
-export const getWorkbookItems = async (workbookId) => {
+export const getWorkbookItems = async (attemptId) => {
     try {
         const response = await axiosInstance.get(
-            `/api/v1/workbooks/${workbookId}/items`
+            `/api/v1/workbook-attempts/${attemptId}/items`
         );
 
         return { data: getApiData(response) || [] };
