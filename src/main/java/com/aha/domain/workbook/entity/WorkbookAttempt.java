@@ -1,5 +1,7 @@
 package com.aha.domain.workbook.entity;
 
+import com.aha.domain.workbook.aggregation.AttemptPartResult;
+import com.aha.domain.workbook.aggregation.AttemptStatJson;
 import com.aha.domain.workbook.enums.AttemptStatus;
 import com.aha.domain.workbook.enums.WorkbookTypeCode;
 import com.aha.global.exception.BusinessException;
@@ -18,7 +20,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Min;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -71,7 +74,7 @@ public class WorkbookAttempt {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "json")
-    private Map<String, Object> statJson;
+    private AttemptStatJson statJson;
 
     @Min(0)
     @Column(name = "elapsed_time")
@@ -94,17 +97,50 @@ public class WorkbookAttempt {
     }
 
     public void validateSaveUserAnswer(Workbook workbook) {
-        if(status!=AttemptStatus.SOLVING){
+        if (status != AttemptStatus.SOLVING) {
             throw new BusinessException(ErrorCode.ATTEMPT_ALREADY_GRADED);
         }
         WorkbookTypeCode workbookTypeCode = workbook.getWorkbookType().getCode();
-        if(workbookTypeCode==WorkbookTypeCode.PAST){
+        if (workbookTypeCode == WorkbookTypeCode.PAST) {
             LocalDateTime now = LocalDateTime.now();
             PastExamWorkbook pastExamWorkbook = workbook.getPastExamWorkbook();
             LocalDateTime dueAt = createdAt.plusSeconds(pastExamWorkbook.getTimeLimit());
-            if(now.isAfter(dueAt)){
+            if (now.isAfter(dueAt)) {
                 throw new BusinessException(ErrorCode.ATTEMPT_EXCEEDED_TIME_LIMIT);
             }
+        }
+    }
+
+    public void validateSubmitAttempt(int userAnswerCount) {
+
+        int totalProblemCount = workbook.getTotalProblemCount();
+        if (userAnswerCount < totalProblemCount) {
+            throw new BusinessException(ErrorCode.UNANSWERED_ITEMS_EXIST);
+        }
+
+    }
+
+    public void updateAfterGrade(List<AttemptPartResult> partResults, boolean isPassed,
+        String resultMessage) {
+        int timeLimit = workbook.getPastExamWorkbook().getTimeLimit();
+        LocalDateTime now = LocalDateTime.now();
+        int elapseTime = 0;
+        if(now.isAfter(createdAt.plusSeconds(timeLimit))){
+            elapseTime= timeLimit;
+        }else{
+            elapseTime =  (int)ChronoUnit.SECONDS.between(createdAt, now);
+        }
+        this.status = AttemptStatus.GRADED;
+        this.isPassed = isPassed;
+        this.resultMessage = resultMessage;
+        this.totalScore = partResults.stream().mapToInt(AttemptPartResult::userScore).sum();
+        this.elapsedTime = elapseTime;
+        this.statJson=AttemptStatJson.create(partResults);
+    }
+
+    public void validateGetResult() {
+        if (status == AttemptStatus.SOLVING) {
+            throw new BusinessException(ErrorCode.ATTEMPT_NOT_GRADED);
         }
     }
 }
