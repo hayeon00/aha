@@ -7,6 +7,7 @@ import MainPage from "../features/home/pages/MainPage.jsx";
 import MyPage from "../features/user/pages/MyPage.jsx";
 import WorkbookPage from "../features/workbook/pages/WorkbookPage.jsx";
 import WorkbookAttemptPage from "../features/workbook/pages/WorkbookAttemptPage.jsx";
+import WorkbookResultPage from "../features/workbook/pages/WorkbookResultPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
 import { logout } from "../features/auth/api/authApi.js";
 
@@ -137,6 +138,10 @@ function App() {
                 <Route
                     path="/problems/:workbookId/attempts/:attemptId"
                     element={<WorkbookAttemptPage />}
+                />
+                <Route
+                    path="/problems/:workbookId/attempts/:attemptId/result"
+                    element={<WorkbookResultPage />}
                 />
                 <Route
                     path="/mypage"

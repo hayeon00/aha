@@ -84,4 +84,7 @@ public class UserAnswer {
         isChecked = !isChecked;
     }
 
+    public void mark(boolean b) {
+        isCorrect=true;
+    }
 }

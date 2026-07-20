@@ -129,6 +129,19 @@ public class Workbook {
         }
     }
 
+    public void validateSubmitAttempt() {
+        if (!isPublished()) {
+            throw new BusinessException(ErrorCode.WORKBOOK_NOT_PUBLISHED);
+        }
+        if (!getExamVersion().isActive()) {
+            throw new BusinessException(ErrorCode.EXAM_VERSION_NOT_ACTIVE);
+        }
+        Exam exam = examVersion.getExam();
+        if(exam.getStatus() != ExamStatus.ACTIVE){
+            throw new BusinessException(ErrorCode.EXAM_NOT_ACTIVE);
+        }
+    }
+
 
     private boolean checkItemCount(){
         return totalProblemCount == workbookItems.size();
