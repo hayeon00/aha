@@ -46,7 +46,7 @@ public class Problem {
     @Column(name = "format", nullable = false, length = 30)
     private ProblemFormat format;
 
-    @Column(name = "content", nullable = false)
+    @Column(name = "content", nullable = false, length = 500)
     private String content;
 
     @Min(1)

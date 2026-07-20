@@ -11,7 +11,6 @@ public record MyInfoResponseDto(
         String nickname,
         String role,
         String status,
-        String loginType,
         Boolean emailVerified,
         String profileImageUrl,
         LocalDateTime createdAt
@@ -25,7 +24,6 @@ public record MyInfoResponseDto(
                 user.getNickname(),
                 user.getRole().name(),
                 user.getStatus(),
-                user.getLoginType(),
                 user.isEmailVerified(),
                 user.getProfileImageUrl(),
                 user.getCreatedAt()

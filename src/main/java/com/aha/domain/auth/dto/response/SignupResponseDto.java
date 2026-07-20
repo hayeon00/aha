@@ -14,7 +14,6 @@ public class SignupResponseDto {
     private final String nickname;
     private final String role;
     private final String status;
-    private final String loginType;
     private final boolean emailVerified;
     private final LocalDateTime createdAt;
 
@@ -25,7 +24,6 @@ public class SignupResponseDto {
         this.nickname = user.getNickname();
         this.role = user.getRole().name();
         this.status = user.getStatus();
-        this.loginType = user.getLoginType();
         this.emailVerified = user.isEmailVerified();
         this.createdAt = user.getCreatedAt();
     }
