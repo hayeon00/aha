@@ -1,15 +1,10 @@
 package com.aha.domain.workbook.service;
 
-import com.aha.domain.exam.entity.ExamPart;
-import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.workbook.dto.response.AttemptStartResponseDto;
-import com.aha.domain.workbook.dto.response.WorkbookItemResponseDto;
 import com.aha.domain.workbook.dto.response.WorkbookResponseDto;
 import com.aha.domain.exam.entity.ExamVersionStatus;
 import com.aha.domain.exam.repository.ExamVersionRepository;
 import com.aha.domain.workbook.enums.AttemptStatus;
-import com.aha.domain.workbook.entity.Problem;
-import com.aha.domain.workbook.entity.ProblemChoice;
 import com.aha.domain.workbook.entity.Workbook;
 import com.aha.domain.workbook.entity.WorkbookAttempt;
 import com.aha.domain.workbook.enums.WorkbookStatus;
@@ -21,7 +16,6 @@ import com.aha.domain.workbook.repository.WorkbookRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.security.CustomUserDetails;
-import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -97,29 +91,4 @@ public class WorkbookService {
 
         return AttemptStartResponseDto.of(existingAttempt, workbook);
     }
-
-    @Transactional(readOnly = true)
-    public List<WorkbookItemResponseDto> getWorkbookItems(Long workbookId,
-        CustomUserDetails userDetails) {
-
-        Long userId = userDetails.getId();
-        WorkbookAttempt workbookAttempt = workbookAttemptRepository.findByWorkbookIdAndUserIdWithWorkbookAndExamVersionAndExam(
-                workbookId, userId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.ATTEMPT_NOT_FOUND));
-
-        Workbook workbook = workbookAttempt.getWorkbook();
-        workbook.validateGetItems();
-
-        return workbookItemRepository.findByWorkbook_Id(workbookId).stream()
-            .map(wi -> {
-                Problem problem = wi.getProblem();
-                List<ProblemChoice> problemChoices = problem.getProblemChoices();
-                ExamScopeNode examScopeNode = problem.getExamScopeNode();
-                ExamPart examPart = examScopeNode.getExamPart();
-                return WorkbookItemResponseDto.ofSolving(wi, problem, problemChoices, examPart);
-            }).toList();
-
-        //GRADED는 다음 이슈에서
-    }
-
 }
