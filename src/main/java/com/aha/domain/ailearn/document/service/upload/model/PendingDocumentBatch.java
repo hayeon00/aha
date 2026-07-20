@@ -1,14 +1,18 @@
 package com.aha.domain.ailearn.document.service.upload.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-
 import java.util.List;
 
-@Getter
-@AllArgsConstructor
-public class PendingDocumentBatch {
+public record PendingDocumentBatch(Long processingGroupId, List<PendingDocumentUpload> uploads) {
 
-    private Long processingGroupId;
-    private List<PendingDocumentFile> documents;
+    public PendingDocumentBatch {
+        if (processingGroupId == null) {
+            throw new IllegalArgumentException("처리 그룹 ID는 필수입니다.");
+        }
+
+        if (uploads == null || uploads.isEmpty()) {
+            throw new IllegalArgumentException("업로드 문서 목록은 필수입니다.");
+        }
+
+        uploads = List.copyOf(uploads);
+    }
 }

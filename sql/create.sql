@@ -20,27 +20,41 @@ DROP TABLE IF EXISTS `learning_source_document`;
 DROP TABLE IF EXISTS `learning_coach`;
 DROP TABLE IF EXISTS `learning_memo`;
 DROP TABLE IF EXISTS `learning_content_reference`;
+DROP TABLE IF EXISTS `user_document_concept`;
 DROP TABLE IF EXISTS `user_learning_content`;
 DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk`;
 DROP TABLE IF EXISTS `document_processing`;
 DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `document_processing_group`;
-DROP TABLE IF EXISTS `extracted_content`;
-
+DROP TABLE IF EXISTS `document_chunk_embedding`;
+DROP TABLE IF EXISTS `exam_scope_node_embedding`;
 
 DROP TABLE IF EXISTS `refresh_tokens`;
 DROP TABLE IF EXISTS `user_answer`;
 DROP TABLE IF EXISTS `workbook_attempt`;
+DROP TABLE IF EXISTS `workbook_result`;
 DROP TABLE IF EXISTS `workbook_item`;
 DROP TABLE IF EXISTS `past_exam_workbook`;
 DROP TABLE IF EXISTS `workbook`;
+DROP TABLE IF EXISTS `exam_workbook_type`;
 DROP TABLE IF EXISTS `workbook_type`;
+
+DROP TABLE IF EXISTS `problem_available_usage_type`;
 DROP TABLE IF EXISTS `problem_choice`;
 DROP TABLE IF EXISTS `problem`;
+DROP TABLE IF EXISTS `problem_review_detail`;
+DROP TABLE IF EXISTS `problem_review`;
+DROP TABLE IF EXISTS `ai_generated_problem_choice`;
+DROP TABLE IF EXISTS `ai_generated_problem`;
+DROP TABLE IF EXISTS `problem_set_generation_job`;
+DROP TABLE IF EXISTS `policy_value`;
+DROP TABLE IF EXISTS `policy`;
 DROP TABLE IF EXISTS `exam_scope_node`;
 DROP TABLE IF EXISTS `exam_part`;
 DROP TABLE IF EXISTS `exam_version`;
+DROP TABLE IF EXISTS `domain_type`;
+DROP TABLE IF EXISTS `asset_file`;
 DROP TABLE IF EXISTS `user_exam`;
 DROP TABLE IF EXISTS `exam`;
 DROP TABLE IF EXISTS `users`;
@@ -188,6 +202,37 @@ CREATE TABLE `exam_scope_node` (
                                        CHECK (`display_order` >= 0)
 );
 
+CREATE TABLE `exam_scope_node_embedding` (
+                                             `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                             `exam_scope_node_id` BIGINT NOT NULL,
+                                             `embedding_model` VARCHAR(100) NOT NULL,
+                                             `embedding_json` JSON NOT NULL,
+                                             `embedding_dimension` INT NOT NULL,
+                                             `embedding_text_hash` VARCHAR(64) NOT NULL,
+                                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                             PRIMARY KEY (`id`),
+
+                                             UNIQUE KEY `uk_scope_node_embedding_scope_model`
+                                                 (`exam_scope_node_id`, `embedding_model`),
+
+                                             INDEX `idx_scope_node_embedding_scope`
+                                                 (`exam_scope_node_id`),
+                                             INDEX `idx_scope_node_embedding_model`
+                                                 (`embedding_model`),
+                                             INDEX `idx_scope_node_embedding_text_hash`
+                                                 (`embedding_text_hash`),
+
+                                             CONSTRAINT `fk_scope_node_embedding_scope_node`
+                                                 FOREIGN KEY (`exam_scope_node_id`)
+                                                     REFERENCES `exam_scope_node` (`id`)
+                                                     ON DELETE CASCADE,
+
+                                             CONSTRAINT `chk_scope_node_embedding_dimension`
+                                                 CHECK (`embedding_dimension` > 0)
+);
+
 
 CREATE TABLE `user_exam` (
                              `id`              BIGINT   NOT NULL AUTO_INCREMENT,
@@ -242,17 +287,10 @@ CREATE TABLE `document_processing_group` (
                                                      REFERENCES `user_exam` (`id`)
                                                      ON DELETE CASCADE,
 
-                                             CONSTRAINT `chk_dpg_progress_rate`
-                                                 CHECK (`progress_rate` BETWEEN 0 AND 100),
-
                                              CONSTRAINT `chk_dpg_total_file_count`
-                                                 CHECK (`total_file_count` >= 0),
+                                                 CHECK (`total_file_count` >= 0)
 
-                                             CONSTRAINT `chk_dpg_completed_file_count`
-                                                 CHECK (`completed_file_count` >= 0),
 
-                                             CONSTRAINT `chk_dpg_failed_file_count`
-                                                 CHECK (`failed_file_count` >= 0)
 );
 
 CREATE TABLE `source_document` (
@@ -266,7 +304,7 @@ CREATE TABLE `source_document` (
                                    `file_size`            BIGINT       NOT NULL,
                                    `upload_status`        VARCHAR(30)  NOT NULL DEFAULT 'PENDING',
                                    `upload_error_message` VARCHAR(1000)     NULL,
-                                   `is_active`            BOOLEAN      NOT NULL DEFAULT TRUE,
+                                   `is_active`            BOOLEAN      NOT NULL,
                                    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                    `updated_at`           DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
 
@@ -301,12 +339,15 @@ CREATE TABLE `document_chunk` (
                                   `section_title` VARCHAR(255) NULL,
                                   `heading_path` VARCHAR(1000) NULL,
                                   `content_type` VARCHAR(30) NOT NULL DEFAULT 'TEXT',
+                                  `code_language` VARCHAR(30) NULL,
                                   `content_text` LONGTEXT NOT NULL,
                                   `raw_text` LONGTEXT NULL,
                                   `summary` TEXT NULL,
                                   `keywords_json` JSON NULL,
                                   `structure_json` JSON NULL,
                                   `token_count` INT NULL,
+                                  `mapping_status` VARCHAR(30) NOT NULL DEFAULT 'UNASSIGNED',
+                                  `mapping_confidence` DECIMAL(5,4) NULL,
                                   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                       ON UPDATE CURRENT_TIMESTAMP,
@@ -320,8 +361,12 @@ CREATE TABLE `document_chunk` (
                                       (`source_document_id`, `page_no`),
                                   INDEX `idx_document_chunk_content_type`
                                       (`content_type`),
+                                  INDEX `idx_document_chunk_code_language`
+                                      (`code_language`),
                                   INDEX `idx_document_chunk_heading_path`
                                       (`source_document_id`, `heading_path`(255)),
+                                  INDEX `idx_document_chunk_mapping_status`
+                                      (`mapping_status`),
 
                                   CONSTRAINT `fk_document_chunk_source_document`
                                       FOREIGN KEY (`source_document_id`)
@@ -332,7 +377,43 @@ CREATE TABLE `document_chunk` (
                                   CONSTRAINT `chk_document_chunk_page_no`
                                       CHECK (`page_no` IS NULL OR `page_no` >= 1),
                                   CONSTRAINT `chk_document_chunk_token_count`
-                                      CHECK (`token_count` IS NULL OR `token_count` >= 0)
+                                      CHECK (`token_count` IS NULL OR `token_count` >= 0),
+                                  CONSTRAINT `chk_document_chunk_code_language`
+                                      CHECK (
+                                          `code_language` IS NULL
+                                              OR `content_type` IN ('CODE', 'COMMAND', 'CONFIG')
+                                          )
+);
+
+CREATE TABLE `document_chunk_embedding` (
+                                            `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                            `document_chunk_id` BIGINT NOT NULL,
+                                            `embedding_model` VARCHAR(100) NOT NULL,
+                                            `embedding_json` JSON NOT NULL,
+                                            `embedding_dimension` INT NOT NULL,
+                                            `embedding_text_hash` VARCHAR(64) NOT NULL,
+                                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                                            PRIMARY KEY (`id`),
+
+                                            UNIQUE KEY `uk_document_chunk_embedding_chunk_model`
+                                                (`document_chunk_id`, `embedding_model`),
+
+                                            INDEX `idx_document_chunk_embedding_chunk`
+                                                (`document_chunk_id`),
+                                            INDEX `idx_document_chunk_embedding_model`
+                                                (`embedding_model`),
+                                            INDEX `idx_document_chunk_embedding_text_hash`
+                                                (`embedding_text_hash`),
+
+                                            CONSTRAINT `fk_document_chunk_embedding_chunk`
+                                                FOREIGN KEY (`document_chunk_id`)
+                                                    REFERENCES `document_chunk` (`id`)
+                                                    ON DELETE CASCADE,
+
+                                            CONSTRAINT `chk_document_chunk_embedding_dimension`
+                                                CHECK (`embedding_dimension` > 0)
 );
 
 CREATE TABLE `document_scope_mapping` (
@@ -381,6 +462,7 @@ CREATE TABLE `user_learning_content` (
                                          `exam_scope_node_id` BIGINT       NOT NULL,
                                          `title`              VARCHAR(200) NOT NULL,
                                          `content`            LONGTEXT         NULL,
+                                         `source_type`        VARCHAR(30)  NOT NULL DEFAULT 'DOCUMENT',
                                          `keywords_json`      JSON             NULL,
                                          `status`             VARCHAR(30)  NOT NULL DEFAULT 'NOT_MAPPED',
                                          `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -392,6 +474,7 @@ CREATE TABLE `user_learning_content` (
                                          INDEX `idx_ulc_user_exam_id` (`user_exam_id`),
                                          INDEX `idx_ulc_exam_scope_node_id` (`exam_scope_node_id`),
                                          INDEX `idx_ulc_status` (`status`),
+                                         INDEX `idx_ulc_scope_source` (`exam_scope_node_id`, `source_type`),
 
                                          CONSTRAINT `fk_ulc_user_exam_id`
                                              FOREIGN KEY (`user_exam_id`) REFERENCES `user_exam` (`id`)
@@ -400,6 +483,25 @@ CREATE TABLE `user_learning_content` (
                                          CONSTRAINT `fk_ulc_exam_scope_node_id`
                                              FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
                                                  ON DELETE CASCADE
+);
+
+CREATE TABLE `user_document_concept` (
+                                         `id`          BIGINT       NOT NULL AUTO_INCREMENT,
+                                         `user_id`     BIGINT       NOT NULL,
+                                         `document_id` BIGINT       NOT NULL,
+                                         `toc_id`      BIGINT       NOT NULL,
+                                         `source_type` VARCHAR(30)  NOT NULL,
+                                         `title`       VARCHAR(255) NOT NULL,
+                                         `content`     LONGTEXT     NOT NULL,
+                                         `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                         PRIMARY KEY (`id`),
+                                         UNIQUE KEY `uk_user_document_concept_tenant_document_toc` (`user_id`, `document_id`, `toc_id`),
+                                         INDEX `idx_udc_document_source` (`document_id`, `source_type`),
+                                         INDEX `idx_udc_user_document` (`user_id`, `document_id`),
+                                         CONSTRAINT `fk_udc_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+                                         CONSTRAINT `fk_udc_document` FOREIGN KEY (`document_id`) REFERENCES `source_document` (`id`) ON DELETE CASCADE,
+                                         CONSTRAINT `fk_udc_toc` FOREIGN KEY (`toc_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE
 );
 
 

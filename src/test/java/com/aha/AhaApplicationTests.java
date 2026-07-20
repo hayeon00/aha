@@ -1,6 +1,5 @@
 package com.aha;
 
-import com.aha.domain.ailearn.document.client.content.OpenAiLearningContentGenerationClient;
 import com.aha.domain.ailearn.document.client.mapping.OpenAiDocumentScopeMappingClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,9 +9,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @ActiveProfiles("test")
 @SpringBootTest
 class AhaApplicationTests {
-
-    @MockitoBean
-    private OpenAiLearningContentGenerationClient learningContentGenerationClient;
 
     @MockitoBean
     private OpenAiDocumentScopeMappingClient documentScopeMappingClient;

@@ -9,7 +9,11 @@ package com.aha.domain.ailearn.document.dto.mapping.request;
  */
 public record ScopeCandidateRequestDto(
         Long examScopeNodeId,
-        String title
+        String code,
+        String title,
+        String description,
+        String keywordsJson,
+        Double similarityScore
 ){
 
 }

@@ -1,42 +1,18 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
 
 import UploadProgressModal from "../components/UploadProgressModal.jsx";
+import UnassignedChunksPanel from "../components/UnassignedChunksPanel.jsx";
+import LearningContentMarkdown, { LearningContentSkeleton } from "../components/LearningContentMarkdown.jsx";
+import ConceptContentView from "../components/ConceptContentView.jsx";
+import AICoachPanel from "../components/AICoachPanel.jsx";
 import { useDocumentProcessing } from "../hooks/useDocumentProcessing.js";
 import { useLearningContent } from "../hooks/useLearningContent.js";
+import { useDocumentConceptDashboard } from "../hooks/useDocumentConceptDashboard.js";
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
 
 import "./AiLearningPage.css";
-
-const coachFeatures = [
-    {
-        icon: "summary",
-        title: "쉬운 설명",
-        description: "복잡한 개념을 쉽게 풀어드려요.",
-    },
-    {
-        icon: "list",
-        title: "핵심 요약",
-        description: "중요한 내용을 빠르게 요약해요.",
-    },
-    {
-        icon: "target",
-        title: "출제 포인트",
-        description: "시험에 자주 나오는 포인트를 짚어드려요.",
-    },
-    {
-        icon: "compare",
-        title: "헷갈리는 개념 비교",
-        description: "유사한 개념을 비교해드립니다.",
-    },
-    {
-        icon: "question",
-        title: "예상 질문 만들기",
-        description: "스스로 점검할 수 있는 문제를 만들어요.",
-    },
-];
 
 function AiLearningPage() {
     const navigate = useNavigate();
@@ -72,7 +48,10 @@ function AiLearningPage() {
         uploadErrorMessage,
         hasProcessedDocuments,
         isDocumentStateLoading,
+        completedProcessingKey,
+        isRetrying,
         uploadDocuments,
+        retryProcessing,
         closeProgressModal,
         resetDocumentState,
     } = useDocumentProcessing({
@@ -81,9 +60,7 @@ function AiLearningPage() {
     });
 
     const {
-        learningContent,
-        isContentLoading,
-        contentErrorMessage,
+        refetchLearningContent,
         resetLearningContent,
     } = useLearningContent({
         userExamId: selectedUserExamId,
@@ -91,9 +68,35 @@ function AiLearningPage() {
         enabled: hasProcessedDocuments && !isDocumentStateLoading,
     });
 
+    const conceptRoom = useDocumentConceptDashboard({
+        userExamId: selectedUserExamId,
+        enabled: hasProcessedDocuments && !isDocumentStateLoading,
+    });
 
+    useEffect(() => {
+        if (completedProcessingKey > 0) {
+            refetchLearningContent();
+        }
+    }, [completedProcessingKey, refetchLearningContent]);
 
     const message = examMessage || scopeMessage;
+    const selectedChapter = [
+        ...(conceptRoom.dashboard?.mapped ?? []).map((chapter) => ({ ...chapter, mapped: true })),
+        ...(conceptRoom.dashboard?.unmapped ?? []).map((chapter) => ({ ...chapter, mapped: false })),
+    ].find((chapter) => Number(chapter.tocId) === Number(selectedNodeId)) ?? null;
+    const isSelectedChapterGenerating = conceptRoom.generatingIds.includes(selectedChapter?.tocId);
+    const mappedTocIds = new Set(
+        (conceptRoom.dashboard?.mapped ?? []).map((chapter) => Number(chapter.tocId))
+    );
+    const knownTocIds = new Set([
+        ...(conceptRoom.dashboard?.mapped ?? []),
+        ...(conceptRoom.dashboard?.unmapped ?? []),
+    ].map((chapter) => Number(chapter.tocId)));
+    const aiCompletedTocIds = new Set(
+        (conceptRoom.dashboard?.unmapped ?? [])
+            .filter((chapter) => chapter.generated || Boolean(chapter.content))
+            .map((chapter) => Number(chapter.tocId))
+    );
 
     const handleUserExamChange = (userExamId) => {
         changeUserExam(userExamId);
@@ -277,18 +280,16 @@ function AiLearningPage() {
                                     등록된 목차가 없습니다.
                                 </div>
                             ) : (
-                                scopeNodes.map((node, index) => (
-                                    <ScopeTreeNode
-                                        key={node.id}
-                                        node={node}
-                                        numberPrefix={`${index + 1}`}
-                                        level={1}
-                                        selectedNodeId={selectedNodeId}
-                                        expandedNodeIds={expandedNodeIds}
-                                        onToggle={toggleNode}
-                                        onSelect={handleSelectNode}
-                                    />
-                                ))
+                                <StudyTocTree
+                                    nodes={scopeNodes}
+                                    selectedNodeId={selectedNodeId}
+                                    expandedNodeIds={expandedNodeIds}
+                                    mappedTocIds={mappedTocIds}
+                                    aiCompletedTocIds={aiCompletedTocIds}
+                                    knownTocIds={knownTocIds}
+                                    onToggle={toggleNode}
+                                    onSelect={handleSelectNode}
+                                />
                             )}
                         </div>
                     </aside>
@@ -305,99 +306,12 @@ function AiLearningPage() {
                                 <div className="concept-loading-spinner" />
                                 <p>문서 상태를 확인하는 중입니다...</p>
                             </div>
-                        ) : isContentLoading ? (
-                            <div className="content-loading-state">
-                                <div className="concept-loading-spinner" />
-                                <p>개념 설명을 불러오는 중입니다...</p>
-                            </div>
-                        ) : learningContent ? (
-                            <article className="learning-content-view">
-                                <div className="learning-content-head">
-                                    <div>
-                                        <p className="learning-content-path">
-                                            {selectedUserExam?.examName || "개념 학습"}
-                                        </p>
-                                        <h3>{learningContent.title}</h3>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        className="secondary-upload-button"
-                                        onClick={handleUploadClick}
-                                        disabled={isUploading}
-                                    >
-                                        문서 추가 업로드
-                                    </button>
-                                </div>
-
-                                {contentErrorMessage && (
-                                    <p className="content-error-message">
-                                        {contentErrorMessage}
-                                    </p>
-                                )}
-
-                                <div className="learning-content-markdown">
-                                    <ReactMarkdown>
-                                        {learningContent.content || ""}
-                                    </ReactMarkdown>
-                                </div>
-
-                                {Array.isArray(learningContent.keywords) &&
-                                    learningContent.keywords.length > 0 && (
-                                        <div className="learning-keywords">
-                                            <strong>핵심 키워드</strong>
-                                            <div>
-                                                {learningContent.keywords.map((keyword) => (
-                                                    <span key={keyword}>{keyword}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                            </article>
                         ) : hasProcessedDocuments ? (
-                            <div className="content-empty-state">
-                                <div className="content-empty-icon" aria-hidden="true">
-                                    <svg
-                                        width="52"
-                                        height="52"
-                                        viewBox="0 0 52 52"
-                                        fill="none"
-                                    >
-                                        <rect
-                                            x="11"
-                                            y="7"
-                                            width="30"
-                                            height="38"
-                                            rx="7"
-                                            fill="#FFF8F2"
-                                            stroke="#F6C7A8"
-                                            strokeWidth="1.8"
-                                        />
-                                        <path
-                                            d="M18 20H34M18 27H30"
-                                            stroke="#C9A995"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                        />
-                                    </svg>
-                                </div>
-
-                                <h3>연결된 학습 내용이 없습니다</h3>
-
-                                <p>
-                                    선택한 목차와 연결된 문서 내용이 없어
-                                    개념 설명이 생성되지 않았습니다.
-                                </p>
-
-                                <button
-                                    type="button"
-                                    className="empty-upload-button"
-                                    onClick={handleUploadClick}
-                                    disabled={isUploading}
-                                >
-                                    문서 추가 업로드
-                                </button>
-                            </div>
+                            <ConceptContentView
+                                chapter={selectedChapter}
+                                loading={conceptRoom.loading}
+                                generating={isSelectedChapterGenerating}
+                            />
                         ) : (
                             <div className="upload-dropzone">
                                 <div className="upload-empty-content">
@@ -443,7 +357,7 @@ function AiLearningPage() {
                                     <h3>학습 문서를 업로드해 주세요</h3>
 
                                     <p className="upload-description">
-                                        PDF, Word, TXT 파일을 선택해 개념 학습을 시작하세요.
+                                        PDF, Docx 파일을 선택해 개념 학습을 시작하세요.
                                     </p>
 
                                     <button
@@ -483,7 +397,7 @@ function AiLearningPage() {
                                     </button>
 
                                     <span className="upload-hint">
-                                        PDF, DOC, DOCX, TXT 파일을 여러 개 선택할 수 있습니다.
+                                        PDF, DOCX 파일을 여러 개 선택할 수 있습니다.
                                     </span>
                                 </div>
                             </div>
@@ -492,7 +406,7 @@ function AiLearningPage() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             multiple
                             className="upload-file-input"
                             onChange={handleFileChange}
@@ -501,89 +415,475 @@ function AiLearningPage() {
 
                     <aside className="coach-panel">
                         <div className="panel-header">
-                            <div className="panel-title">
-                                <h2>AI 코치</h2>
-                            </div>
+                            <div className="panel-title"><h2>AI 코치</h2></div>
                         </div>
-
-                        <div className="coach-empty">
-                            <div className="coach-robot">
-                                <div className="robot-antenna" />
-                                <div className="robot-head">
-                                    <span />
-                                    <span />
-                                </div>
-                                <div className="robot-ear left" />
-                                <div className="robot-ear right" />
-                                <div className="robot-bubble" />
-                            </div>
-
-                            <h3>
-                                학습 문서를 업로드하면
-                                <br />
-                                AI 코치가 함께 학습을 도와드려요!
-                            </h3>
-                        </div>
-
-                        <div className="coach-divider">
-                            <span />
-                            AI 코치가 도와드릴 수 있어요
-                            <span />
-                        </div>
-
-                        <div className="coach-feature-list">
-                            {coachFeatures.map((feature) => (
-                                <div
-                                    className="coach-feature"
-                                    key={feature.title + feature.description}
-                                >
-                                    <span className={`coach-feature-icon ${feature.icon}`}>
-                                        {feature.icon === "summary" && "▤"}
-                                        {feature.icon === "list" && "☰"}
-                                        {feature.icon === "target" && "◎"}
-                                        {feature.icon === "compare" && "⌘"}
-                                        {feature.icon === "question" && "?"}
-                                    </span>
-
-                                    <div>
-                                        <strong>{feature.title}</strong>
-                                        <p>{feature.description}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <AICoachPanel
+                            chapter={selectedChapter}
+                            generating={isSelectedChapterGenerating}
+                            onGenerate={() => selectedChapter && conceptRoom.generateOne(selectedChapter.tocId)}
+                        />
                     </aside>
                 </section>
             )}
 
             <UploadProgressModal
                 open={isProgressModalOpen}
+                currentStatusText={processingStatus?.stepMessage}
                 status={processingStatus}
                 errorMessage={uploadErrorMessage}
                 onClose={closeProgressModal}
+                onRetry={retryProcessing}
+                isRetrying={isRetrying}
             />
+            {hasProcessedDocuments && (
+                <UnassignedChunksPanel
+                    userExamId={selectedUserExamId}
+                    scopeNodes={scopeNodes}
+                    onAssigned={refetchLearningContent}
+                />
+            )}
         </main>
     );
 }
 
-function ScopeTreeNode({
+export function DocumentMappedContentSection({
+                                          learningContent,
+                                          chunks,
+                                          contentErrorMessage,
+                                          isContentLoading,
+                                          isGeneratingConcept,
+                                          isUploading,
+                                          selectedNodeId,
+                                          selectedUserExamName,
+                                          onUploadClick,
+                                          onRequestAiConcept,
+                                      }) {
+    const sortedChunks = [...(chunks || [])].sort((a, b) => {
+        const firstOrder = a.chunkOrder ?? Number.MAX_SAFE_INTEGER;
+        const secondOrder = b.chunkOrder ?? Number.MAX_SAFE_INTEGER;
+
+        if (firstOrder !== secondOrder) {
+            return firstOrder - secondOrder;
+        }
+
+        return (a.documentChunkId ?? 0) - (b.documentChunkId ?? 0);
+    });
+
+    if (!selectedNodeId) {
+        return (
+            <DocumentContentMessage
+                title="목차를 선택해 주세요"
+                message="목차를 선택하면 문서 기반 개념 내용을 확인할 수 있습니다."
+                onUploadClick={onUploadClick}
+                isUploading={isUploading}
+            />
+        );
+    }
+
+    if (isContentLoading) {
+        return (
+            <div className="learning-content-view">
+                <LearningContentSkeleton />
+            </div>
+        );
+    }
+
+    if (isGeneratingConcept) {
+        return (
+            <div className="ai-generation-loading" aria-live="polite">
+                <div className="ai-generation-loading-head">
+                    <span className="ai-sparkle">✦</span>
+                    <div>
+                        <strong>AI가 핵심 개념을 정리하고 있어요</strong>
+                        <p>목차와 상위 맥락을 분석해 표준 설명을 생성합니다.</p>
+                    </div>
+                </div>
+                <LearningContentSkeleton />
+            </div>
+        );
+    }
+
+    if (contentErrorMessage) {
+        return (
+            <DocumentContentMessage
+                title="문서 내용을 불러오지 못했습니다"
+                message="문서 기반 개념 내용을 불러오지 못했습니다."
+                variant="error"
+                onUploadClick={onUploadClick}
+                isUploading={isUploading}
+            />
+        );
+    }
+
+    if (learningContent) {
+        return (
+            <GeneratedLearningContentSection
+                learningContent={learningContent}
+                selectedUserExamName={selectedUserExamName}
+                isUploading={isUploading}
+                onUploadClick={onUploadClick}
+            />
+        );
+    }
+
+    if (sortedChunks.length === 0) {
+        return (
+            <MissingConceptPrompt
+                onRequest={onRequestAiConcept}
+                disabled={isGeneratingConcept}
+            />
+        );
+    }
+
+    return (
+        <article className="learning-content-view document-content-view">
+            <div className="learning-content-head document-content-head">
+                <div>
+                    <p className="learning-content-path">
+                        {selectedUserExamName || "개념 학습"}
+                    </p>
+                    <h3>문서 기반 개념 내용</h3>
+                    <p className="document-content-description">
+                        업로드한 문서에서 선택한 목차와 관련된 내용을 모아 보여줍니다.
+                    </p>
+                </div>
+
+                <div className="document-content-actions">
+                    <span className="document-count-badge">
+                        총 {sortedChunks.length}개 문서 조각
+                    </span>
+                    <button
+                        type="button"
+                        className="secondary-upload-button"
+                        onClick={onUploadClick}
+                        disabled={isUploading}
+                    >
+                        문서 추가 업로드
+                    </button>
+                </div>
+            </div>
+
+            <div className="document-chunk-list">
+                {sortedChunks.map((chunk) => (
+                    <DocumentChunkCard
+                        key={chunk.documentChunkId ?? `${chunk.chunkOrder}-${chunk.contentText}`}
+                        chunk={chunk}
+                    />
+                ))}
+            </div>
+        </article>
+    );
+}
+
+function GeneratedLearningContentSection({
+                                             learningContent,
+                                             selectedUserExamName,
+                                             isUploading,
+                                             onUploadClick,
+                                         }) {
+    const keywords = parseKeywords(learningContent.keywordsJson);
+    const isAiGenerated = learningContent.sourceType === "AI_GENERATED";
+
+    return (
+        <article className={`learning-content-view ${isAiGenerated ? "ai-generated-content" : "document-generated-content"}`}>
+            <div className="learning-content-head">
+                <div>
+                    <p className="learning-content-path">
+                        {selectedUserExamName || "개념 학습"}
+                    </p>
+                    {isAiGenerated && (
+                        <span className="ai-source-badge">
+                            <span aria-hidden="true">✦</span>
+                            AI 자체 생성 지식
+                        </span>
+                    )}
+                    <h3>{learningContent.title}</h3>
+                    {isAiGenerated && (
+                        <p className="ai-source-notice">
+                            업로드 문서가 아닌 AI의 일반 지식을 바탕으로 생성된 설명입니다.
+                        </p>
+                    )}
+                </div>
+
+                <button
+                    type="button"
+                    className="secondary-upload-button"
+                    onClick={onUploadClick}
+                    disabled={isUploading}
+                >
+                    문서 추가 업로드
+                </button>
+            </div>
+
+            <div className="learning-content-markdown">
+                <LearningContentMarkdown content={learningContent.content} />
+            </div>
+
+            {keywords.length > 0 && (
+                <div className="learning-keywords">
+                    <strong>핵심 키워드</strong>
+                    <div>
+                        {keywords.map((keyword) => (
+                            <span key={keyword}>{keyword}</span>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </article>
+    );
+}
+
+function MissingConceptPrompt({ onRequest, disabled }) {
+    return (
+        <div className="missing-concept-prompt">
+            <div className="missing-concept-robot" aria-hidden="true">🤖</div>
+            <span className="missing-concept-kicker">빈 목차</span>
+            <h3>아직 설명할 문서 내용이 없어요</h3>
+            <p>업로드한 문서에 없는 내용입니다. AI에게 핵심 개념 설명을 요청해보세요!</p>
+            <button
+                type="button"
+                className="ai-concept-request-button"
+                onClick={onRequest}
+                disabled={disabled}
+            >
+                <span aria-hidden="true">🤖</span>
+                AI에게 설명 요청하기
+                <span className="button-sparkle" aria-hidden="true">✦</span>
+            </button>
+            <small>생성된 설명은 AI 지식으로 명확히 표시되며 이후 요청에 재사용됩니다.</small>
+        </div>
+    );
+}
+
+function DocumentContentMessage({
+                                    title,
+                                    message,
+                                    variant = "empty",
+                                    onUploadClick,
+                                    isUploading,
+                                }) {
+    return (
+        <div className={`content-empty-state document-content-message ${variant}`}>
+            <div className="content-empty-icon" aria-hidden="true">
+                <svg
+                    width="52"
+                    height="52"
+                    viewBox="0 0 52 52"
+                    fill="none"
+                >
+                    <rect
+                        x="11"
+                        y="7"
+                        width="30"
+                        height="38"
+                        rx="7"
+                        fill="#FFF8F2"
+                        stroke="#F6C7A8"
+                        strokeWidth="1.8"
+                    />
+                    <path
+                        d="M18 20H34M18 27H30M18 34H32"
+                        stroke="#C9A995"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                    />
+                </svg>
+            </div>
+
+            <h3>{title}</h3>
+            <p>{message}</p>
+
+            <button
+                type="button"
+                className="empty-upload-button"
+                onClick={onUploadClick}
+                disabled={isUploading}
+            >
+                문서 추가 업로드
+            </button>
+        </div>
+    );
+}
+
+function DocumentChunkCard({ chunk }) {
+    const contentType = normalizeContentType(chunk.contentType);
+    const sectionTitle = chunk.sectionTitle || getContentTypeLabel(contentType);
+    const confidence = Number(chunk.mappingConfidence);
+    const confidenceLevel = confidence >= 0.8 ? "high" : "mid";
+
+    return (
+        <section className={`document-chunk-card ${getContentTypeClassName(contentType)}`}>
+            <div className="document-chunk-meta">
+                <div className="document-chunk-title-wrap">
+                    <h4>{sectionTitle}</h4>
+                    {Number.isFinite(confidence) && (
+                        <span className={`mapping-confidence-badge ${confidenceLevel}`}>
+                            {confidenceLevel === "high" ? "높은 신뢰도" : "검토 권장"}
+                        </span>
+                    )}
+                    {chunk.headingPath && (
+                        <p>{chunk.headingPath}</p>
+                    )}
+                </div>
+
+                <div className="document-chunk-badges">
+                    {chunk.pageNo && (
+                        <span className="document-page-badge">p.{chunk.pageNo}</span>
+                    )}
+                    <span className={`document-type-badge ${getContentTypeClassName(contentType)}`}>
+                        {getContentTypeLabel(contentType)}
+                    </span>
+                    {chunk.codeLanguage && chunk.codeLanguage !== "UNKNOWN" && (
+                        <span className="document-language-badge">
+                            {chunk.codeLanguage}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {renderChunkContent(chunk)}
+        </section>
+    );
+}
+
+function renderChunkContent(chunk) {
+    const contentType = normalizeContentType(chunk.contentType);
+    const contentText = chunk.contentText || "";
+
+    if (contentType === "CODE" || contentType === "COMMAND" || contentType === "CONFIG") {
+        return (
+            <pre className="document-code-block">
+                <code>{contentText}</code>
+            </pre>
+        );
+    }
+
+    if (contentType === "TABLE") {
+        return (
+            <pre className="document-table-block">
+                {contentText}
+            </pre>
+        );
+    }
+
+    if (contentType === "HEADING") {
+        return (
+            <div className="document-heading-block">
+                {contentText}
+            </div>
+        );
+    }
+
+    if (contentType === "EXAMPLE" || contentType === "WARNING") {
+        return (
+            <div className={`document-callout-block ${getContentTypeClassName(contentType)}`}>
+                {contentText}
+            </div>
+        );
+    }
+
+    return (
+        <div className="document-text-block">
+            {contentText}
+        </div>
+    );
+}
+
+function normalizeContentType(contentType) {
+    return String(contentType || "TEXT").toUpperCase();
+}
+
+function getContentTypeLabel(contentType) {
+    const labels = {
+        TEXT: "TEXT",
+        HEADING: "HEADING",
+        CODE: "CODE",
+        TABLE: "TABLE",
+        EXAMPLE: "EXAMPLE",
+        WARNING: "WARNING",
+        COMMAND: "COMMAND",
+        CONFIG: "CONFIG",
+        FORMULA: "FORMULA",
+        MIXED: "MIXED",
+    };
+
+    return labels[normalizeContentType(contentType)] || normalizeContentType(contentType);
+}
+
+function getContentTypeClassName(contentType) {
+    return `type-${normalizeContentType(contentType).toLowerCase()}`;
+}
+
+function parseKeywords(keywordsJson) {
+    if (!keywordsJson) {
+        return [];
+    }
+
+    if (Array.isArray(keywordsJson)) {
+        return keywordsJson;
+    }
+
+    try {
+        const parsedKeywords = JSON.parse(keywordsJson);
+        return Array.isArray(parsedKeywords) ? parsedKeywords : [];
+    } catch {
+        return [];
+    }
+}
+
+function StudyTocTree({
+                          nodes,
+                          selectedNodeId,
+                          expandedNodeIds,
+                          mappedTocIds,
+                          aiCompletedTocIds,
+                          knownTocIds,
+                          onToggle,
+                          onSelect,
+                      }) {
+    return nodes.map((node, index) => (
+        <StudyTocTreeNode
+            key={node.id}
+            node={node}
+            numberPrefix={`${index + 1}`}
+            level={1}
+            selectedNodeId={selectedNodeId}
+            expandedNodeIds={expandedNodeIds}
+            mappedTocIds={mappedTocIds}
+            aiCompletedTocIds={aiCompletedTocIds}
+            knownTocIds={knownTocIds}
+            onToggle={onToggle}
+            onSelect={onSelect}
+        />
+    ));
+}
+
+function StudyTocTreeNode({
                            node,
                            numberPrefix,
                            level,
                            selectedNodeId,
                            expandedNodeIds,
+                           mappedTocIds,
+                           aiCompletedTocIds,
+                           knownTocIds,
                            onToggle,
                            onSelect,
                        }) {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodeIds.includes(node.id);
     const isSelected = selectedNodeId === node.id;
+    const mappingState = mappedTocIds.has(Number(node.id))
+        ? "mapped"
+        : aiCompletedTocIds.has(Number(node.id))
+            ? "ai-completed"
+            : knownTocIds.has(Number(node.id)) ? "unmapped" : "neutral";
 
     return (
         <div className={`toc-node toc-node-level-${level}`}>
             <button
                 type="button"
-                className={isSelected ? "toc-node-row active" : "toc-node-row"}
+                className={`toc-node-row ${mappingState} ${isSelected ? "active" : ""}`}
                 onClick={() => onSelect(node)}
             >
                 <span className="toc-dot" />
@@ -607,13 +907,16 @@ function ScopeTreeNode({
             {hasChildren && isExpanded && (
                 <div className="toc-children">
                     {node.children.map((child, index) => (
-                        <ScopeTreeNode
+                        <StudyTocTreeNode
                             key={child.id}
                             node={child}
                             numberPrefix={`${numberPrefix}.${index + 1}`}
                             level={level + 1}
                             selectedNodeId={selectedNodeId}
                             expandedNodeIds={expandedNodeIds}
+                            mappedTocIds={mappedTocIds}
+                            aiCompletedTocIds={aiCompletedTocIds}
+                            knownTocIds={knownTocIds}
                             onToggle={onToggle}
                             onSelect={onSelect}
                         />

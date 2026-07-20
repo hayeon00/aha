@@ -4,7 +4,11 @@ public enum DocumentChunkContentType {
     TEXT,
     HEADING,
     TABLE,
-    SQL,
+    CODE,
+
+    FORMULA,
+    COMMAND,
+    CONFIG,
     EXAMPLE,
     WARNING,
     MIXED

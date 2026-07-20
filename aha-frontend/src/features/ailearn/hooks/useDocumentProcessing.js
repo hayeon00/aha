@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {getDocumentProcessingStatus, getUserExamDocumentState, uploadLearningDocuments,} from "../api/learningDocumentApi.js";
+import {getDocumentProcessingStatus, getUserExamDocumentState, retryDocumentProcessing, uploadLearningDocuments,} from "../api/learningDocumentApi.js";
 import { getApiData } from "../utils/apiResponseUtils.js";
 
 export const useDocumentProcessing = ({
@@ -14,6 +14,8 @@ export const useDocumentProcessing = ({
     const [uploadErrorMessage, setUploadErrorMessage] = useState("");
     const [hasProcessedDocuments, setHasProcessedDocuments] = useState(false);
     const [isDocumentStateLoading, setIsDocumentStateLoading] = useState(false);
+    const [completedProcessingKey, setCompletedProcessingKey] = useState(0);
+    const [isRetrying, setIsRetrying] = useState(false);
 
     const resetDocumentState = useCallback(() => {
         setHasProcessedDocuments(false);
@@ -35,7 +37,14 @@ export const useDocumentProcessing = ({
             const response = await getUserExamDocumentState(userExamId);
             const stateData = getApiData(response);
 
-            setHasProcessedDocuments(Boolean(stateData?.hasUploadedDocuments));
+            setHasProcessedDocuments(stateData?.status === "COMPLETED");
+
+            if (["PENDING", "PROCESSING", "FAILED", "PARTIAL_FAILED"].includes(stateData?.status)) {
+                setProcessingId(stateData.processingGroupId);
+                setProcessingStatus(stateData);
+                setUploadErrorMessage(stateData.errorMessage || "");
+                setIsProgressModalOpen(true);
+            }
         } catch (error) {
             console.error("문서 업로드 상태 조회 실패:", error);
             setHasProcessedDocuments(false);
@@ -58,6 +67,15 @@ export const useDocumentProcessing = ({
         try {
             setIsUploading(true);
             setUploadErrorMessage("");
+            setProcessingStatus({
+                status: "UPLOADING",
+                currentStep: "UPLOAD_PENDING",
+                stepMessage: "문서 업로드를 준비하고 있어요.",
+                progressRate: 0,
+                totalFileCount: files.length,
+                completedFileCount: 0,
+            });
+            setIsProgressModalOpen(true);
 
             const response = await uploadLearningDocuments(
                 selectedUserExamId,
@@ -78,6 +96,20 @@ export const useDocumentProcessing = ({
         } catch (error) {
             console.error("문서 업로드 실패:", error);
 
+            try {
+                const recoveryResponse = await getUserExamDocumentState(selectedUserExamId);
+                const recoveredState = getApiData(recoveryResponse);
+
+                if (["PENDING", "PROCESSING"].includes(recoveredState?.status)) {
+                    setProcessingId(recoveredState.processingGroupId);
+                    setProcessingStatus(recoveredState);
+                    setIsProgressModalOpen(true);
+                    return;
+                }
+            } catch (recoveryError) {
+                console.error("업로드 작업 복구 조회 실패:", recoveryError);
+            }
+
             setUploadErrorMessage("문서 업로드에 실패했습니다.");
             setProcessingStatus({
                 status: "FAILED",
@@ -94,19 +126,31 @@ export const useDocumentProcessing = ({
     }, [selectedUserExamId]);
 
     useEffect(() => {
-        if (!processingId || !isProgressModalOpen) {
+        if (
+            !processingId ||
+            !isProgressModalOpen ||
+            ["FAILED", "PARTIAL_FAILED"].includes(processingStatus?.status)
+        ) {
             return undefined;
         }
 
+        const abortController = new AbortController();
+        let timeoutId;
+        let consecutiveErrorCount = 0;
+
         const pollProcessingStatus = async () => {
             try {
-                const response = await getDocumentProcessingStatus(processingId);
+                const response = await getDocumentProcessingStatus(processingId, {
+                    signal: abortController.signal,
+                });
                 const statusData = getApiData(response);
 
-                if (!statusData) {
+                if (!statusData || abortController.signal.aborted) {
                     return;
                 }
 
+                consecutiveErrorCount = 0;
+                setUploadErrorMessage("");
                 setProcessingStatus(statusData);
 
                 if (statusData.status === "COMPLETED") {
@@ -115,6 +159,7 @@ export const useDocumentProcessing = ({
                     setProcessingStatus(null);
                     setUploadErrorMessage("");
                     setHasProcessedDocuments(true);
+                    setCompletedProcessingKey((previousKey) => previousKey + 1);
 
                     await fetchUserExamDocumentState(selectedUserExamId);
 
@@ -122,6 +167,8 @@ export const useDocumentProcessing = ({
                         selectedUserExamId,
                         selectedNodeId,
                     });
+
+                    return;
                 }
 
                 if (
@@ -132,22 +179,29 @@ export const useDocumentProcessing = ({
                         statusData.errorMessage ||
                         "문서 처리 중 오류가 발생했습니다."
                     );
-                    setProcessingId(null);
+
+                    return;
                 }
             } catch (error) {
+                if (abortController.signal.aborted) {
+                    return;
+                }
+
                 console.error("문서 처리 상태 조회 실패:", error);
                 setUploadErrorMessage("문서 처리 상태를 조회하지 못했습니다.");
+                consecutiveErrorCount += 1;
             }
+
+            const delay = Math.min(2000 * (2 ** consecutiveErrorCount), 10000);
+            timeoutId = window.setTimeout(pollProcessingStatus, delay);
         };
 
         pollProcessingStatus();
 
-        const intervalId = window.setInterval(
-            pollProcessingStatus,
-            2000
-        );
-
-        return () => window.clearInterval(intervalId);
+        return () => {
+            abortController.abort();
+            window.clearTimeout(timeoutId);
+        };
     }, [
         processingId,
         isProgressModalOpen,
@@ -155,7 +209,33 @@ export const useDocumentProcessing = ({
         selectedNodeId,
         fetchUserExamDocumentState,
         onCompleted,
+        processingStatus?.status,
     ]);
+
+    const retryProcessing = useCallback(async () => {
+        if (!processingId || isRetrying) {
+            return;
+        }
+
+        try {
+            setIsRetrying(true);
+            setUploadErrorMessage("");
+
+            const response = await retryDocumentProcessing(processingId);
+            const retryData = getApiData(response);
+
+            setProcessingStatus(retryData);
+            setIsProgressModalOpen(true);
+        } catch (error) {
+            console.error("문서 분석 재시도 실패:", error);
+            setUploadErrorMessage(
+                error?.response?.data?.message ||
+                "재시도 요청에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            );
+        } finally {
+            setIsRetrying(false);
+        }
+    }, [processingId, isRetrying]);
 
     const closeProgressModal = useCallback(() => {
         setIsProgressModalOpen(false);
@@ -169,7 +249,10 @@ export const useDocumentProcessing = ({
         uploadErrorMessage,
         hasProcessedDocuments,
         isDocumentStateLoading,
+        completedProcessingKey,
+        isRetrying,
         uploadDocuments,
+        retryProcessing,
         closeProgressModal,
         resetDocumentState,
         refetchDocumentState: fetchUserExamDocumentState,

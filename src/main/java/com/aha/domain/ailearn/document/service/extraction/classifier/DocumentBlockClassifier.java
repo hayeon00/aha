@@ -2,38 +2,18 @@ package com.aha.domain.ailearn.document.service.extraction.classifier;
 
 import com.aha.domain.ailearn.document.enums.DocumentChunkContentType;
 import com.aha.domain.ailearn.document.service.extraction.model.DocumentBlock;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Component
+@RequiredArgsConstructor
 public class DocumentBlockClassifier {
 
-    private static final int MAX_HEADING_LENGTH = 80;
-
-    private static final Pattern NUMBERED_HEADING_PATTERN = Pattern.compile(
-            "^\\s*(\\d+)(\\.\\d+)*[.)]?\\s+.{2,}$"
-    );
-
-    private static final Pattern KOREAN_HEADING_PATTERN = Pattern.compile(
-            "^\\s*(제\\s*\\d+\\s*[장절항]|\\d+\\s*[장절항])\\s+.{2,}$"
-    );
-
-    private static final Pattern SQL_START_PATTERN = Pattern.compile(
-            "^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|MERGE|WITH|COMMIT|ROLLBACK)\\b.*",
-            Pattern.CASE_INSENSITIVE
-    );
-
-    private static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile(
-            "\\b(SELECT|FROM|WHERE|GROUP\\s+BY|ORDER\\s+BY|HAVING|JOIN|INNER\\s+JOIN|LEFT\\s+JOIN|RIGHT\\s+JOIN|ON|INSERT\\s+INTO|VALUES|UPDATE|SET|DELETE\\s+FROM|CREATE\\s+TABLE|ALTER\\s+TABLE|COMMIT|ROLLBACK|TRANSACTION|NULL|IS\\s+NULL|IS\\s+NOT\\s+NULL|PRIMARY\\s+KEY|FOREIGN\\s+KEY)\\b",
-            Pattern.CASE_INSENSITIVE
-    );
-
-    private static final Pattern SYMBOL_ONLY_PATTERN = Pattern.compile(
-            "^[\\p{Punct}\\p{So}\\s]+$"
-    );
+    private final List<DocumentBlockTypeDetector> detectors;
 
     public List<DocumentBlock> classify(List<DocumentBlock> blocks) {
         if (blocks == null || blocks.isEmpty()) {
@@ -50,6 +30,11 @@ public class DocumentBlockClassifier {
                 continue;
             }
 
+            if (shouldPreserveAsSingleUnit(block)) {
+                classifiedBlocks.add(normalizePreservedBlock(block));
+                continue;
+            }
+
             List<String> units = splitBlockIntoUnits(block.text());
 
             for (String unit : units) {
@@ -59,17 +44,21 @@ public class DocumentBlockClassifier {
                     continue;
                 }
 
-                DocumentChunkContentType contentType = classifyText(text);
+                ClassifiedBlockType classifiedBlockType = classifyText(text);
 
-                if (contentType == DocumentChunkContentType.HEADING) {
+                if (classifiedBlockType.contentType() == DocumentChunkContentType.HEADING) {
                     currentSectionTitle = text;
-                    currentHeadingPath = appendHeadingPath(currentHeadingPath, text);
+                    currentHeadingPath = appendHeadingPath(
+                            currentHeadingPath,
+                            text
+                    );
 
                     classifiedBlocks.add(new DocumentBlock(
                             block.pageNo(),
                             currentHeadingPath,
                             currentSectionTitle,
                             DocumentChunkContentType.HEADING,
+                            null,
                             text,
                             unit
                     ));
@@ -81,7 +70,8 @@ public class DocumentBlockClassifier {
                         block.pageNo(),
                         currentHeadingPath,
                         currentSectionTitle,
-                        contentType,
+                        classifiedBlockType.contentType(),
+                        classifiedBlockType.codeLanguage(),
                         text,
                         unit
                 ));
@@ -89,6 +79,43 @@ public class DocumentBlockClassifier {
         }
 
         return List.copyOf(classifiedBlocks);
+    }
+
+    private boolean shouldPreserveAsSingleUnit(DocumentBlock block) {
+        if (block == null || block.contentType() == null) {
+            return false;
+        }
+
+        return block.contentType() == DocumentChunkContentType.TABLE
+                || block.contentType() == DocumentChunkContentType.CODE
+                || block.contentType() == DocumentChunkContentType.COMMAND
+                || block.contentType() == DocumentChunkContentType.CONFIG
+                || block.contentType() == DocumentChunkContentType.FORMULA;
+    }
+
+    private DocumentBlock normalizePreservedBlock(DocumentBlock block) {
+        String text = normalizeUnit(block.text());
+        String rawText = block.rawText() == null || block.rawText().isBlank()
+                ? text
+                : block.rawText();
+
+        return new DocumentBlock(
+                block.pageNo(),
+                normalizeNullableText(block.headingPath()),
+                normalizeNullableText(block.sectionTitle()),
+                block.contentType(),
+                block.resolvedCodeLanguage(),
+                text,
+                rawText
+        );
+    }
+
+    private String normalizeNullableText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        return normalizeUnit(text);
     }
 
     private List<String> splitBlockIntoUnits(String text) {
@@ -111,18 +138,18 @@ public class DocumentBlockClassifier {
                 continue;
             }
 
-            if (looksLikeSqlBlock(trimmedParagraph) || looksLikeTable(trimmedParagraph)) {
+            if (isSpecialBlock(trimmedParagraph)) {
                 units.add(trimmedParagraph);
                 continue;
             }
 
-            units.addAll(splitParagraphByHeadingLines(trimmedParagraph));
+            units.addAll(splitParagraphBySpecialLines(trimmedParagraph));
         }
 
         return List.copyOf(units);
     }
 
-    private List<String> splitParagraphByHeadingLines(String paragraph) {
+    private List<String> splitParagraphBySpecialLines(String paragraph) {
         String[] lines = paragraph.split("\\n");
 
         List<String> units = new ArrayList<>();
@@ -135,13 +162,7 @@ public class DocumentBlockClassifier {
                 continue;
             }
 
-            if (looksLikeHeading(trimmedLine)) {
-                flushCurrentText(units, currentText);
-                units.add(trimmedLine);
-                continue;
-            }
-
-            if (looksLikeSqlBlock(trimmedLine) || looksLikeTable(trimmedLine)) {
+            if (isSpecialBlock(trimmedLine)) {
                 flushCurrentText(units, currentText);
                 units.add(trimmedLine);
                 continue;
@@ -159,7 +180,30 @@ public class DocumentBlockClassifier {
         return List.copyOf(units);
     }
 
-    private void flushCurrentText(List<String> units, StringBuilder currentText) {
+    private boolean isSpecialBlock(String text) {
+        ClassifiedBlockType classifiedBlockType = classifyText(text);
+
+        return classifiedBlockType.contentType() == DocumentChunkContentType.HEADING
+                || classifiedBlockType.contentType() == DocumentChunkContentType.TABLE
+                || classifiedBlockType.contentType() == DocumentChunkContentType.CODE
+                || classifiedBlockType.contentType() == DocumentChunkContentType.FORMULA
+                || classifiedBlockType.contentType() == DocumentChunkContentType.COMMAND
+                || classifiedBlockType.contentType() == DocumentChunkContentType.CONFIG;
+    }
+
+    private ClassifiedBlockType classifyText(String text) {
+        return detectors.stream()
+                .sorted(Comparator.comparingInt(DocumentBlockTypeDetector::order))
+                .filter(detector -> detector.supports(text))
+                .findFirst()
+                .map(detector -> detector.detect(text))
+                .orElse(ClassifiedBlockType.text());
+    }
+
+    private void flushCurrentText(
+            List<String> units,
+            StringBuilder currentText
+    ) {
         if (currentText.isEmpty()) {
             return;
         }
@@ -173,180 +217,14 @@ public class DocumentBlockClassifier {
         currentText.setLength(0);
     }
 
-    private DocumentChunkContentType classifyText(String text) {
-        if (looksLikeSqlBlock(text)) {
-            return DocumentChunkContentType.SQL;
-        }
-
-        if (looksLikeTable(text)) {
-            return DocumentChunkContentType.TABLE;
-        }
-
-        if (looksLikeHeading(text)) {
-            return DocumentChunkContentType.HEADING;
-        }
-
-        return DocumentChunkContentType.TEXT;
-    }
-
     private boolean isMeaningfulUnit(String text) {
         return text != null && !text.isBlank();
     }
 
-    private boolean isImportantShortKeyword(String text) {
-        String upperText = text.toUpperCase();
-
-        return upperText.equals("SELECT")
-                || upperText.equals("FROM")
-                || upperText.equals("WHERE")
-                || upperText.equals("GROUP BY")
-                || upperText.equals("ORDER BY")
-                || upperText.equals("HAVING")
-                || upperText.equals("JOIN")
-                || upperText.equals("NULL")
-                || upperText.equals("IS NULL")
-                || upperText.equals("COMMIT")
-                || upperText.equals("ROLLBACK")
-                || upperText.equals("DDL")
-                || upperText.equals("DML")
-                || upperText.equals("DCL")
-                || upperText.equals("TCL");
-    }
-
-    private boolean looksLikeHeading(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-
-        String normalizedText = text.trim();
-
-        if (normalizedText.length() > MAX_HEADING_LENGTH) {
-            return false;
-        }
-
-        if (normalizedText.contains(".")
-                && normalizedText.length() > 40
-                && normalizedText.endsWith(".")) {
-            return false;
-        }
-
-        if (NUMBERED_HEADING_PATTERN.matcher(normalizedText).matches()) {
-            return true;
-        }
-
-        if (KOREAN_HEADING_PATTERN.matcher(normalizedText).matches()) {
-            return true;
-        }
-
-        return isShortKeywordHeading(normalizedText);
-    }
-
-    private boolean isShortKeywordHeading(String text) {
-        if (text.length() > 30) {
-            return false;
-        }
-
-        String upperText = text.toUpperCase();
-
-        return upperText.equals("SELECT")
-                || upperText.equals("WHERE")
-                || upperText.equals("GROUP BY")
-                || upperText.equals("HAVING")
-                || upperText.equals("ORDER BY")
-                || upperText.equals("JOIN")
-                || upperText.equals("SUBQUERY")
-                || upperText.equals("DDL")
-                || upperText.equals("DML")
-                || upperText.equals("DCL")
-                || upperText.equals("TCL")
-                || text.endsWith("개요")
-                || text.endsWith("정의")
-                || text.endsWith("특징")
-                || text.endsWith("종류")
-                || text.endsWith("문법")
-                || text.endsWith("예시");
-    }
-
-    private boolean looksLikeSqlBlock(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-
-        String normalizedText = text.trim();
-
-        if (normalizedText.length() < 6) {
-            return false;
-        }
-
-        String[] lines = normalizedText.split("\\n");
-
-        int sqlKeywordCount = 0;
-
-        for (String line : lines) {
-            String trimmedLine = line.trim();
-
-            if (SQL_START_PATTERN.matcher(trimmedLine).matches()) {
-                sqlKeywordCount++;
-            }
-
-            if (SQL_KEYWORD_PATTERN.matcher(trimmedLine).find()) {
-                sqlKeywordCount++;
-            }
-        }
-
-        long keywordCount = SQL_KEYWORD_PATTERN.matcher(normalizedText).results().count();
-
-        boolean hasSemicolon = normalizedText.contains(";");
-        boolean hasMultipleSqlKeywords = keywordCount >= 2;
-        boolean shortSqlKeywordGroup = keywordCount >= 1 && normalizedText.length() <= 80;
-
-        return sqlKeywordCount >= 2
-                || hasSemicolon && hasMultipleSqlKeywords
-                || shortSqlKeywordGroup;
-    }
-
-    private boolean looksLikeTable(String text) {
-        if (text == null || text.isBlank()) {
-            return false;
-        }
-
-        String normalizedText = text.trim();
-
-        if (normalizedText.contains("|")) {
-            String[] lines = normalizedText.split("\\n");
-            int tableLineCount = 0;
-
-            for (String line : lines) {
-                if (line.chars().filter(ch -> ch == '|').count() >= 2) {
-                    tableLineCount++;
-                }
-            }
-
-            if (tableLineCount >= 2) {
-                return true;
-            }
-        }
-
-        String[] lines = normalizedText.split("\\n");
-
-        if (lines.length < 2) {
-            return false;
-        }
-
-        int alignedLineCount = 0;
-
-        for (String line : lines) {
-            String trimmedLine = line.trim();
-
-            if (trimmedLine.split("\\s{2,}").length >= 3) {
-                alignedLineCount++;
-            }
-        }
-
-        return alignedLineCount >= 2;
-    }
-
-    private String appendHeadingPath(String currentHeadingPath, String heading) {
+    private String appendHeadingPath(
+            String currentHeadingPath,
+            String heading
+    ) {
         if (heading == null || heading.isBlank()) {
             return currentHeadingPath;
         }

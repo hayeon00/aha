@@ -74,6 +74,12 @@ export const useExamScopeNodes = ({ examVersionId, onResetContent } = {}) => {
         onResetContent?.();
     }, [toggleNode, onResetContent]);
 
+    const selectNodeById = useCallback((nodeId) => {
+        if (!nodeId) return;
+        setSelectedNodeId(Number(nodeId));
+        onResetContent?.();
+    }, [onResetContent]);
+
     return {
         scopeNodes,
         expandedNodeIds,
@@ -82,6 +88,7 @@ export const useExamScopeNodes = ({ examVersionId, onResetContent } = {}) => {
         scopeMessage,
         toggleNode,
         handleSelectNode,
+        selectNodeById,
         resetScope,
         refetchScopeNodes: fetchScopeNodes,
     };

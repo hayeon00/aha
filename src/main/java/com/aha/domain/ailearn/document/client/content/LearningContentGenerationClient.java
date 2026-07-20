@@ -1,15 +1,11 @@
 package com.aha.domain.ailearn.document.client.content;
 
-/**
- * Please explain the class!!!
- *
- * @author : rlagkdus
- * @filename : LearningContentGenerationClient
- * @since : 2026. 6. 25. 목요일
- */
+import com.aha.domain.ailearn.document.service.content.model.GeneratedLearningContent;
+import com.aha.domain.ailearn.document.service.content.model.TopicDocumentContext;
 
 public interface LearningContentGenerationClient {
 
-    String generate(String topicTitle, String documentContext);
-
+    GeneratedLearningContent generate(
+            TopicDocumentContext context
+    );
 }

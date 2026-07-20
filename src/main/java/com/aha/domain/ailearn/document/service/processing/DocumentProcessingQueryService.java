@@ -3,12 +3,15 @@ package com.aha.domain.ailearn.document.service.processing;
 import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingGroupResponseDto;
 import com.aha.domain.ailearn.document.dto.content.response.DocumentProcessingStateResponseDto;
 import com.aha.domain.ailearn.document.entity.DocumentProcessingGroup;
+import com.aha.domain.ailearn.document.enums.DocumentProcessingStatus;
 import com.aha.domain.ailearn.document.repository.DocumentProcessingGroupRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * Please explain the class!!!
@@ -39,6 +42,21 @@ public class DocumentProcessingQueryService {
         return documentProcessingGroupRepository.findTopByUserExam_IdAndUserExam_User_IdOrderByCreatedAtDesc(userExamId, userId)
                 .map(DocumentProcessingStateResponseDto::from)
                 .orElseGet(DocumentProcessingStateResponseDto::idle);
+    }
+
+    public List<DocumentProcessingGroupResponseDto> getActiveProcessingGroups(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        return documentProcessingGroupRepository
+                .findAllByUserExam_User_IdAndStatusInOrderByCreatedAtDesc(
+                        userId,
+                        List.of(DocumentProcessingStatus.PENDING, DocumentProcessingStatus.PROCESSING)
+                )
+                .stream()
+                .map(DocumentProcessingGroupResponseDto::from)
+                .toList();
     }
 
     private void validateInput(Long userId, Long processingGroupId) {
