@@ -147,12 +147,14 @@ public class ExamScopeNode {
         }
     }
 
-
-    public void activate() {
-        this.isActive = true;
-    }
-
-    public void deactivate() {
-        this.isActive = false;
+    public ExamScopeNode findSectionNode(){
+        ExamScopeNode cur=this;
+        while(cur!=null){
+            if(cur.getNodeType()==ExamScopeNodeType.SECTION){
+                return cur;
+            }
+            cur=cur.parent;
+        }
+        return null;
     }
 }
