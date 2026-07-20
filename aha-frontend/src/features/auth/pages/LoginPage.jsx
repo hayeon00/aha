@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { login } from "../api/authApi.js";
+import { setAccessToken } from "../store/authTokenStore.js";
 import "./LoginPage.css";
 
 function LoginPage({ onLoginSuccess, onMoveSignup }) {
@@ -30,31 +31,37 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
 
             const result = await login(form);
 
-            const accessToken = result.data.accessToken;
-            const refreshToken = result.data.refreshToken;
+            const accessToken =
+                result.data?.accessToken;
 
-            localStorage.setItem("accessToken", accessToken);
-            localStorage.setItem("refreshToken", refreshToken);
+            if (!accessToken) {
+                throw new Error(
+                    "로그인 응답에 Access Token이 없습니다."
+                );
+            }
 
-            onLoginSuccess();
+            onLoginSuccess(accessToken);
         } catch (error) {
-            console.error(error);
-            setMessage("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+            console.error("로그인 실패:", error);
+
+            const errorMessage =
+                error.response?.data?.message ??
+                "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.";
+
+            setMessage(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleGoogleLogin = () => {
-        // 구글 로그인 API 연동 후 실제 URL로 변경
-        // window.location.href = "http://localhost:8080/oauth2/authorization/google";
-        alert("Google 로그인 연동 예정입니다.");
+        window.location.href =
+            "http://localhost:8080/oauth2/authorization/google";
     };
 
     const handleKakaoLogin = () => {
-        // 카카오 로그인 API 연동 후 실제 URL로 변경
-        // window.location.href = "http://localhost:8080/oauth2/authorization/kakao";
-        alert("카카오 로그인 연동 예정입니다.");
+        window.location.href =
+            "http://localhost:8080/oauth2/authorization/kakao";
     };
 
     return (
@@ -70,7 +77,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                             <span className="brand-highlight-text">
                                 공부를 더 똑똑하게
                             </span>
-                            , <span className="brand-logo-text">Aha</span>
+                            ,{" "}
+                            <span className="brand-logo-text">
+                                Aha
+                            </span>
                         </h1>
 
                         <p className="login-subtitle">
@@ -79,7 +89,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                             하나의 흐름으로 이어지는 학습을 경험해보세요.
                         </p>
 
-                        <div className="study-illustration" aria-hidden="true">
+                        <div
+                            className="study-illustration"
+                            aria-hidden="true"
+                        >
                             <div className="plant">
                                 <div className="leaf leaf-left" />
                                 <div className="leaf leaf-right" />
@@ -87,8 +100,12 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                 <div className="pot" />
                             </div>
 
-                            <div className="sparkle sparkle-one">✦</div>
-                            <div className="sparkle sparkle-two">✦</div>
+                            <div className="sparkle sparkle-one">
+                                ✦
+                            </div>
+                            <div className="sparkle sparkle-two">
+                                ✦
+                            </div>
 
                             <div className="laptop">
                                 <div className="laptop-screen">
@@ -130,12 +147,20 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                     <div className="login-form-card">
                         <div className="login-form-header">
                             <h2>로그인</h2>
-                            <p>계정으로 로그인하고 학습을 이어가세요.</p>
+                            <p>
+                                계정으로 로그인하고 학습을 이어가세요.
+                            </p>
                         </div>
 
-                        <form className="login-form" onSubmit={handleSubmit}>
+                        <form
+                            className="login-form"
+                            onSubmit={handleSubmit}
+                        >
                             <label className="login-input-wrap">
-                                <span className="input-icon" aria-hidden="true">
+                                <span
+                                    className="input-icon"
+                                    aria-hidden="true"
+                                >
                                     <svg
                                         width="18"
                                         height="18"
@@ -170,7 +195,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                             </label>
 
                             <label className="login-input-wrap">
-                                <span className="input-icon" aria-hidden="true">
+                                <span
+                                    className="input-icon"
+                                    aria-hidden="true"
+                                >
                                     <svg
                                         width="18"
                                         height="18"
@@ -200,7 +228,11 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
 
                                 <input
                                     name="password"
-                                    type={showPassword ? "text" : "password"}
+                                    type={
+                                        showPassword
+                                            ? "text"
+                                            : "password"
+                                    }
                                     value={form.password}
                                     onChange={handleChange}
                                     placeholder="비밀번호"
@@ -212,7 +244,9 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                     className="password-toggle"
                                     type="button"
                                     onClick={() =>
-                                        setShowPassword((prev) => !prev)
+                                        setShowPassword(
+                                            (prev) => !prev
+                                        )
                                     }
                                 >
                                     {showPassword ? "숨김" : "보기"}
@@ -225,13 +259,18 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                     <span>로그인 상태 유지</span>
                                 </label>
 
-                                <button type="button" className="find-password">
+                                <button
+                                    type="button"
+                                    className="find-password"
+                                >
                                     비밀번호 찾기
                                 </button>
                             </div>
 
                             {message && (
-                                <p className="login-message">{message}</p>
+                                <p className="login-message">
+                                    {message}
+                                </p>
                             )}
 
                             <button
@@ -239,7 +278,9 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                 type="submit"
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting ? "로그인 중..." : "로그인"}
+                                {isSubmitting
+                                    ? "로그인 중..."
+                                    : "로그인"}
                             </button>
                         </form>
 
@@ -255,7 +296,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                 type="button"
                                 onClick={handleGoogleLogin}
                             >
-                                <span className="google-icon" aria-hidden="true">
+                                <span
+                                    className="google-icon"
+                                    aria-hidden="true"
+                                >
                                     <svg
                                         width="22"
                                         height="22"
@@ -287,7 +331,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                 type="button"
                                 onClick={handleKakaoLogin}
                             >
-                                <span className="kakao-icon" aria-hidden="true">
+                                <span
+                                    className="kakao-icon"
+                                    aria-hidden="true"
+                                >
                                     <svg
                                         width="22"
                                         height="22"
@@ -306,7 +353,10 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
 
                         <div className="login-links">
                             <span>아직 계정이 없으신가요?</span>
-                            <button type="button" onClick={onMoveSignup}>
+                            <button
+                                type="button"
+                                onClick={onMoveSignup}
+                            >
                                 회원가입
                             </button>
                         </div>
@@ -319,7 +369,9 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
 
                 <nav>
                     <button type="button">이용약관</button>
-                    <button type="button">개인정보 처리방침</button>
+                    <button type="button">
+                        개인정보 처리방침
+                    </button>
                     <button type="button">고객센터</button>
                 </nav>
             </footer>

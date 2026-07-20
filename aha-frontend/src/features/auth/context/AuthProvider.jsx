@@ -4,66 +4,111 @@ import {
     useMemo,
     useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
-import { logout as requestLogout } from "../api/authApi.js";
-import { AUTH_EXPIRED_EVENT } from "../../../common/api/axiosInstance.js";
-import { AuthContext } from "./AuthContext.js";
+import { AuthContext } from "./AuthContext";
+import {
+    clearAccessToken,
+    setAccessToken,
+} from "../store/authTokenStore";
+import {
+    logout as logoutApi,
+    reissue,
+} from "../api/authApi";
 
-export function AuthProvider({ children }) {
-    const navigate = useNavigate();
+let authInitializationPromise = null;
 
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return Boolean(localStorage.getItem("accessToken"));
-    });
+const requestInitialAccessToken = async () => {
+    if (!authInitializationPromise) {
+        authInitializationPromise = reissue()
+            .then((response) => {
+                const token =
+                    response.data?.accessToken;
 
-    const login = useCallback(({ accessToken, refreshToken }) => {
-        localStorage.setItem("accessToken", accessToken);
+                if (!token) {
+                    throw new Error(
+                        "재발급 응답에 Access Token이 없습니다."
+                    );
+                }
 
-        if (refreshToken) {
-            localStorage.setItem("refreshToken", refreshToken);
-        }
+                return token;
+            })
+            .finally(() => {
+                authInitializationPromise = null;
+            });
+    }
 
-        setIsAuthenticated(true);
-    }, []);
+    return authInitializationPromise;
+};
 
-    const clearAuth = useCallback(() => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        setIsAuthenticated(false);
+export default function AuthProvider({ children }) {
+    const [accessToken, setAccessTokenState] =
+        useState(null);
+
+    const [isAuthInitialized, setIsAuthInitialized] =
+        useState(false);
+
+    const login = useCallback((token) => {
+        setAccessToken(token);
+        setAccessTokenState(token);
     }, []);
 
     const logout = useCallback(async () => {
         try {
-            await requestLogout();
-        } catch (error) {
-            console.error("로그아웃 API 요청 실패:", error);
+            await logoutApi();
         } finally {
-            clearAuth();
-            navigate("/login", { replace: true });
+            clearAccessToken();
+            setAccessTokenState(null);
         }
-    }, [clearAuth, navigate]);
+    }, []);
 
     useEffect(() => {
-        const handleAuthExpired = () => {
-            clearAuth();
-            navigate("/login", { replace: true });
+        let cancelled = false;
+
+        const initializeAuth = async () => {
+            try {
+                const token =
+                    await requestInitialAccessToken();
+
+                if (!cancelled) {
+                    setAccessToken(token);
+                    setAccessTokenState(token);
+                }
+            } catch (error) {
+                /*
+                 * 최초 방문처럼 Refresh Token 쿠키가 없는 경우
+                 * 401은 정상적인 비로그인 상태로 처리합니다.
+                 */
+                if (!cancelled) {
+                    clearAccessToken();
+                    setAccessTokenState(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsAuthInitialized(true);
+                }
+            }
         };
 
-        window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+        initializeAuth();
 
         return () => {
-            window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+            cancelled = true;
         };
-    }, [clearAuth, navigate]);
+    }, []);
 
     const value = useMemo(
         () => ({
-            isAuthenticated,
+            accessToken,
+            isLoggedIn: Boolean(accessToken),
+            isAuthInitialized,
             login,
             logout,
-            clearAuth,
         }),
-        [isAuthenticated, login, logout, clearAuth]
+        [
+            accessToken,
+            isAuthInitialized,
+            login,
+            logout,
+        ],
     );
 
     return (
