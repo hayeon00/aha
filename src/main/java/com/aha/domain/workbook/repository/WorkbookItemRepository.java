@@ -17,7 +17,7 @@ public interface WorkbookItemRepository extends JpaRepository<WorkbookItem,Long>
           where wi.workbook.id = :workbookId
             order by wi.sortOrder asc, pc.sortOrder asc
 """)
-    List<WorkbookItem> findByWorkbook_Id(@Param("workbookId") Long workbookId);
+    List<WorkbookItem> findByWorkbook_IdWithProblemAndExamScopeNodeAndExamPartAndProblemChoices(@Param("workbookId") Long workbookId);
 
     boolean existsByProblem_IdAndWorkbook_Id(Long problemId, Long workbookId);
 }
