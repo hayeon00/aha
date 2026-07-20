@@ -9,6 +9,7 @@ import {
     getWorkbookAttemptAnswers,
     getWorkbookItems,
     saveWorkbookAnswer,
+    submitWorkbookAttempt,
     toggleWorkbookProblemCheck,
 } from "../api/workbookApi.js";
 import "./WorkbookAttemptPage.css";
@@ -51,6 +52,21 @@ const getInteractionErrorMessage = (errorCode) => {
     }
 };
 
+const getSubmitErrorMessage = (errorCode) => {
+    switch (errorCode) {
+        case "WORKBOOK_011":
+            return "미응답 문항이 있습니다. 모든 문항에 응답해 주세요.";
+        case "WORKBOOK_008":
+            return "제한 시간이 지나 제출할 수 없습니다.";
+        case "WORKBOOK_009":
+            return "이미 채점이 완료된 풀이입니다.";
+        case "WORKBOOK_004":
+            return "풀이 기록을 확인할 수 없습니다.";
+        default:
+            return "제출하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+};
+
 function WorkbookAttemptPage() {
     const { workbookId, attemptId } = useParams();
     const navigate = useNavigate();
@@ -62,6 +78,9 @@ function WorkbookAttemptPage() {
     const [loadError, setLoadError] = useState(null);
     const [pendingProblemId, setPendingProblemId] = useState(null);
     const [interactionError, setInteractionError] = useState(null);
+    const [submitError, setSubmitError] = useState(null);
+    const [isSubmitConfirmOpen, setIsSubmitConfirmOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const loadAttempt = useCallback(async () => {
         setIsLoading(true);
@@ -193,6 +212,54 @@ function WorkbookAttemptPage() {
             setInteractionError(getInteractionErrorMessage(error.errorCode));
         } finally {
             setPendingProblemId(null);
+        }
+    };
+
+    const handleRequestSubmit = () => {
+        if (pendingProblemId !== null || isSubmitting) {
+            return;
+        }
+
+        const firstUnansweredIndex = omrItems.findIndex((item) => !item.userAnswer);
+        if (firstUnansweredIndex !== -1) {
+            const unansweredCount = items.length - answeredCount;
+            setCurrentIndex(firstUnansweredIndex);
+            setSubmitError(
+                `미응답 문항이 ${unansweredCount}개 있습니다. 모든 문항에 응답해 주세요.`
+            );
+            setIsSubmitConfirmOpen(false);
+            return;
+        }
+
+        setSubmitError(null);
+        setIsSubmitConfirmOpen(true);
+    };
+
+    const handleSubmit = async () => {
+        if (isSubmitting) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSubmitError(null);
+
+        try {
+            const response = await submitWorkbookAttempt(attemptId);
+            const submittedAttemptId = response.data?.id ?? attemptId;
+
+            navigate(
+                `/problems/${workbookId}/attempts/${submittedAttemptId}/result`,
+                {
+                    replace: true,
+                    state: { workbookTitle },
+                }
+            );
+        } catch (error) {
+            console.error("문제집 최종 제출 실패:", error);
+            setSubmitError(getSubmitErrorMessage(error.errorCode));
+            setIsSubmitConfirmOpen(false);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -367,6 +434,45 @@ function WorkbookAttemptPage() {
                                 )}
                             </button>
                         ))}
+                    </div>
+                    <div className="omr-submit-area">
+                        {submitError && (
+                            <p className="omr-submit-message error" role="alert">
+                                {submitError}
+                            </p>
+                        )}
+                        {isSubmitConfirmOpen ? (
+                            <div className="omr-submit-confirm" role="group" aria-label="최종 제출 확인">
+                                <p>제출하면 답안을 변경할 수 없습니다.</p>
+                                <div>
+                                    <button
+                                        type="button"
+                                        className="omr-submit-cancel"
+                                        disabled={isSubmitting}
+                                        onClick={() => setIsSubmitConfirmOpen(false)}
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="omr-submit-button"
+                                        disabled={isSubmitting}
+                                        onClick={handleSubmit}
+                                    >
+                                        {isSubmitting ? "제출 중..." : "제출하기"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                className="omr-submit-button full"
+                                disabled={pendingProblemId !== null || isSubmitting}
+                                onClick={handleRequestSubmit}
+                            >
+                                최종 제출
+                            </button>
+                        )}
                     </div>
                 </aside>
             </div>

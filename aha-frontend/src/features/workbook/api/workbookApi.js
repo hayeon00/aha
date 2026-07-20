@@ -146,3 +146,27 @@ export const startWorkbookAttempt = async (workbookId) => {
         throw normalizeError(error);
     }
 };
+
+export const submitWorkbookAttempt = async (attemptId) => {
+    try {
+        const response = await axiosInstance.post(
+            `/api/v1/workbook-attempts/${attemptId}/submit`
+        );
+
+        return { data: getApiData(response) };
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
+export const getWorkbookAttemptResult = async (attemptId) => {
+    try {
+        const response = await axiosInstance.get(
+            `/api/v1/workbook-attempts/${attemptId}`
+        );
+
+        return { data: getApiData(response) };
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
