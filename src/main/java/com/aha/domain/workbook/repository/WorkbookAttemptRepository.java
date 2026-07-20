@@ -34,5 +34,5 @@ public interface WorkbookAttemptRepository extends JpaRepository<WorkbookAttempt
         join fetch ev.exam e
           where wa.id = :attemptId and wa.userId = :userId
 """)
-    Optional<WorkbookAttempt> findByIdWithWorkbookAndWorkbookTypeExamVersionAndExam(@Param("attemptId")Long attemptId, @Param("userId")Long userId);
+    Optional<WorkbookAttempt> findByIdAndUserIdWithWorkbookAndWorkbookTypeAndExamVersionAndExam(@Param("attemptId")Long attemptId, @Param("userId")Long userId);
 }
