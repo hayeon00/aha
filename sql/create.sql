@@ -1,24 +1,7 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 
-DROP TABLE IF EXISTS `ai_reference`;
-DROP TABLE IF EXISTS `ai_message`;
-DROP TABLE IF EXISTS `learning_problem_attempt`;
-DROP TABLE IF EXISTS `learning_session`;
-DROP TABLE IF EXISTS `user`;
 
-DROP TABLE IF EXISTS `learning_content_body`;
-DROP TABLE IF EXISTS `ai_generated_learning_content_body`;
-DROP TABLE IF EXISTS `learning_content`;
-DROP TABLE IF EXISTS `learning_content_unit_item`;
-DROP TABLE IF EXISTS `learning_content_unit`;
-
-DROP TABLE IF EXISTS `learning_source_document`;
-
-
-
-DROP TABLE IF EXISTS `learning_coach`;
-DROP TABLE IF EXISTS `learning_memo`;
 DROP TABLE IF EXISTS `learning_content_reference`;
 DROP TABLE IF EXISTS `user_document_concept`;
 DROP TABLE IF EXISTS `user_learning_content`;
@@ -30,7 +13,9 @@ DROP TABLE IF EXISTS `document_processing_group`;
 DROP TABLE IF EXISTS `document_chunk_embedding`;
 DROP TABLE IF EXISTS `exam_scope_node_embedding`;
 
+DROP TABLE IF EXISTS `oauth_authorization_code`;
 DROP TABLE IF EXISTS `refresh_tokens`;
+DROP TABLE IF EXISTS `social_accounts`;
 DROP TABLE IF EXISTS `user_answer`;
 DROP TABLE IF EXISTS `workbook_attempt`;
 DROP TABLE IF EXISTS `workbook_result`;
@@ -40,21 +25,12 @@ DROP TABLE IF EXISTS `workbook`;
 DROP TABLE IF EXISTS `exam_workbook_type`;
 DROP TABLE IF EXISTS `workbook_type`;
 
-DROP TABLE IF EXISTS `problem_available_usage_type`;
 DROP TABLE IF EXISTS `problem_choice`;
 DROP TABLE IF EXISTS `problem`;
-DROP TABLE IF EXISTS `problem_review_detail`;
-DROP TABLE IF EXISTS `problem_review`;
-DROP TABLE IF EXISTS `ai_generated_problem_choice`;
-DROP TABLE IF EXISTS `ai_generated_problem`;
-DROP TABLE IF EXISTS `problem_set_generation_job`;
-DROP TABLE IF EXISTS `policy_value`;
-DROP TABLE IF EXISTS `policy`;
+
 DROP TABLE IF EXISTS `exam_scope_node`;
 DROP TABLE IF EXISTS `exam_part`;
 DROP TABLE IF EXISTS `exam_version`;
-DROP TABLE IF EXISTS `domain_type`;
-DROP TABLE IF EXISTS `asset_file`;
 DROP TABLE IF EXISTS `user_exam`;
 DROP TABLE IF EXISTS `exam`;
 DROP TABLE IF EXISTS `users`;
@@ -63,23 +39,77 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 
 CREATE TABLE `users` (
-                         `id`                BIGINT          NOT NULL AUTO_INCREMENT,
-                         `email`             VARCHAR(100)    NOT NULL,
-                         `password`          VARCHAR(255)    NOT NULL,
-                         `name`              VARCHAR(50)     NOT NULL,
-                         `nickname`          VARCHAR(50)     NOT NULL,
-                         `role`              VARCHAR(20)     NOT NULL DEFAULT 'USER',
-                         `status`            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE',
-                         `login_type`        VARCHAR(20)     NOT NULL DEFAULT 'LOCAL',
-                         `last_login_at`     DATETIME            NULL,
-                         `is_email_verified` BOOLEAN         NOT NULL DEFAULT FALSE,
-                         `profile_image_url` VARCHAR(255)        NULL,
-                         `created_at`        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                         `updated_at`        DATETIME            NULL ON UPDATE CURRENT_TIMESTAMP,
+                         `id`                BIGINT       NOT NULL AUTO_INCREMENT,
+                         `email`             VARCHAR(100)     NULL,
+                         `password`          VARCHAR(255)     NULL,
+                         `name`              VARCHAR(50)  NOT NULL,
+                         `nickname`          VARCHAR(50)  NOT NULL,
+                         `role`              VARCHAR(20)  NOT NULL DEFAULT 'USER',
+                         `status`            VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+                         `last_login_at`     DATETIME         NULL,
+                         `is_email_verified` BOOLEAN      NOT NULL DEFAULT FALSE,
+                         `profile_image_url` VARCHAR(500)     NULL,
+                         `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         `updated_at`        DATETIME         NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
                          PRIMARY KEY (`id`),
                          UNIQUE KEY `uk_user_email` (`email`),
-                         UNIQUE KEY `uk_user_nickname` (`nickname`)
+                         UNIQUE KEY `uk_user_nickname` (`nickname`),
+
+                         CONSTRAINT `chk_user_role`
+                             CHECK (`role` IN ('USER', 'ADMIN')),
+                         CONSTRAINT `chk_user_status`
+                             CHECK (`status` IN ('ACTIVE', 'INACTIVE', 'WITHDRAWN', 'SUSPENDED'))
+);
+
+
+CREATE TABLE `social_accounts` (
+                                   `id`                BIGINT       NOT NULL AUTO_INCREMENT,
+                                   `user_id`           BIGINT       NOT NULL,
+                                   `provider`          VARCHAR(20)  NOT NULL,
+                                   `provider_id`       VARCHAR(255) NOT NULL,
+                                   `provider_email`    VARCHAR(100)     NULL,
+                                   `provider_name`     VARCHAR(100)     NULL,
+                                   `profile_image_url` VARCHAR(500)     NULL,
+                                   `last_login_at`     DATETIME         NULL,
+                                   `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   `updated_at`        DATETIME         NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                                   PRIMARY KEY (`id`),
+
+                                   UNIQUE KEY `uk_social_account_provider_id`
+                                       (`provider`, `provider_id`),
+                                   UNIQUE KEY `uk_social_account_user_provider`
+                                       (`user_id`, `provider`),
+
+                                   CONSTRAINT `fk_social_account_user`
+                                       FOREIGN KEY (`user_id`)
+                                           REFERENCES `users` (`id`)
+                                           ON DELETE CASCADE,
+
+                                   CONSTRAINT `chk_social_account_provider`
+                                       CHECK (`provider` IN ('KAKAO', 'GOOGLE'))
+);
+
+
+CREATE TABLE `oauth_authorization_code` (
+                                            `id`              BIGINT      NOT NULL AUTO_INCREMENT,
+                                            `code_hash`       VARCHAR(64) NOT NULL,
+                                            `session_id_hash` VARCHAR(64) NOT NULL,
+                                            `user_id`         BIGINT      NOT NULL,
+                                            `expires_at`      DATETIME(6) NOT NULL,
+                                            `used_at`         DATETIME(6)     NULL,
+                                            `created_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+
+                                            PRIMARY KEY (`id`),
+                                            UNIQUE KEY `uk_oauth_authorization_code_hash` (`code_hash`),
+                                            INDEX `idx_oauth_authorization_code_user_id` (`user_id`),
+                                            INDEX `idx_oauth_authorization_code_expires_at` (`expires_at`),
+
+                                            CONSTRAINT `fk_oauth_authorization_code_user`
+                                                FOREIGN KEY (`user_id`)
+                                                    REFERENCES `users` (`id`)
+                                                    ON DELETE CASCADE
 );
 
 
@@ -258,6 +288,8 @@ CREATE TABLE `user_exam` (
                                  FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
                                      ON DELETE CASCADE
 );
+
+
 
 
 CREATE TABLE `document_processing_group` (
@@ -588,9 +620,9 @@ CREATE TABLE `problem` (
                            CONSTRAINT `fk_problem_exam_scope_node_id`
                                FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
                            CONSTRAINT `chk_problem_score`
-                                CHECK(`score`>0),
+                               CHECK(`score`>0),
                            CONSTRAINT `chk_problem_choice_count`
-                                CHECK(`choice_count`>=0)
+                               CHECK(`choice_count`>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `workbook` (
@@ -692,5 +724,5 @@ CREATE TABLE `problem_choice` (
                                   CONSTRAINT `fk_problem_choice_problem_id`
                                       FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
                                   CONSTRAINT `chk_problem_choice_sort_order`
-                                    CHECK (`sort_order` >= 1)
+                                      CHECK (`sort_order` >= 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
