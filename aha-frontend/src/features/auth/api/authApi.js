@@ -1,40 +1,61 @@
-import axiosInstance from "../../../common/api/axiosInstance.js";
+import axiosInstance from "../../../common/api/axiosInstance";
 
-export const signup = async (signupData) => {
-    const requestData = {
-        email: signupData.email,
-        password: signupData.password,
-        name: signupData.name,
-        nickname: signupData.nickname,
-    };
-
+export const signup = async (request) => {
     const response = await axiosInstance.post(
         "/api/v1/auth/signup",
-        requestData
+        request,
     );
 
     return response.data;
 };
 
-export const login = async (loginData) => {
+export const login = async (request) => {
     const response = await axiosInstance.post(
         "/api/v1/auth/login",
-        loginData
+        request,
+        {
+            withCredentials: true,
+        },
+    );
+
+    return response.data;
+};
+
+export const reissue = async () => {
+    const response = await axiosInstance.post(
+        "/api/v1/auth/reissue",
+        null,
+        {
+            withCredentials: true,
+        },
+    );
+
+    return response.data;
+};
+
+
+export const exchangeOAuthCode = async (code) => {
+    const response = await axiosInstance.post(
+        "/api/v1/auth/oauth/exchange",
+        {
+            code,
+        },
+        {
+            withCredentials: true,
+        },
     );
 
     return response.data;
 };
 
 export const logout = async () => {
-    const response = await axiosInstance.post("/api/v1/auth/logout");
-
-    return response.data;
-};
-
-export const reissue = async (refreshToken) => {
-    const response = await axiosInstance.post("/api/v1/auth/reissue", {
-        refreshToken,
-    });
+    const response = await axiosInstance.post(
+        "/api/v1/auth/logout",
+        null,
+        {
+            withCredentials: true,
+        },
+    );
 
     return response.data;
 };

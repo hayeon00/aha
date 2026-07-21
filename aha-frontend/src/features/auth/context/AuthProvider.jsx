@@ -4,66 +4,150 @@ import {
     useMemo,
     useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
-import { logout as requestLogout } from "../api/authApi.js";
-import { AUTH_EXPIRED_EVENT } from "../../../common/api/axiosInstance.js";
+
 import { AuthContext } from "./AuthContext.js";
 
-export function AuthProvider({ children }) {
-    const navigate = useNavigate();
+import {
+    clearAccessToken,
+    setAccessToken,
+} from "../store/authTokenStore.js";
 
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return Boolean(localStorage.getItem("accessToken"));
-    });
+import {
+    logout as logoutApi,
+    reissue,
+} from "../api/authApi.js";
 
-    const login = useCallback(({ accessToken, refreshToken }) => {
-        localStorage.setItem("accessToken", accessToken);
+import {
+    AUTH_EXPIRED_EVENT,
+} from "../../../common/api/axiosInstance.js";
 
-        if (refreshToken) {
-            localStorage.setItem("refreshToken", refreshToken);
-        }
+let authInitializationPromise = null;
 
-        setIsAuthenticated(true);
+const requestInitialAccessToken = () => {
+    if (!authInitializationPromise) {
+        authInitializationPromise = reissue()
+            .then((response) => {
+                const accessToken =
+                    response?.data?.accessToken
+                    ?? response?.data?.data?.accessToken
+                    ?? response?.accessToken
+                    ?? null;
+
+                if (!accessToken) {
+                    throw new Error(
+                        "재발급 응답에 Access Token이 없습니다.",
+                    );
+                }
+
+                return accessToken;
+            })
+            .finally(() => {
+                authInitializationPromise = null;
+            });
+    }
+
+    return authInitializationPromise;
+};
+
+export default function AuthProvider({
+                                         children,
+                                     }) {
+    const [
+        accessToken,
+        setAccessTokenState,
+    ] = useState(null);
+
+    const [
+        isAuthInitialized,
+        setIsAuthInitialized,
+    ] = useState(false);
+
+    const login = useCallback((token) => {
+        setAccessToken(token);
+        setAccessTokenState(token);
     }, []);
 
     const clearAuth = useCallback(() => {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        setIsAuthenticated(false);
+        clearAccessToken();
+        setAccessTokenState(null);
     }, []);
 
     const logout = useCallback(async () => {
         try {
-            await requestLogout();
-        } catch (error) {
-            console.error("로그아웃 API 요청 실패:", error);
+            await logoutApi();
         } finally {
             clearAuth();
-            navigate("/login", { replace: true });
         }
-    }, [clearAuth, navigate]);
+    }, [clearAuth]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const initializeAuth = async () => {
+            try {
+                const token =
+                    await requestInitialAccessToken();
+
+                if (cancelled) {
+                    return;
+                }
+
+                setAccessToken(token);
+                setAccessTokenState(token);
+            } catch {
+                if (cancelled) {
+                    return;
+                }
+
+                clearAuth();
+            } finally {
+                if (!cancelled) {
+                    setIsAuthInitialized(true);
+                }
+            }
+        };
+
+        initializeAuth();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [clearAuth]);
 
     useEffect(() => {
         const handleAuthExpired = () => {
             clearAuth();
-            navigate("/login", { replace: true });
         };
 
-        window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+        window.addEventListener(
+            AUTH_EXPIRED_EVENT,
+            handleAuthExpired,
+        );
 
         return () => {
-            window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+            window.removeEventListener(
+                AUTH_EXPIRED_EVENT,
+                handleAuthExpired,
+            );
         };
-    }, [clearAuth, navigate]);
+    }, [clearAuth]);
 
     const value = useMemo(
         () => ({
-            isAuthenticated,
+            accessToken,
+            isLoggedIn: Boolean(accessToken),
+            isAuthInitialized,
             login,
             logout,
             clearAuth,
         }),
-        [isAuthenticated, login, logout, clearAuth]
+        [
+            accessToken,
+            isAuthInitialized,
+            login,
+            logout,
+            clearAuth,
+        ],
     );
 
     return (

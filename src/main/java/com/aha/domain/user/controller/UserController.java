@@ -12,6 +12,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -23,7 +25,8 @@ public class UserController {
     public ResponseEntity<ApiResponse<MyInfoResponseDto>> getMyInfo(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        MyInfoResponseDto response = userService.getMyInfo(userDetails.getId());
+        MyInfoResponseDto response =
+                userService.getMyInfo(userDetails.getId());
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -40,7 +43,10 @@ public class UserController {
             @Valid @RequestBody UpdateProfileRequestDto request
     ) {
         MyInfoResponseDto response =
-                userService.updateProfile(userDetails.getId(), request);
+                userService.updateProfile(
+                        userDetails.getId(),
+                        request
+                );
 
         return ResponseEntity.ok(
                 ApiResponse.success(
@@ -57,13 +63,33 @@ public class UserController {
             @RequestPart("profileImage") MultipartFile profileImage
     ) {
         MyInfoResponseDto response =
-                userService.updateProfileImage(userDetails.getId(), profileImage);
+                userService.updateProfileImage(
+                        userDetails.getId(),
+                        profileImage
+                );
 
         return ResponseEntity.ok(
                 ApiResponse.success(
                         200,
                         "프로필 이미지 수정에 성공했습니다.",
                         response
+                )
+        );
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        userService.withdrawUser(
+                userDetails.getId()
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        200,
+                        "회원 탈퇴가 완료되었습니다.",
+                        null
                 )
         );
     }

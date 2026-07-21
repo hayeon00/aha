@@ -11,10 +11,6 @@ SET @infra_id = LAST_INSERT_ID();
 INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('ADSP', '데이터분석 준전문가(ADsP)', 'ACTIVE');
 SET @adsp_id = LAST_INSERT_ID();
 
-INSERT INTO `exam_version` (`exam_id`, `version_no`, `version_name`, `default_question_count`, `duration_type`, `default_duration_seconds`, `total_score`, `passing_rule_type`, `passing_score`, `has_subject_fail_rule`, `subject_fail_threshold`, `status`)
-VALUES (@exam_id, 2025, 'SQLD 2025 개정판', 50, 'TOTAL', 5400, 100, 'TOTAL', 60, 1, 40, 'ACTIVE');
-SET @exam_version_id = LAST_INSERT_ID();
-
 INSERT INTO `exam_part` (`exam_version_id`,`code`,`name`,`default_question_count`,`default_duration_seconds`,`total_score`,`is_subject_fail_target`,`subject_fail_threshold_score`,`is_active`,`display_order`) VALUES (@exam_version_id,'SUBJECT_1','1과목 데이터 모델링의 이해',10,NULL,20,1,8,1,1),(@exam_version_id,'SUBJECT_2','2과목 SQL 기본 및 활용',40,NULL,80,1,32,1,2) ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`default_question_count`=VALUES(`default_question_count`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`is_subject_fail_target`=VALUES(`is_subject_fail_target`),`subject_fail_threshold_score`=VALUES(`subject_fail_threshold_score`),`is_active`=VALUES(`is_active`),`display_order`=VALUES(`display_order`);
 
 SET @part01_id=(SELECT `id` FROM `exam_part` WHERE `exam_version_id`=@exam_version_id AND `code`='SUBJECT_1' LIMIT 1);

@@ -1,6 +1,12 @@
-import {Routes, Route, Navigate, useNavigate,} from "react-router-dom";
-import { useState } from "react";
+import {
+    Routes,
+    Route,
+    Navigate,
+    useNavigate,
+} from "react-router-dom";
+
 import LoginPage from "../features/auth/pages/LoginPage.jsx";
+import OAuthCallbackPage from "../features/auth/pages/OAuthCallbackPage.jsx";
 import SignupPage from "../features/auth/pages/SignupPage.jsx";
 import AiLearningPage from "../features/ailearn/pages/AiLearningPage.jsx";
 import MainPage from "../features/home/pages/MainPage.jsx";
@@ -9,62 +15,57 @@ import WorkbookPage from "../features/workbook/pages/WorkbookPage.jsx";
 import WorkbookAttemptPage from "../features/workbook/pages/WorkbookAttemptPage.jsx";
 import WorkbookResultPage from "../features/workbook/pages/WorkbookResultPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
-import { logout } from "../features/auth/api/authApi.js";
 
-const isAccessTokenValid = () => {
-    const token = localStorage.getItem("accessToken");
-
-    if (!token) {
-        return false;
-    }
-
-    try {
-        const payload = JSON.parse(
-            atob(token.split(".")[1])
-        );
-
-        const currentTime = Math.floor(Date.now() / 1000);
-
-        if (!payload.exp || payload.exp <= currentTime) {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            return false;
-        }
-
-        return true;
-    } catch (error) {
-        console.error("토큰 확인 실패:", error);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        return false;
-    }
-};
+import { useAuth } from "../features/auth/context/useAuth.js";
 
 function App() {
     const navigate = useNavigate();
 
-    const [isLoggedIn, setIsLoggedIn] = useState(
-        () => isAccessTokenValid()
-    );
+    const {
+        isLoggedIn,
+        isAuthInitialized,
+        login,
+        logout,
+    } = useAuth();
 
-    const handleLoginSuccess = () => {
-        setIsLoggedIn(true);
-        navigate("/main", { replace: true });
+    const handleLoginSuccess = (accessToken) => {
+        login(accessToken);
+
+        navigate("/main", {
+            replace: true,
+        });
     };
 
     const handleLogout = async () => {
         try {
             await logout();
+
+            navigate("/login", {
+                replace: true,
+            });
         } catch (error) {
             console.error("로그아웃 실패:", error);
-        } finally {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
 
-            setIsLoggedIn(false);
-            navigate("/login", { replace: true });
+            navigate("/login", {
+                replace: true,
+            });
         }
     };
+
+    if (!isAuthInitialized) {
+        return (
+            <main
+                style={{
+                    minHeight: "100vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <p>로그인 상태를 확인하고 있습니다.</p>
+            </main>
+        );
+    }
 
     return (
         <Routes>
@@ -72,7 +73,11 @@ function App() {
                 path="/"
                 element={
                     <Navigate
-                        to={isLoggedIn ? "/main" : "/login"}
+                        to={
+                            isLoggedIn
+                                ? "/main"
+                                : "/login"
+                        }
                         replace
                     />
                 }
@@ -82,10 +87,15 @@ function App() {
                 path="/login"
                 element={
                     isLoggedIn ? (
-                        <Navigate to="/main" replace />
+                        <Navigate
+                            to="/main"
+                            replace
+                        />
                     ) : (
                         <LoginPage
-                            onLoginSuccess={handleLoginSuccess}
+                            onLoginSuccess={
+                                handleLoginSuccess
+                            }
                             onMoveSignup={() =>
                                 navigate("/signup")
                             }
@@ -95,10 +105,24 @@ function App() {
             />
 
             <Route
+                path="/oauth/callback"
+                element={
+                    <OAuthCallbackPage
+                        onLoginSuccess={
+                            handleLoginSuccess
+                        }
+                    />
+                }
+            />
+
+            <Route
                 path="/signup"
                 element={
                     isLoggedIn ? (
-                        <Navigate to="/main" replace />
+                        <Navigate
+                            to="/main"
+                            replace
+                        />
                     ) : (
                         <SignupPage
                             onMoveLogin={() =>
@@ -113,7 +137,9 @@ function App() {
                 element={
                     isLoggedIn ? (
                         <MainLayout
-                            onLogout={handleLogout}
+                            onLogout={
+                                handleLogout
+                            }
                         />
                     ) : (
                         <Navigate
@@ -127,18 +153,24 @@ function App() {
                     path="/main"
                     element={<MainPage />}
                 />
+
                 <Route
                     path="/learning"
                     element={<AiLearningPage />}
                 />
+
                 <Route
                     path="/problems"
                     element={<WorkbookPage />}
                 />
+
                 <Route
                     path="/problems/:workbookId/attempts/:attemptId"
-                    element={<WorkbookAttemptPage />}
+                    element={
+                        <WorkbookAttemptPage />
+                    }
                 />
+
                 <Route
                     path="/problems/:workbookId/attempts/:attemptId/result"
                     element={<WorkbookResultPage />}
