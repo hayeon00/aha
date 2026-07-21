@@ -1,8 +1,9 @@
 package com.aha.domain.auth.service;
 
+import com.aha.domain.auth.config.AuthCookieProperties;
 import com.aha.domain.auth.constants.AuthCookieNames;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -10,21 +11,10 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 
 @Component
+@RequiredArgsConstructor
 public class RefreshTokenCookieService {
 
-    private final boolean secure;
-    private final Duration refreshTokenMaxAge;
-
-    public RefreshTokenCookieService(
-            @Value("${auth.cookie.secure:false}")
-            boolean secure,
-            @Value("${auth.cookie.refresh-token-max-age-seconds:1209600}")
-            long refreshTokenMaxAgeSeconds
-    ) {
-        this.secure = secure;
-        this.refreshTokenMaxAge =
-                Duration.ofSeconds(refreshTokenMaxAgeSeconds);
-    }
+    private final AuthCookieProperties cookieProperties;
 
     public void addRefreshTokenCookie(
             HttpServletResponse response,
@@ -35,11 +25,16 @@ public class RefreshTokenCookieService {
                         AuthCookieNames.REFRESH_TOKEN,
                         refreshToken
                 )
-                .httpOnly(true)
-                .secure(secure)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(refreshTokenMaxAge)
+                .httpOnly(cookieProperties.isHttpOnly())
+                .secure(cookieProperties.isSecure())
+                .sameSite(cookieProperties.getSameSite())
+                .path(cookieProperties.getPath())
+                .maxAge(
+                        Duration.ofSeconds(
+                                cookieProperties
+                                        .getRefreshTokenMaxAgeSeconds()
+                        )
+                )
                 .build();
 
         response.addHeader(
@@ -56,10 +51,10 @@ public class RefreshTokenCookieService {
                         AuthCookieNames.REFRESH_TOKEN,
                         ""
                 )
-                .httpOnly(true)
-                .secure(secure)
-                .sameSite("Lax")
-                .path("/")
+                .httpOnly(cookieProperties.isHttpOnly())
+                .secure(cookieProperties.isSecure())
+                .sameSite(cookieProperties.getSameSite())
+                .path(cookieProperties.getPath())
                 .maxAge(Duration.ZERO)
                 .build();
 
