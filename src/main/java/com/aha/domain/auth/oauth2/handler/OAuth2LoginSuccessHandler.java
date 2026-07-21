@@ -4,11 +4,11 @@ import com.aha.domain.auth.oauth2.principal.AhaOAuth2Principal;
 import com.aha.domain.auth.oauth2.service.OAuthAuthorizationCodeService;
 import com.aha.domain.user.entity.User;
 import com.aha.domain.user.repository.UserRepository;
-import com.aha.domain.user.service.UserExamService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -19,14 +19,14 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
-
-    private static final String FRONTEND_CALLBACK_URL =
-            "http://localhost:5173/oauth/callback";
+public class OAuth2LoginSuccessHandler
+        implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
-    private final UserExamService userExamService;
     private final OAuthAuthorizationCodeService authorizationCodeService;
+
+    @Value("${app.frontend.oauth-callback-url}")
+    private String oauthCallbackUrl;
 
     @Override
     public void onAuthenticationSuccess(
@@ -47,17 +47,16 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                         )
                 );
 
-        userExamService.syncSupportedExamsForUser(
-                user.getId()
-        );
-
         HttpSession session =
                 request.getSession(false);
 
         if (session == null) {
-            throw new IllegalStateException(
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
                     "OAuth 로그인 세션을 찾을 수 없습니다."
             );
+
+            return;
         }
 
         String authorizationCode =
@@ -70,9 +69,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
         String redirectUrl =
                 UriComponentsBuilder
-                        .fromUriString(
-                                FRONTEND_CALLBACK_URL
-                        )
+                        .fromUriString(oauthCallbackUrl)
                         .queryParam(
                                 "code",
                                 authorizationCode
@@ -99,6 +96,4 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 "지원하지 않는 OAuth2 Principal입니다."
         );
     }
-
-
 }
