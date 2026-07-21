@@ -4,32 +4,42 @@ import {
     useMemo,
     useState,
 } from "react";
-import { AuthContext } from "./AuthContext";
+
+import { AuthContext } from "./AuthContext.js";
+
 import {
     clearAccessToken,
     setAccessToken,
-} from "../store/authTokenStore";
+} from "../store/authTokenStore.js";
+
 import {
     logout as logoutApi,
     reissue,
-} from "../api/authApi";
+} from "../api/authApi.js";
+
+import {
+    AUTH_EXPIRED_EVENT,
+} from "../../../common/api/axiosInstance.js";
 
 let authInitializationPromise = null;
 
-const requestInitialAccessToken = async () => {
+const requestInitialAccessToken = () => {
     if (!authInitializationPromise) {
         authInitializationPromise = reissue()
             .then((response) => {
-                const token =
-                    response.data?.accessToken;
+                const accessToken =
+                    response?.data?.accessToken
+                    ?? response?.data?.data?.accessToken
+                    ?? response?.accessToken
+                    ?? null;
 
-                if (!token) {
+                if (!accessToken) {
                     throw new Error(
-                        "재발급 응답에 Access Token이 없습니다."
+                        "재발급 응답에 Access Token이 없습니다.",
                     );
                 }
 
-                return token;
+                return accessToken;
             })
             .finally(() => {
                 authInitializationPromise = null;
@@ -39,26 +49,36 @@ const requestInitialAccessToken = async () => {
     return authInitializationPromise;
 };
 
-export default function AuthProvider({ children }) {
-    const [accessToken, setAccessTokenState] =
-        useState(null);
+export default function AuthProvider({
+                                         children,
+                                     }) {
+    const [
+        accessToken,
+        setAccessTokenState,
+    ] = useState(null);
 
-    const [isAuthInitialized, setIsAuthInitialized] =
-        useState(false);
+    const [
+        isAuthInitialized,
+        setIsAuthInitialized,
+    ] = useState(false);
 
     const login = useCallback((token) => {
         setAccessToken(token);
         setAccessTokenState(token);
     }, []);
 
+    const clearAuth = useCallback(() => {
+        clearAccessToken();
+        setAccessTokenState(null);
+    }, []);
+
     const logout = useCallback(async () => {
         try {
             await logoutApi();
         } finally {
-            clearAccessToken();
-            setAccessTokenState(null);
+            clearAuth();
         }
-    }, []);
+    }, [clearAuth]);
 
     useEffect(() => {
         let cancelled = false;
@@ -68,19 +88,18 @@ export default function AuthProvider({ children }) {
                 const token =
                     await requestInitialAccessToken();
 
-                if (!cancelled) {
-                    setAccessToken(token);
-                    setAccessTokenState(token);
+                if (cancelled) {
+                    return;
                 }
-            } catch (error) {
-                /*
-                 * 최초 방문처럼 Refresh Token 쿠키가 없는 경우
-                 * 401은 정상적인 비로그인 상태로 처리합니다.
-                 */
-                if (!cancelled) {
-                    clearAccessToken();
-                    setAccessTokenState(null);
+
+                setAccessToken(token);
+                setAccessTokenState(token);
+            } catch {
+                if (cancelled) {
+                    return;
                 }
+
+                clearAuth();
             } finally {
                 if (!cancelled) {
                     setIsAuthInitialized(true);
@@ -93,7 +112,25 @@ export default function AuthProvider({ children }) {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [clearAuth]);
+
+    useEffect(() => {
+        const handleAuthExpired = () => {
+            clearAuth();
+        };
+
+        window.addEventListener(
+            AUTH_EXPIRED_EVENT,
+            handleAuthExpired,
+        );
+
+        return () => {
+            window.removeEventListener(
+                AUTH_EXPIRED_EVENT,
+                handleAuthExpired,
+            );
+        };
+    }, [clearAuth]);
 
     const value = useMemo(
         () => ({
@@ -102,12 +139,14 @@ export default function AuthProvider({ children }) {
             isAuthInitialized,
             login,
             logout,
+            clearAuth,
         }),
         [
             accessToken,
             isAuthInitialized,
             login,
             logout,
+            clearAuth,
         ],
     );
 

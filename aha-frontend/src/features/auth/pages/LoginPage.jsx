@@ -1,17 +1,30 @@
 import { useState } from "react";
 import { login } from "../api/authApi.js";
-import { setAccessToken } from "../store/authTokenStore.js";
 import "./LoginPage.css";
 
-function LoginPage({ onLoginSuccess, onMoveSignup }) {
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "");
+
+if (!API_BASE_URL) {
+    throw new Error(
+        "VITE_API_BASE_URL 환경변수가 설정되지 않았습니다.",
+    );
+}
+
+function LoginPage({
+                       onLoginSuccess,
+                       onMoveSignup,
+                   }) {
     const [form, setForm] = useState({
         email: "",
         password: "",
     });
 
     const [message, setMessage] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] =
+        useState(false);
+    const [isSubmitting, setIsSubmitting] =
+        useState(false);
 
     const handleChange = (event) => {
         const { name, value } = event.target;
@@ -36,7 +49,7 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
 
             if (!accessToken) {
                 throw new Error(
-                    "로그인 응답에 Access Token이 없습니다."
+                    "로그인 응답에 Access Token이 없습니다.",
                 );
             }
 
@@ -45,8 +58,8 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
             console.error("로그인 실패:", error);
 
             const errorMessage =
-                error.response?.data?.message ??
-                "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.";
+                error.response?.data?.message
+                ?? "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.";
 
             setMessage(errorMessage);
         } finally {
@@ -54,14 +67,18 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
         }
     };
 
+    const startSocialLogin = (provider) => {
+        window.location.assign(
+            `${API_BASE_URL}/oauth2/authorization/${provider}`,
+        );
+    };
+
     const handleGoogleLogin = () => {
-        window.location.href =
-            "http://localhost:8080/oauth2/authorization/google";
+        startSocialLogin("google");
     };
 
     const handleKakaoLogin = () => {
-        window.location.href =
-            "http://localhost:8080/oauth2/authorization/kakao";
+        startSocialLogin("kakao");
     };
 
     return (
@@ -103,6 +120,7 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                             <div className="sparkle sparkle-one">
                                 ✦
                             </div>
+
                             <div className="sparkle sparkle-two">
                                 ✦
                             </div>
@@ -113,15 +131,18 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                         <span>✓</span>
                                         <i />
                                     </div>
+
                                     <div className="check-row">
                                         <span>✓</span>
                                         <i />
                                     </div>
+
                                     <div className="check-row">
                                         <span>✓</span>
                                         <i />
                                     </div>
                                 </div>
+
                                 <div className="laptop-base" />
                             </div>
 
@@ -131,6 +152,7 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                     <i />
                                     <i />
                                 </div>
+
                                 <div className="book-right">
                                     <i />
                                     <i />
@@ -147,6 +169,7 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                     <div className="login-form-card">
                         <div className="login-form-header">
                             <h2>로그인</h2>
+
                             <p>
                                 계정으로 로그인하고 학습을 이어가세요.
                             </p>
@@ -173,6 +196,7 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                             strokeWidth="1.7"
                                             strokeLinejoin="round"
                                         />
+
                                         <path
                                             d="M5.25 7.25L12 12.25L18.75 7.25"
                                             stroke="currentColor"
@@ -211,12 +235,14 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                             strokeWidth="1.7"
                                             strokeLinecap="round"
                                         />
+
                                         <path
                                             d="M6.75 10.25H17.25C18.08 10.25 18.75 10.92 18.75 11.75V18.25C18.75 19.08 18.08 19.75 17.25 19.75H6.75C5.92 19.75 5.25 19.08 5.25 18.25V11.75C5.25 10.92 5.92 10.25 6.75 10.25Z"
                                             stroke="currentColor"
                                             strokeWidth="1.7"
                                             strokeLinejoin="round"
                                         />
+
                                         <path
                                             d="M12 14.25V15.75"
                                             stroke="currentColor"
@@ -245,18 +271,22 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                     type="button"
                                     onClick={() =>
                                         setShowPassword(
-                                            (prev) => !prev
+                                            (prev) => !prev,
                                         )
                                     }
                                 >
-                                    {showPassword ? "숨김" : "보기"}
+                                    {showPassword
+                                        ? "숨김"
+                                        : "보기"}
                                 </button>
                             </label>
 
                             <div className="login-options">
                                 <label className="login-remember">
                                     <input type="checkbox" />
-                                    <span>로그인 상태 유지</span>
+                                    <span>
+                                        로그인 상태 유지
+                                    </span>
                                 </label>
 
                                 <button
@@ -309,20 +339,24 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                             d="M21.6 12.23C21.6 11.5 21.53 10.8 21.4 10.12H12.2V13.9H17.47C17.24 15.12 16.55 16.16 15.52 16.85V19.3H18.68C20.53 17.6 21.6 15.08 21.6 12.23Z"
                                             fill="#4285F4"
                                         />
+
                                         <path
                                             d="M12.2 21.8C14.84 21.8 17.06 20.93 18.68 19.3L15.52 16.85C14.65 17.43 13.54 17.78 12.2 17.78C9.65 17.78 7.49 16.06 6.72 13.75H3.45V16.28C5.06 19.48 8.37 21.8 12.2 21.8Z"
                                             fill="#34A853"
                                         />
+
                                         <path
                                             d="M6.72 13.75C6.52 13.17 6.41 12.55 6.41 11.9C6.41 11.25 6.52 10.63 6.72 10.05V7.52H3.45C2.78 8.85 2.4 10.34 2.4 11.9C2.4 13.46 2.78 14.95 3.45 16.28L6.72 13.75Z"
                                             fill="#FBBC05"
                                         />
+
                                         <path
                                             d="M12.2 6.02C13.64 6.02 14.93 6.52 15.95 7.49L18.75 4.69C17.05 3.11 14.84 2.15 12.2 2.15C8.37 2.15 5.06 4.32 3.45 7.52L6.72 10.05C7.49 7.74 9.65 6.02 12.2 6.02Z"
                                             fill="#EA4335"
                                         />
                                     </svg>
                                 </span>
+
                                 Google로 계속하기
                             </button>
 
@@ -347,12 +381,16 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
                                         />
                                     </svg>
                                 </span>
+
                                 카카오로 계속하기
                             </button>
                         </div>
 
                         <div className="login-links">
-                            <span>아직 계정이 없으신가요?</span>
+                            <span>
+                                아직 계정이 없으신가요?
+                            </span>
+
                             <button
                                 type="button"
                                 onClick={onMoveSignup}
@@ -365,14 +403,22 @@ function LoginPage({ onLoginSuccess, onMoveSignup }) {
             </div>
 
             <footer className="login-footer">
-                <p>© 2024 Aha. All rights reserved.</p>
+                <p>
+                    © 2024 Aha. All rights reserved.
+                </p>
 
                 <nav>
-                    <button type="button">이용약관</button>
+                    <button type="button">
+                        이용약관
+                    </button>
+
                     <button type="button">
                         개인정보 처리방침
                     </button>
-                    <button type="button">고객센터</button>
+
+                    <button type="button">
+                        고객센터
+                    </button>
                 </nav>
             </footer>
         </main>

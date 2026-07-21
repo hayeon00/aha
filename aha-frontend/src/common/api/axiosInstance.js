@@ -5,8 +5,24 @@ import {
     setAccessToken,
 } from "../../features/auth/store/authTokenStore";
 
+export const AUTH_EXPIRED_EVENT = "auth-expired";
+
+const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+    throw new Error(
+        "VITE_API_BASE_URL 환경변수가 설정되지 않았습니다.",
+    );
+}
+
 const axiosInstance = axios.create({
-    baseURL: "http://localhost:8080",
+    baseURL: API_BASE_URL,
+    withCredentials: true,
+});
+
+const publicAxios = axios.create({
+    baseURL: API_BASE_URL,
     withCredentials: true,
 });
 
@@ -24,19 +40,51 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error),
 );
 
-let isRefreshing = false;
-let refreshSubscribers = [];
+let refreshPromise = null;
 
-const subscribeTokenRefresh = (callback) => {
-    refreshSubscribers.push(callback);
+const requestNewAccessToken = () => {
+    if (!refreshPromise) {
+        refreshPromise = publicAxios
+            .post("/api/v1/auth/reissue")
+            .then((response) => {
+                const newAccessToken =
+                    response.data?.data?.accessToken;
+
+                if (!newAccessToken) {
+                    throw new Error(
+                        "재발급 응답에 Access Token이 없습니다.",
+                    );
+                }
+
+                setAccessToken(newAccessToken);
+
+                return newAccessToken;
+            })
+            .catch((error) => {
+                clearAccessToken();
+
+                window.dispatchEvent(
+                    new CustomEvent(AUTH_EXPIRED_EVENT),
+                );
+
+                throw error;
+            })
+            .finally(() => {
+                refreshPromise = null;
+            });
+    }
+
+    return refreshPromise;
 };
 
-const onTokenRefreshed = (newAccessToken) => {
-    refreshSubscribers.forEach((callback) => {
-        callback(newAccessToken);
-    });
-
-    refreshSubscribers = [];
+const isRefreshExcludedRequest = (url = "") => {
+    return (
+        url.includes("/api/v1/auth/login") ||
+        url.includes("/api/v1/auth/signup") ||
+        url.includes("/api/v1/auth/reissue") ||
+        url.includes("/api/v1/auth/logout") ||
+        url.includes("/api/v1/auth/oauth/exchange")
+    );
 };
 
 axiosInstance.interceptors.response.use(
@@ -45,56 +93,29 @@ axiosInstance.interceptors.response.use(
         const originalRequest = error.config;
 
         if (
+            !originalRequest ||
             error.response?.status !== 401 ||
             originalRequest._retry ||
-            originalRequest.url?.includes("/api/v1/auth/login") ||
-            originalRequest.url?.includes("/api/v1/auth/reissue") ||
-            originalRequest.url?.includes("/api/v1/auth/oauth/exchange")
+            isRefreshExcludedRequest(originalRequest.url)
         ) {
             return Promise.reject(error);
         }
 
         originalRequest._retry = true;
 
-        if (isRefreshing) {
-            return new Promise((resolve) => {
-                subscribeTokenRefresh((newAccessToken) => {
-                    originalRequest.headers.Authorization =
-                        `Bearer ${newAccessToken}`;
-
-                    resolve(axiosInstance(originalRequest));
-                });
-            });
-        }
-
-        isRefreshing = true;
-
         try {
-            const response = await axios.post(
-                "http://localhost:8080/api/v1/auth/reissue",
-                null,
-                {
-                    withCredentials: true,
-                },
-            );
-
             const newAccessToken =
-                response.data.data.accessToken;
+                await requestNewAccessToken();
 
-            setAccessToken(newAccessToken);
-            onTokenRefreshed(newAccessToken);
+            originalRequest.headers =
+                originalRequest.headers ?? {};
 
             originalRequest.headers.Authorization =
                 `Bearer ${newAccessToken}`;
 
             return axiosInstance(originalRequest);
         } catch (refreshError) {
-            clearAccessToken();
-            refreshSubscribers = [];
-
             return Promise.reject(refreshError);
-        } finally {
-            isRefreshing = false;
         }
     },
 );

@@ -23,6 +23,7 @@ public enum ErrorCode {
     OAUTH_LOGIN_FAILED(401, "AUTH_012", "소셜 로그인에 실패했습니다."),
     UNSUPPORTED_SOCIAL_PROVIDER(400, "AUTH_013", "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_OAUTH_AUTHORIZATION_CODE(401, "AUTH_014", "유효하지 않거나 만료된 OAuth 인증 코드입니다."),
+    ACCOUNT_NOT_ACTIVE(401, "AUTH_010", "로그인할 수 없는 계정입니다."),
 
 
 
@@ -30,6 +31,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
     PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
     INVALID_PROFILE_IMAGE(400, "USER_003", "지원하지 않는 프로필 이미지 형식입니다."),
+    USER_EXAM_ALREADY_CONFIGURED(409, "USER_EXAM_002", "이미 학습할 시험을 설정했습니다."),
 
 
 
