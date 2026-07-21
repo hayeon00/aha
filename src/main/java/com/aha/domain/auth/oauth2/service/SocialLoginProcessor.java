@@ -4,8 +4,10 @@ import com.aha.domain.auth.entity.SocialAccount;
 import com.aha.domain.auth.enums.SocialProvider;
 import com.aha.domain.auth.oauth2.info.OAuth2UserInfo;
 import com.aha.domain.auth.repository.SocialAccountRepository;
+import com.aha.domain.auth.service.UserAccountStatusValidator;
 import com.aha.domain.user.entity.User;
 import com.aha.domain.user.enums.UserRole;
+import com.aha.domain.user.enums.UserStatus;
 import com.aha.domain.user.repository.UserRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -31,6 +33,7 @@ public class SocialLoginProcessor {
 
     private final UserRepository userRepository;
     private final SocialAccountRepository socialAccountRepository;
+    private final UserAccountStatusValidator userAccountStatusValidator;
 
     @Transactional
     public User process(
@@ -78,7 +81,7 @@ public class SocialLoginProcessor {
                 .name(name)
                 .nickname(nickname)
                 .role(UserRole.USER)
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .isEmailVerified(false)
                 .profileImageUrl(userInfo.getProfileImageUrl())
                 .build();
@@ -202,12 +205,15 @@ public class SocialLoginProcessor {
             SocialAccount socialAccount,
             OAuth2UserInfo userInfo
     ) {
+        User user = socialAccount.getUser();
+
+        userAccountStatusValidator.validate(user);
+
         socialAccount.updateLoginInfo(
                 userInfo.getEmail(),
                 userInfo.getProfileImageUrl()
         );
 
-        User user = socialAccount.getUser();
         user.updateLastLoginAt();
 
         return user;

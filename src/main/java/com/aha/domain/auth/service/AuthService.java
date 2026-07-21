@@ -1,16 +1,14 @@
 package com.aha.domain.auth.service;
 
 import com.aha.domain.auth.dto.request.LoginRequestDto;
-import com.aha.domain.auth.dto.request.ReissueRequestDto;
 import com.aha.domain.auth.dto.request.SignupRequestDto;
-import com.aha.domain.auth.dto.response.LoginResponseDto;
 import com.aha.domain.auth.dto.response.SignupResponseDto;
 import com.aha.domain.auth.entity.RefreshToken;
 import com.aha.domain.auth.repository.RefreshTokenRepository;
 import com.aha.domain.user.entity.User;
 import com.aha.domain.user.enums.UserRole;
+import com.aha.domain.user.enums.UserStatus;
 import com.aha.domain.user.repository.UserRepository;
-import com.aha.domain.user.service.UserExamService;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.security.jwt.JwtTokenProvider;
@@ -28,8 +26,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final UserExamService userExamService;
     private final AuthTokenService authTokenService;
+    private final UserAccountStatusValidator userAccountStatusValidator;
 
     @Transactional
     public SignupResponseDto signup(SignupRequestDto request) {
@@ -48,7 +46,7 @@ public class AuthService {
                 .name(name)
                 .nickname(request.getNickname())
                 .role(UserRole.USER)
-                .status("ACTIVE")
+                .status(UserStatus.ACTIVE)
                 .isEmailVerified(false)
                 .build();
 
@@ -60,14 +58,14 @@ public class AuthService {
     @Transactional
     public IssuedTokens login(LoginRequestDto request) {
 
-        User user = userRepository.findByEmail(
-                        request.getEmail()
-                )
+        User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
                         new BusinessException(
                                 ErrorCode.INVALID_CREDENTIALS
                         )
                 );
+
+        userAccountStatusValidator.validate(user);
 
         validatePassword(
                 request.getPassword(),
@@ -75,10 +73,6 @@ public class AuthService {
         );
 
         user.updateLastLoginAt();
-
-        userExamService.syncSupportedExamsForUser(
-                user.getId()
-        );
 
         return authTokenService.issueTokens(user);
     }
@@ -105,6 +99,8 @@ public class AuthService {
 
         User user = savedToken.getUser();
 
+        userAccountStatusValidator.validate(user);
+
         String newAccessToken =
                 jwtTokenProvider.createAccessToken(
                         user.getId(),
@@ -128,6 +124,8 @@ public class AuthService {
                         .getAccessTokenExpirationSeconds()
         );
     }
+
+
 
     @Transactional
     public void logout(String refreshToken) {

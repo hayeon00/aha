@@ -1,6 +1,7 @@
 package com.aha.domain.user.entity;
 
 import com.aha.domain.user.enums.UserRole;
+import com.aha.domain.user.enums.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,8 +52,9 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private String status;
+    private UserStatus status;
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
@@ -62,6 +64,9 @@ public class User {
 
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
+
+    @Column(name = "exam_onboarding_completed", nullable = false)
+    private boolean examOnboardingCompleted;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -78,7 +83,7 @@ public class User {
             String name,
             String nickname,
             UserRole role,
-            String status,
+            UserStatus status,
             boolean isEmailVerified,
             String profileImageUrl
     ) {
@@ -87,7 +92,7 @@ public class User {
         this.name = name;
         this.nickname = nickname;
         this.role = role != null ? role : UserRole.USER;
-        this.status = status != null ? status : "ACTIVE";
+        this.status = UserStatus.ACTIVE;
         this.isEmailVerified = isEmailVerified;
         this.profileImageUrl = profileImageUrl;
     }
@@ -119,6 +124,22 @@ public class User {
         this.isEmailVerified = true;
     }
 
+    public void activate() {
+        this.status = UserStatus.ACTIVE;
+    }
+
+    public void deactivate() {
+        this.status = UserStatus.INACTIVE;
+    }
+
+    public void suspend() {
+        this.status = UserStatus.SUSPENDED;
+    }
+
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+    }
+
     public void updatePassword(String password) {
         this.password = password;
     }
@@ -127,9 +148,10 @@ public class User {
         this.lastLoginAt = LocalDateTime.now();
     }
 
-    public void changeStatus(String status) {
-        this.status = status;
+    public void completeExamOnboarding() {
+        this.examOnboardingCompleted = true;
     }
+
 
     public boolean hasPassword() {
         return password != null && !password.isBlank();

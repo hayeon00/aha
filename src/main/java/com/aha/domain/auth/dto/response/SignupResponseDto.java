@@ -1,6 +1,7 @@
 package com.aha.domain.auth.dto.response;
 
 import com.aha.domain.user.entity.User;
+import com.aha.domain.user.enums.UserStatus;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -13,7 +14,7 @@ public class SignupResponseDto {
     private final String name;
     private final String nickname;
     private final String role;
-    private final String status;
+    private final UserStatus status;
     private final boolean emailVerified;
     private final LocalDateTime createdAt;
 
@@ -26,5 +27,6 @@ public class SignupResponseDto {
         this.status = user.getStatus();
         this.emailVerified = user.isEmailVerified();
         this.createdAt = user.getCreatedAt();
+
     }
 }
