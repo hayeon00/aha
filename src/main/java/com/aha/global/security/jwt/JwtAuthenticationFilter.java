@@ -18,20 +18,21 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter
-        extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-
+    protected boolean shouldNotFilter(
+            HttpServletRequest request
+    ) {
         String uri = request.getRequestURI();
 
         return uri.equals("/api/v1/auth/signup")
                 || uri.equals("/api/v1/auth/login")
                 || uri.equals("/api/v1/auth/reissue")
+                || uri.equals("/api/v1/auth/oauth/exchange")
                 || uri.startsWith("/oauth2/")
                 || uri.startsWith("/login/oauth2/")
                 || uri.startsWith("/swagger-ui")
@@ -53,34 +54,26 @@ public class JwtAuthenticationFilter
         }
 
         if (!jwtTokenProvider.validateAccessToken(token)) {
-            SecurityContextHolder.clearContext();
-
-            response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
+            writeUnauthorizedResponse(
+                    response,
+                    "유효하지 않거나 만료된 토큰입니다."
             );
-            response.setContentType(
-                    "application/json;charset=UTF-8"
-            );
-            response.getWriter().write("""
-                    {
-                      "status": 401,
-                      "message": "유효하지 않거나 만료된 토큰입니다.",
-                      "data": null
-                    }
-                    """);
             return;
         }
 
-        /*
-         * Access Token의 subject에 저장된
-         * Aha 내부 userId를 가져옵니다.
-         */
-        Long userId =
-                jwtTokenProvider.getUserId(token);
+        Long userId = jwtTokenProvider.getUserId(token);
 
         CustomUserDetails userDetails =
-                customUserDetailsService
-                        .loadUserById(userId);
+                customUserDetailsService.loadUserById(userId);
+
+        if (!userDetails.isEnabled()
+                || !userDetails.isAccountNonLocked()) {
+            writeUnauthorizedResponse(
+                    response,
+                    "사용할 수 없는 계정입니다."
+            );
+            return;
+        }
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -94,8 +87,7 @@ public class JwtAuthenticationFilter
                         .buildDetails(request)
         );
 
-        SecurityContextHolder
-                .getContext()
+        SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
@@ -115,5 +107,27 @@ public class JwtAuthenticationFilter
         }
 
         return authorization.substring(7);
+    }
+
+    private void writeUnauthorizedResponse(
+            HttpServletResponse response,
+            String message
+    ) throws IOException {
+        SecurityContextHolder.clearContext();
+
+        response.setStatus(
+                HttpServletResponse.SC_UNAUTHORIZED
+        );
+        response.setContentType(
+                "application/json;charset=UTF-8"
+        );
+
+        response.getWriter().write("""
+                {
+                  "status": 401,
+                  "message": "%s",
+                  "data": null
+                }
+                """.formatted(message));
     }
 }
