@@ -15,8 +15,11 @@ const OAUTH_ERROR_MESSAGES = {
     OAUTH_INVALID_STATE:
         "유효하지 않은 로그인 요청입니다. 다시 시도해주세요.",
 
+    SOCIAL_EMAIL_REQUIRED:
+        "카카오 또는 Google 계정의 이메일 제공에 동의해 주세요.",
+
     SOCIAL_ACCOUNT_LINK_REQUIRED:
-        "동일한 이메일의 기존 계정이 있습니다. 계정 연결이 필요합니다.",
+        "동일한 이메일의 기존 계정이 있습니다. 기존 로그인 방식으로 로그인해 주세요.",
 
     OAUTH_LOGIN_FAILED:
         "소셜 로그인에 실패했습니다. 다시 시도해주세요.",

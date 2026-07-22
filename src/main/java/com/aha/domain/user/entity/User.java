@@ -19,6 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Entity
 @Table(
@@ -109,9 +110,23 @@ public class User {
         this.profileImageUrl = profileImageUrl;
     }
 
-    public void updateEmail(String email) {
-        this.email = normalizeEmail(email);
-        this.isEmailVerified = false;
+    public void updateEmail(
+            String email,
+            boolean emailVerified
+    ) {
+        if (email == null
+                || email.isBlank()) {
+            throw new IllegalArgumentException(
+                    "이메일은 비어 있을 수 없습니다."
+            );
+        }
+
+        this.email = email
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        this.isEmailVerified =
+                emailVerified;
     }
 
     public void verifyEmail() {
