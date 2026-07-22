@@ -9,7 +9,7 @@ public class EmbeddingModelProvider {
     private final String embeddingModel;
 
     public EmbeddingModelProvider(
-            @Value("${open.embedding-model:text-embedding-3-small}") String embeddingModel
+            @Value("${openAI.embedding-model:text-embedding-3-small}") String embeddingModel
     ) {
         this.embeddingModel = embeddingModel;
     }
