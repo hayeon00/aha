@@ -28,6 +28,7 @@ export default function ExamOnboardingModal({ open, onComplete }) {
     const [centeredCarouselIndex, setCenteredCarouselIndex] = useState(1);
     const carouselRef = useRef(null);
     const dragStateRef = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
+    const scrollEndTimerRef = useRef(null);
 
     const loadExams = async () => {
         try {
@@ -56,9 +57,15 @@ export default function ExamOnboardingModal({ open, onComplete }) {
         if (exams.length < 2) return;
         requestAnimationFrame(() => {
             const firstRealCard = carouselRef.current?.querySelector('[data-carousel-index="1"]');
-            firstRealCard?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
+            firstRealCard?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "center" });
         });
     }, [exams]);
+
+    useEffect(() => () => {
+        if (scrollEndTimerRef.current) {
+            window.clearTimeout(scrollEndTimerRef.current);
+        }
+    }, []);
 
     const selectedCount = selectedIds.length;
     const carouselExams = useMemo(() => (
@@ -106,6 +113,56 @@ export default function ExamOnboardingModal({ open, onComplete }) {
         carousel.scrollLeft = drag.scrollLeft - distance;
     };
 
+    const getNearestCarouselCard = (carousel) => {
+        const carouselCenter = carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
+        return [...carousel.querySelectorAll(".exam-select-card")].reduce((nearest, card) => {
+            const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
+            const distance = Math.abs(carouselCenter - cardCenter);
+            return !nearest || distance < nearest.distance ? { card, distance } : nearest;
+        }, null)?.card;
+    };
+
+    const jumpToCarouselIndex = (carousel, carouselIndex) => {
+        const targetCard = carousel.querySelector(`[data-carousel-index="${carouselIndex}"]`);
+        if (!targetCard) return;
+
+        const previousScrollBehavior = carousel.style.scrollBehavior;
+        const previousScrollSnapType = carousel.style.scrollSnapType;
+        carousel.style.scrollBehavior = "auto";
+        carousel.style.scrollSnapType = "none";
+
+        const carouselCenter = carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
+        const targetCenter = targetCard.getBoundingClientRect().left + targetCard.clientWidth / 2;
+        carousel.scrollLeft += targetCenter - carouselCenter;
+        setCenteredCarouselIndex(carouselIndex);
+
+        requestAnimationFrame(() => {
+            carousel.style.scrollBehavior = previousScrollBehavior;
+            carousel.style.scrollSnapType = previousScrollSnapType;
+        });
+    };
+
+    const normalizeInfiniteCarousel = (carousel) => {
+        if (exams.length < 2 || dragStateRef.current.active) return;
+
+        const nearestCard = getNearestCarouselCard(carousel);
+        const carouselIndex = Number(nearestCard?.dataset.carouselIndex);
+        if (carouselIndex === 0) {
+            jumpToCarouselIndex(carousel, exams.length);
+        } else if (carouselIndex === exams.length + 1) {
+            jumpToCarouselIndex(carousel, 1);
+        }
+    };
+
+    const scheduleInfiniteCarouselNormalization = (carousel, delay = 140) => {
+        if (scrollEndTimerRef.current) {
+            window.clearTimeout(scrollEndTimerRef.current);
+        }
+        scrollEndTimerRef.current = window.setTimeout(() => {
+            normalizeInfiniteCarousel(carousel);
+        }, delay);
+    };
+
     const handleDragEnd = (event) => {
         const carousel = carouselRef.current;
         if (!carousel) return;
@@ -115,40 +172,21 @@ export default function ExamOnboardingModal({ open, onComplete }) {
         }
         carousel.classList.remove("is-dragging");
         if (dragStateRef.current.moved) {
-            const carouselCenter = carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
-            const cards = [...carousel.querySelectorAll(".exam-select-card")];
-            const nearestCard = cards.reduce((nearest, card) => {
-                const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
-                const distance = Math.abs(carouselCenter - cardCenter);
-                return !nearest || distance < nearest.distance ? { card, distance } : nearest;
-            }, null)?.card;
+            const nearestCard = getNearestCarouselCard(carousel);
             const carouselIndex = Number(nearestCard?.dataset.carouselIndex);
             if (Number.isInteger(carouselIndex)) setCenteredCarouselIndex(carouselIndex);
             nearestCard?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-
-            if (exams.length > 1 && (carouselIndex === 0 || carouselIndex === exams.length + 1)) {
-                const normalizedIndex = carouselIndex === 0 ? exams.length : 1;
-                window.setTimeout(() => {
-                    const normalizedCard = carousel.querySelector(`[data-carousel-index="${normalizedIndex}"]`);
-                    normalizedCard?.scrollIntoView({ behavior: "auto", block: "nearest", inline: "center" });
-                    setCenteredCarouselIndex(normalizedIndex);
-                }, 260);
-            }
+            scheduleInfiniteCarouselNormalization(carousel, 300);
         }
     };
 
     const handleCarouselScroll = () => {
         const carousel = carouselRef.current;
         if (!carousel) return;
-        const carouselCenter = carousel.getBoundingClientRect().left + carousel.clientWidth / 2;
-        const cards = [...carousel.querySelectorAll(".exam-select-card")];
-        const nearestCard = cards.reduce((nearest, card) => {
-            const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
-            const distance = Math.abs(carouselCenter - cardCenter);
-            return !nearest || distance < nearest.distance ? { card, distance } : nearest;
-        }, null);
-        const carouselIndex = Number(nearestCard?.card.dataset.carouselIndex);
+        const nearestCard = getNearestCarouselCard(carousel);
+        const carouselIndex = Number(nearestCard?.dataset.carouselIndex);
         if (Number.isInteger(carouselIndex)) setCenteredCarouselIndex(carouselIndex);
+        scheduleInfiniteCarouselNormalization(carousel);
     };
 
     const handleSubmit = async () => {
