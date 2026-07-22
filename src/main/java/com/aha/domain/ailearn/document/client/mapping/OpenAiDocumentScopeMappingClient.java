@@ -33,7 +33,7 @@ public class OpenAiDocumentScopeMappingClient
             RestClient openAiRestClient,
             DocumentScopeMappingPromptBuilder promptBuilder,
             DocumentScopeMappingResponseParser responseParser,
-            @Value("${openai.model:gpt-4.1-mini}")
+            @Value("${open.model:gpt-4.1-mini}")
             String model
     ) {
         this.openAiRestClient = openAiRestClient;
