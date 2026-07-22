@@ -5,11 +5,17 @@ SET @exam_id=LAST_INSERT_ID();
 
 INSERT INTO `exam_version` (`exam_id`,`version_no`,`version_name`,`default_question_count`,`duration_type`,`default_duration_seconds`,`total_score`,`passing_rule_type`,`passing_score`,`has_subject_fail_rule`,`subject_fail_threshold`,`status`) VALUES (@exam_id,2025,'SQLD 2025 개정판',50,'TOTAL',5400,100,'TOTAL',60,1,40,'ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`version_name`=VALUES(`version_name`),`default_question_count`=VALUES(`default_question_count`),`duration_type`=VALUES(`duration_type`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`passing_rule_type`=VALUES(`passing_rule_type`),`passing_score`=VALUES(`passing_score`),`has_subject_fail_rule`=VALUES(`has_subject_fail_rule`),`subject_fail_threshold`=VALUES(`subject_fail_threshold`),`status`=VALUES(`status`);
 SET @exam_version_id=LAST_INSERT_ID();
-INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('INFOPRO', '정보처리기사', 'ACTIVE');
-SET @infra_id = LAST_INSERT_ID();
+INSERT INTO `exam` (`code`,`name`,`status`) VALUES ('INFOPRO','정보처리기사','ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`name`=VALUES(`name`),`status`=VALUES(`status`);
+SET @infopro_exam_id=LAST_INSERT_ID();
 
-INSERT INTO `exam` (`code`, `name`, `status`) VALUES ('ADSP', '데이터분석 준전문가(ADsP)', 'ACTIVE');
-SET @adsp_id = LAST_INSERT_ID();
+INSERT INTO `exam_version` (`exam_id`,`version_no`,`version_name`,`default_question_count`,`duration_type`,`default_duration_seconds`,`total_score`,`passing_rule_type`,`passing_score`,`has_subject_fail_rule`,`subject_fail_threshold`,`status`) VALUES (@infopro_exam_id,2025,'정보처리기사 2025',100,'TOTAL',9000,100,'AVERAGE',60,1,40,'ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`version_name`=VALUES(`version_name`),`default_question_count`=VALUES(`default_question_count`),`duration_type`=VALUES(`duration_type`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`passing_rule_type`=VALUES(`passing_rule_type`),`passing_score`=VALUES(`passing_score`),`has_subject_fail_rule`=VALUES(`has_subject_fail_rule`),`subject_fail_threshold`=VALUES(`subject_fail_threshold`),`status`=VALUES(`status`);
+SET @infopro_exam_version_id=LAST_INSERT_ID();
+
+INSERT INTO `exam` (`code`,`name`,`status`) VALUES ('ADSP','데이터분석 준전문가(ADsP)','ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`name`=VALUES(`name`),`status`=VALUES(`status`);
+SET @adsp_exam_id=LAST_INSERT_ID();
+
+INSERT INTO `exam_version` (`exam_id`,`version_no`,`version_name`,`default_question_count`,`duration_type`,`default_duration_seconds`,`total_score`,`passing_rule_type`,`passing_score`,`has_subject_fail_rule`,`subject_fail_threshold`,`status`) VALUES (@adsp_exam_id,2025,'ADsP 2025',50,'TOTAL',5400,100,'TOTAL',60,1,40,'ACTIVE') ON DUPLICATE KEY UPDATE `id`=LAST_INSERT_ID(`id`),`version_name`=VALUES(`version_name`),`default_question_count`=VALUES(`default_question_count`),`duration_type`=VALUES(`duration_type`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`passing_rule_type`=VALUES(`passing_rule_type`),`passing_score`=VALUES(`passing_score`),`has_subject_fail_rule`=VALUES(`has_subject_fail_rule`),`subject_fail_threshold`=VALUES(`subject_fail_threshold`),`status`=VALUES(`status`);
+SET @adsp_exam_version_id=LAST_INSERT_ID();
 
 INSERT INTO `exam_part` (`exam_version_id`,`code`,`name`,`default_question_count`,`default_duration_seconds`,`total_score`,`is_subject_fail_target`,`subject_fail_threshold_score`,`is_active`,`display_order`) VALUES (@exam_version_id,'SUBJECT_1','1과목 데이터 모델링의 이해',10,NULL,20,1,8,1,1),(@exam_version_id,'SUBJECT_2','2과목 SQL 기본 및 활용',40,NULL,80,1,32,1,2) ON DUPLICATE KEY UPDATE `name`=VALUES(`name`),`default_question_count`=VALUES(`default_question_count`),`default_duration_seconds`=VALUES(`default_duration_seconds`),`total_score`=VALUES(`total_score`),`is_subject_fail_target`=VALUES(`is_subject_fail_target`),`subject_fail_threshold_score`=VALUES(`subject_fail_threshold_score`),`is_active`=VALUES(`is_active`),`display_order`=VALUES(`display_order`);
 
@@ -823,4 +829,3 @@ VALUES (@workbook_id_3, @prob_id_3_10, 10, NOW(), NOW());
 -- 4. 3회차 트랜잭션 최종 반영 및 종결
 -- =================================================================
 COMMIT;
-

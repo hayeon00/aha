@@ -4,7 +4,6 @@ import com.aha.domain.exam.dto.response.ExamResponseDto;
 import com.aha.domain.exam.service.ExamService;
 import com.aha.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

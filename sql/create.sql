@@ -49,6 +49,7 @@ CREATE TABLE `users` (
                          `last_login_at`     DATETIME         NULL,
                          `is_email_verified` BOOLEAN      NOT NULL DEFAULT FALSE,
                          `profile_image_url` VARCHAR(500)     NULL,
+                         `exam_onboarding_completed` BOOLEAN NOT NULL DEFAULT FALSE,
                          `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          `updated_at`        DATETIME         NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
