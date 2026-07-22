@@ -2,7 +2,7 @@ package com.aha.domain.ailearn.document.entity;
 
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStatus;
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStep;
-import com.aha.domain.user.entity.UserExam;
+import com.aha.domain.userexam.entity.UserExam;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
