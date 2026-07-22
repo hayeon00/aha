@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getMyInfo } from "../../features/user/api/userApi.js";
+import ExamOnboardingModal from "../../features/exam/components/ExamOnboardingModal.jsx";
 import "./MainLayout.css";
 
 const API_BASE_URL =
@@ -30,6 +31,7 @@ function MainLayout({ onLogout }) {
     const [userInfo, setUserInfo] = useState(null);
     const [isUserInfoLoading, setIsUserInfoLoading] = useState(true);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const [isExamOnboardingOpen, setIsExamOnboardingOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -44,6 +46,7 @@ function MainLayout({ onLogout }) {
                 }
 
                 setUserInfo(myInfo);
+                setIsExamOnboardingOpen(myInfo?.examOnboardingCompleted === false);
             } catch (error) {
                 if (!isMounted) {
                     return;
@@ -145,8 +148,21 @@ function MainLayout({ onLogout }) {
 
     const profileImageUrl = getProfileImageUrl();
 
+    const handleExamOnboardingComplete = () => {
+        setIsExamOnboardingOpen(false);
+        setUserInfo((current) => current
+            ? { ...current, examOnboardingCompleted: true }
+            : current);
+        navigate("/main", { replace: true });
+    };
+
     return (
         <div className="app-layout">
+            {/* 로그인 성공 후 /main 진입 시 서버의 examOnboardingCompleted 값이 false인 경우에만 노출됩니다. */}
+            <ExamOnboardingModal
+                open={isExamOnboardingOpen}
+                onComplete={handleExamOnboardingComplete}
+            />
             <aside className="side-menu">
                 <button
                     type="button"
