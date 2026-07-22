@@ -1,6 +1,7 @@
-package com.aha.domain.user.entity;
+package com.aha.domain.userexam.entity;
 
 import com.aha.domain.exam.entity.ExamVersion;
+import com.aha.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

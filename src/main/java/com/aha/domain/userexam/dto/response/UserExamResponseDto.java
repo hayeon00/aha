@@ -1,6 +1,6 @@
-package com.aha.domain.user.dto.response;
+package com.aha.domain.userexam.dto.response;
 
-import com.aha.domain.user.entity.UserExam;
+import com.aha.domain.userexam.entity.UserExam;
 
 import java.time.LocalDateTime;
 

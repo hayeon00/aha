@@ -1,4 +1,4 @@
-package com.aha.domain.user.dto.request;
+package com.aha.domain.userexam.dto.request;
 
 import jakarta.validation.constraints.NotNull;
 
