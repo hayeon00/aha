@@ -18,14 +18,42 @@
 
 .side-logo {
     width: fit-content;
-    padding: 0;
+    padding: 2px;
     border: none;
+    border-radius: 10px;
     background: transparent;
-    color: #ff6a00;
-    font-size: 30px;
-    font-weight: 900;
-    letter-spacing: -0.8px;
+    color: #172033;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
     cursor: pointer;
+    transition: opacity 0.16s ease;
+}
+
+.side-logo:hover {
+    opacity: 0.72;
+}
+
+.side-logo-icon {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.side-logo-mark {
+    width: 30px;
+    height: 30px;
+    display: block;
+    object-fit: contain;
+}
+
+.side-logo-wordmark {
+    font-size: 28px;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: -1.15px;
 }
 
 .side-nav {
@@ -369,7 +397,21 @@
     }
 
     .side-logo {
-        font-size: 26px;
+        gap: 8px;
+    }
+
+    .side-logo-icon {
+        width: 27px;
+        height: 27px;
+    }
+
+    .side-logo-mark {
+        width: 27px;
+        height: 27px;
+    }
+
+    .side-logo-wordmark {
+        font-size: 25px;
     }
 
     .side-nav {
@@ -469,4 +511,3 @@
 
 
 }
-
