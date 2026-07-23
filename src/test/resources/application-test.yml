@@ -18,7 +18,7 @@ spring:
       mode: never
 
   ai:
-    openai:
+    openAI:
       api-key: sk-proj-test-key-for-context-loads-only-000000000000000000000000000000
       chat:
         options:
@@ -29,11 +29,23 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
-openai:
+openAI:
   api-key: sk-proj-test-key-for-context-loads-only-000000000000000000000000000000
+  base-url: https://api.openai.com/v1
   model: gpt-4.1-mini
+  embedding-model: text-embedding-3-small
 
 app:
+  cors:
+    allowed-origins: http://localhost:5173
+
+  frontend:
+    oauth-callback-url: http://localhost:5173/oauth/callback
+
   ai:
-    openai:
+    openAI:
       enabled: false
+
+  auth:
+    cookie:
+      secure: false

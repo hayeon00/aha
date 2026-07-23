@@ -1,5 +1,8 @@
 package com.aha.global.exception;
 
+import lombok.Getter;
+
+@Getter
 public enum ErrorCode {
 
     // COMMON
@@ -7,6 +10,7 @@ public enum ErrorCode {
     ENTITY_NOT_FOUND(404, "COMMON_002", "대상을 찾을 수 없습니다."),
     INVALID_REQUEST_FORMAT(400, "COMMON_003", "잘못된 요청 형식입니다."),
     INTERNAL_SERVER_ERROR(500, "COMMON_999", "서버 내부 오류입니다."),
+
 
     // AUTH
     UNAUTHORIZED(401, "AUTH_001", "로그인이 필요합니다."),
@@ -23,7 +27,8 @@ public enum ErrorCode {
     OAUTH_LOGIN_FAILED(401, "AUTH_012", "소셜 로그인에 실패했습니다."),
     UNSUPPORTED_SOCIAL_PROVIDER(400, "AUTH_013", "지원하지 않는 소셜 로그인 제공자입니다."),
     INVALID_OAUTH_AUTHORIZATION_CODE(401, "AUTH_014", "유효하지 않거나 만료된 OAuth 인증 코드입니다."),
-    ACCOUNT_NOT_ACTIVE(401, "AUTH_010", "로그인할 수 없는 계정입니다."),
+    ACCOUNT_NOT_ACTIVE(401, "AUTH_015", "로그인할 수 없는 계정입니다."),
+    SOCIAL_EMAIL_REQUIRED(401, "AUTH_016", "소셜 계정의 인증된 이메일 정보가 필요합니다."),
 
 
 
@@ -34,9 +39,19 @@ public enum ErrorCode {
     USER_EXAM_ALREADY_CONFIGURED(409, "USER_EXAM_002", "이미 학습할 시험을 설정했습니다."),
 
 
+    //EXAM
+    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
+    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
+    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
+
+
 
     // USER_EXAM
     USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다."),
+
+
+
 
     // DOCUMENT UPLOAD
     DOCUMENT_FILE_COUNT_EXCEEDED(400, "DOCUMENT_UPLOAD_001", "업로드 가능한 문서 파일 개수를 초과했습니다."),
@@ -76,11 +91,7 @@ public enum ErrorCode {
     SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
-    //EXAM
-    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
-    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
-    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
+
 
     //WORKBOOK
     WORKBOOK_NOT_FOUND(404,"WORKBOOK_001","워크북에 접근할 수 없습니다."),
@@ -112,15 +123,4 @@ public enum ErrorCode {
         this.message = message;
     }
 
-    public int getStatus() {
-        return status;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
 }

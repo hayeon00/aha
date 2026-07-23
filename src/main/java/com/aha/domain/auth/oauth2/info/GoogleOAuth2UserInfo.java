@@ -1,10 +1,10 @@
 package com.aha.domain.auth.oauth2.info;
 
+import java.util.Locale;
 import java.util.Map;
 
-// Google OIDC Claims 변환
-
-public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
+public class GoogleOAuth2UserInfo
+        implements OAuth2UserInfo {
 
     private final Map<String, Object> attributes;
 
@@ -21,7 +21,22 @@ public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
 
     @Override
     public String getEmail() {
-        return getString("email");
+        String email = getString("email");
+
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+
+        return email
+                .trim()
+                .toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    public boolean isEmailVerified() {
+        return Boolean.TRUE.equals(
+                attributes.get("email_verified")
+        );
     }
 
     @Override
@@ -42,10 +57,8 @@ public class GoogleOAuth2UserInfo implements OAuth2UserInfo {
     private String getString(String key) {
         Object value = attributes.get(key);
 
-        if (value == null) {
-            return null;
-        }
-
-        return String.valueOf(value);
+        return value == null
+                ? null
+                : String.valueOf(value);
     }
 }

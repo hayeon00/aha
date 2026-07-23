@@ -40,7 +40,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE `users` (
                          `id`                BIGINT       NOT NULL AUTO_INCREMENT,
-                         `email`             VARCHAR(100)     NULL,
+                         `email`             VARCHAR(255) NOT NULL,
                          `password`          VARCHAR(255)     NULL,
                          `name`              VARCHAR(50)  NOT NULL,
                          `nickname`          VARCHAR(50)  NOT NULL,

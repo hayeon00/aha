@@ -168,8 +168,18 @@ function MainLayout({ onLogout }) {
                     type="button"
                     className="side-logo"
                     onClick={() => navigate("/main")}
+                    aria-label="Aha 학습 홈"
                 >
-                    Aha
+                    <span className="side-logo-icon" aria-hidden="true">
+                        <img
+                            src="/brand/aha-mark.png"
+                            alt=""
+                            className="side-logo-mark"
+                        />
+                    </span>
+                    <span className="side-logo-wordmark">
+                        Aha
+                    </span>
                 </button>
 
                 <nav className="side-nav">

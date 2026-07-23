@@ -46,6 +46,7 @@ spring:
             scope:
               - profile_nickname
               - profile_image
+              - account_email
             client-name: Kakao
 
         provider:
@@ -60,7 +61,7 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:1800000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
 
-openai:
+openAI:
   api-key: ${OPENAI_API_KEY:}
   model: ${OPENAI_MODEL:gpt-4.1-mini}
   embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}

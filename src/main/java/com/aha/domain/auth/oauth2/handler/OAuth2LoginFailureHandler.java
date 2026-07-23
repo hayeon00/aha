@@ -103,17 +103,19 @@ public class OAuth2LoginFailureHandler
     private String mapBusinessErrorCode(
             ErrorCode errorCode
     ) {
-        if (errorCode
-                == ErrorCode.ACCOUNT_NOT_ACTIVE) {
-            return "ACCOUNT_NOT_ACTIVE";
-        }
+        return switch (errorCode) {
+            case ACCOUNT_NOT_ACTIVE ->
+                    "ACCOUNT_NOT_ACTIVE";
 
-        if (errorCode
-                == ErrorCode.SOCIAL_ACCOUNT_LINK_REQUIRED) {
-            return "SOCIAL_ACCOUNT_LINK_REQUIRED";
-        }
+            case SOCIAL_ACCOUNT_LINK_REQUIRED ->
+                    "SOCIAL_ACCOUNT_LINK_REQUIRED";
 
-        return DEFAULT_ERROR_CODE;
+            case SOCIAL_EMAIL_REQUIRED ->
+                    "SOCIAL_EMAIL_REQUIRED";
+
+            default ->
+                    DEFAULT_ERROR_CODE;
+        };
     }
 
     private <T extends Throwable> T findCause(

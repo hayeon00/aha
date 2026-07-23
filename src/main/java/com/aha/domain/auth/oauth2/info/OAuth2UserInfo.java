@@ -8,6 +8,8 @@ public interface OAuth2UserInfo {
 
     String getEmail();
 
+    boolean isEmailVerified();
+
     String getName();
 
     String getNickname();
