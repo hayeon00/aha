@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
@@ -31,21 +32,34 @@ public class CustomOidcUserService extends OidcUserService {
                         .getClientRegistration()
                         .getRegistrationId();
 
-        SocialProvider provider =
-                OAuth2UserInfoFactory.resolveProvider(
-                        registrationId
-                );
+        User user;
 
-        OAuth2UserInfo userInfo =
-                OAuth2UserInfoFactory.create(
-                        registrationId,
-                        oidcUser.getClaims()
-                );
+        try {
+            SocialProvider provider =
+                    OAuth2UserInfoFactory.resolveProvider(
+                            registrationId
+                    );
 
-        User user = socialLoginProcessor.process(
-                provider,
-                userInfo
-        );
+            OAuth2UserInfo userInfo =
+                    OAuth2UserInfoFactory.create(
+                            registrationId,
+                            oidcUser.getClaims()
+                    );
+
+            user = socialLoginProcessor.process(
+                    provider,
+                    userInfo
+            );
+        } catch (OAuth2AuthenticationException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(
+                            "social_login_processing_failed"
+                    ),
+                    exception
+            );
+        }
 
         return new CustomOidcUser(
                 user,

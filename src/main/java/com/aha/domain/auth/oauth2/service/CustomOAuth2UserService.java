@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
@@ -29,21 +30,34 @@ public class CustomOAuth2UserService
                         .getClientRegistration()
                         .getRegistrationId();
 
-        SocialProvider provider =
-                OAuth2UserInfoFactory.resolveProvider(
-                        registrationId
-                );
+        User user;
 
-        OAuth2UserInfo userInfo =
-                OAuth2UserInfoFactory.create(
-                        registrationId,
-                        oauth2User.getAttributes()
-                );
+        try {
+            SocialProvider provider =
+                    OAuth2UserInfoFactory.resolveProvider(
+                            registrationId
+                    );
 
-        User user = socialLoginProcessor.process(
-                provider,
-                userInfo
-        );
+            OAuth2UserInfo userInfo =
+                    OAuth2UserInfoFactory.create(
+                            registrationId,
+                            oauth2User.getAttributes()
+                    );
+
+            user = socialLoginProcessor.process(
+                    provider,
+                    userInfo
+            );
+        } catch (OAuth2AuthenticationException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(
+                            "social_login_processing_failed"
+                    ),
+                    exception
+            );
+        }
 
         String nameAttributeKey =
                 userRequest
