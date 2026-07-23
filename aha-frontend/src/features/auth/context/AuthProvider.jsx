@@ -27,17 +27,15 @@ const requestInitialAccessToken = () => {
     if (!authInitializationPromise) {
         authInitializationPromise = reissue()
             .then((response) => {
+                if (!response) {
+                    return null;
+                }
+
                 const accessToken =
                     response?.data?.accessToken
                     ?? response?.data?.data?.accessToken
                     ?? response?.accessToken
                     ?? null;
-
-                if (!accessToken) {
-                    throw new Error(
-                        "재발급 응답에 Access Token이 없습니다.",
-                    );
-                }
 
                 return accessToken;
             })
@@ -84,6 +82,18 @@ export default function AuthProvider({
         let cancelled = false;
 
         const initializeAuth = async () => {
+            const isOAuthCallback =
+                window.location.pathname
+                === "/oauth/callback";
+
+            if (isOAuthCallback) {
+                if (!cancelled) {
+                    setIsAuthInitialized(true);
+                }
+
+                return;
+            }
+
             try {
                 const token =
                     await requestInitialAccessToken();
@@ -92,13 +102,21 @@ export default function AuthProvider({
                     return;
                 }
 
-                setAccessToken(token);
-                setAccessTokenState(token);
+                if (token) {
+                    setAccessToken(token);
+                    setAccessTokenState(token);
+                } else {
+                    clearAuth();
+                }
             } catch {
                 if (cancelled) {
                     return;
                 }
 
+                /*
+                 * Refresh Token이 없는 경우는
+                 * 정상적인 비로그인 상태로 처리합니다.
+                 */
                 clearAuth();
             } finally {
                 if (!cancelled) {

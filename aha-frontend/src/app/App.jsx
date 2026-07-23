@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import {
     Routes,
     Route,
@@ -28,13 +29,16 @@ function App() {
         logout,
     } = useAuth();
 
-    const handleLoginSuccess = (accessToken) => {
-        login(accessToken);
+    const handleLoginSuccess = useCallback(
+        (accessToken) => {
+            login(accessToken);
 
-        navigate("/main", {
-            replace: true,
-        });
-    };
+            navigate("/main", {
+                replace: true,
+            });
+        },
+        [login, navigate],
+    );
 
     const handleLogout = async () => {
         try {
