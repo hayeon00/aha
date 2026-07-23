@@ -79,9 +79,9 @@ public class AuthController {
             HttpServletResponse response
     ) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REFRESH_TOKEN
-            );
+            return ResponseEntity
+                    .noContent()
+                    .build();
         }
 
         IssuedTokens issuedTokens =
