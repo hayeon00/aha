@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ExamVersionRepository extends JpaRepository<ExamVersion, Long> {
 
@@ -17,4 +19,12 @@ public interface ExamVersionRepository extends JpaRepository<ExamVersion, Long> 
     List<ExamVersion> findAllByStatusOrderByExam_IdAscVersionNoDesc(ExamVersionStatus status);
 
     boolean existsByIdAndStatus(Long id, ExamVersionStatus status);
+
+
+    @Query("""
+    select ev from ExamVersion ev
+    join fetch ev.exam
+    where ev.id = :versionId
+""")
+    Optional<ExamVersion> findByIdWithExam(@Param("versionId")Long versionId);
 }
