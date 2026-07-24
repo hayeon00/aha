@@ -11,11 +11,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public interface ExamVersionRepository
-        extends JpaRepository<ExamVersion, Long> {
+public interface ExamVersionRepository extends JpaRepository<ExamVersion, Long> {
 
-    Optional<ExamVersion>
-    findFirstByExam_IdAndStatusOrderByVersionNoDesc(
+    Optional<ExamVersion> findFirstByExam_IdAndStatusOrderByVersionNoDesc(
             Long examId,
             ExamVersionStatus status
     );
@@ -55,4 +53,12 @@ public interface ExamVersionRepository
             @Param("versionStatus")
             ExamVersionStatus versionStatus
     );
+
+
+    @Query("""
+    select ev from ExamVersion ev
+    join fetch ev.exam
+    where ev.id = :versionId
+""")
+    Optional<ExamVersion> findByIdWithExam(@Param("versionId")Long versionId);
 }

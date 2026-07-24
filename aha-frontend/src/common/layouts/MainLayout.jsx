@@ -239,8 +239,8 @@ function MainLayout({ onLogout }) {
 
                     <button
                         type="button"
-                        className={isActive("/problems") ? "active" : ""}
-                        onClick={() => navigate("/problems")}
+                        className={isActive("/past-papers") ? "active" : ""}
+                        onClick={() => navigate("/past-papers")}
                     >
                         <span className="nav-icon">
                             <svg
@@ -270,7 +270,7 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-                        <span>문제집</span>
+                        <span>기출 문제</span>
                     </button>
 
                     <button

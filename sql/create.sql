@@ -35,6 +35,13 @@ DROP TABLE IF EXISTS `user_exam`;
 DROP TABLE IF EXISTS `exam`;
 DROP TABLE IF EXISTS `users`;
 
+DROP TABLE IF EXISTS `user_answer`;
+DROP TABLE IF EXISTS `past_paper_attempt`;
+DROP TABLE IF EXISTS `past_paper_item`;
+DROP TABLE IF EXISTS `problem_choice`;
+DROP TABLE IF EXISTS `past_paper`;
+DROP TABLE IF EXISTS `problem`;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -595,135 +602,145 @@ CREATE TABLE `refresh_tokens` (
 );
 
 
+CREATE TABLE `problem`
+(
+    `id`                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `exam_scope_node_id` BIGINT       NOT NULL,
+    `format`             VARCHAR(30)  NOT NULL,
+    `content`            TEXT         NOT NULL,
+    `score`              INT          NOT NULL,
+    `answer`             VARCHAR(500) NOT NULL,
+    `explanation`        TEXT         NOT NULL,
+    `choice_count`       INT          NOT NULL,
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_problem_exam_scope_node_id`
+        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
+    CONSTRAINT `chk_problem_score`
+        CHECK (`score` > 0),
+    CONSTRAINT `chk_problem_choice_count`
+        CHECK (`choice_count` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `workbook_type` (
-                                 `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                 `code` VARCHAR(50) NOT NULL,
-                                 `name` VARCHAR(100) NOT NULL,
-                                 `display_order` INT NOT NULL,
-                                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                 `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                                 UNIQUE KEY `uk_workbook_type_code` (`code`),
-                                 UNIQUE KEY `uk_workbook_type_display_order` (`display_order`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `past_paper`
+(
+    `id`               BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `exam_version_id`  BIGINT      NOT NULL,
+    `status`           VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+    `total_item_count` INT         NOT NULL,
+    `is_reviewed`      TINYINT     NOT NULL DEFAULT 0,
+    `year`             INT         NOT NULL,
+    `round_no`         INT         NOT NULL,
+    `time_limit`       INT         NOT NULL,
+    `exam_date`        DATE        NOT NULL,
+    `created_at`       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `chk_past_paper_total_item_count`
+        CHECK (total_item_count >= 0),
+    CONSTRAINT `chk_past_paper_year`
+        CHECK (year >= 2013),
+    CONSTRAINT `chk_past_paper_round_no`
+        CHECK (round_no > 0),
+    CONSTRAINT `chk_past_paper_time_limit`
+        CHECK (time_limit > 0),
+    CONSTRAINT `chk_past_paper_status`
+        CHECK (`status` IN ('DRAFT', 'PUBLISHED', 'UNPUBLISHED')),
+    CONSTRAINT `chk_past_paper_is_reviewed`
+        CHECK (`is_reviewed` IN (0, 1)),
+    UNIQUE KEY `uk_past_paper_exam_version_year_round_no` (exam_version_id, year, round_no),
+    CONSTRAINT `fk_past_paper_exam_version_id`
+        FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `problem` (
-                           `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                           `exam_scope_node_id` BIGINT NOT NULL,
-                           `format` VARCHAR(30) NOT NULL,
-                           `content` TEXT NOT NULL,
-                           `score` INT NOT NULL,
-                           `answer` VARCHAR(500) NOT NULL,
-                           `explanation` TEXT NOT NULL,
-                           `choice_count` INT NOT NULL,
-                           `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                           `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                           CONSTRAINT `fk_problem_exam_scope_node_id`
-                               FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
-                           CONSTRAINT `chk_problem_score`
-                               CHECK(`score`>0),
-                           CONSTRAINT `chk_problem_choice_count`
-                               CHECK(`choice_count`>=0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `workbook` (
-                            `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                            `exam_version_id` BIGINT NOT NULL,
-                            `workbook_type_id` BIGINT NOT NULL,
-                            `status` VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
-                            `total_problem_count` INT NOT NULL,
-                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                            `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                            CONSTRAINT `fk_workbook_workbook_type_id`
-                                FOREIGN KEY (`workbook_type_id`) REFERENCES `workbook_type` (`id`),
-                            CONSTRAINT `fk_workbook_exam_version_id`
-                                FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `past_paper_item`
+(
+    `id`            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `past_paper_id` BIGINT   NOT NULL,
+    `problem_id`    BIGINT   NOT NULL,
+    `sort_order`    INT      NOT NULL,
+    `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_past_paper_item_past_paper_problem` (`past_paper_id`, `problem_id`),
+    UNIQUE KEY `uk_past_paper_item_past_paper_sort_order` (`past_paper_id`, `sort_order`),
+    CONSTRAINT `fk_past_paper_item_past_paper_id`
+        FOREIGN KEY (`past_paper_id`) REFERENCES `past_paper` (`id`),
+    CONSTRAINT `fk_past_paper_item_problem_id`
+        FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+    CONSTRAINT `chk_past_paper_item_sort_order`
+        CHECK (`sort_order` >= 1)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `past_exam_workbook` (
-                                      `workbook_id`BIGINT PRIMARY KEY,
-                                      `is_reviewed` TINYINT(1) NOT NULL DEFAULT 0,
-                                      `year` INT NOT NULL,
-                                      `round_no` INT NOT NULL,
-                                      `time_limit` INT NOT NULL,
-                                      `exam_date` DATETIME NOT NULL,
-                                      `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                      `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                                      UNIQUE KEY `uk_past_year_no`  (year,round_no),
-                                      CONSTRAINT `fk_past_exam_workbook_workbook_id`
-                                          FOREIGN KEY(`workbook_id`) REFERENCES `workbook` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `past_paper_attempt`
+(
+    `id`             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`        BIGINT       NOT NULL,
+    `past_paper_id`  BIGINT       NOT NULL,
+    `status`         VARCHAR(30)  NOT NULL DEFAULT 'SOLVING',
+    `user_score`     INT          NULL     DEFAULT NULL,
+    `passed`      TINYINT(1)   NULL     DEFAULT NULL,
+    `elapsed_time`   INT                   DEFAULT NULL,
+    `started_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_past_paper_attempt_user_id`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+    CONSTRAINT `fk_past_paper_attempt_past_paper_id`
+        FOREIGN KEY (`past_paper_id`) REFERENCES `past_paper` (`id`),
+    CONSTRAINT `chk_past_paper_attempt_user_score`
+        CHECK (`user_score` >= 0),
+    CONSTRAINT `chk_past_paper_attempt_status`
+        CHECK (`status` IN ('SOLVING', 'GRADED')),
+    CONSTRAINT `chk_past_paper_attempt_elapsed_time`
+        CHECK (`elapsed_time` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `workbook_item` (
-                                 `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                 `workbook_id` BIGINT NOT NULL,
-                                 `problem_id` BIGINT NOT NULL,
-                                 `sort_order` INT NOT NULL,
-                                 `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                 `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                                 UNIQUE KEY `uk_workbook_item_pair` (`workbook_id`, `problem_id`),
-                                 UNIQUE KEY `uk_workbook_item_order` (`workbook_id`, `sort_order`),
-                                 CONSTRAINT `fk_workbook_item_workbook_id`
-                                     FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
-                                 CONSTRAINT `fk_workbook_item_problem_id`
-                                     FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
-                                 CONSTRAINT `chk_workbook_item_sort_order`
-                                     CHECK (`sort_order` >= 1)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE `workbook_attempt` (
-                                    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                    `user_id` BIGINT NOT NULL,
-                                    `workbook_id` BIGINT NOT NULL,
-                                    `status` VARCHAR(30) NOT NULL DEFAULT 'SOLVING',
-                                    `total_score` INT NULL DEFAULT NULL,
-                                    `is_passed` TINYINT(1) NULL DEFAULT NULL,
-                                    `result_message` VARCHAR(255) NULL DEFAULT NULL,
-                                    `stat_json` JSON NULL DEFAULT NULL,
-                                    `elapsed_time` INT,
-                                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                                    CONSTRAINT `fk_workbook_attempt_user_id`
-                                        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-                                    CONSTRAINT `fk_workbook_attempt_workbook_id`
-                                        FOREIGN KEY (`workbook_id`) REFERENCES `workbook` (`id`),
-                                    CONSTRAINT `chk_workbook_attempt_total_score`
-                                        CHECK (`total_score` >= 0)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE UNIQUE INDEX `uk_sub_user_workbook_solving`
-    ON `workbook_attempt` (
-                           `user_id`,
-                           `workbook_id`,
+CREATE UNIQUE INDEX `uk_sub_user_past_paper_solving`
+    ON `past_paper_attempt` (
+                             `user_id`,
+                             `past_paper_id`,
         (CASE WHEN `status` = 'SOLVING' THEN 'SOLVING' ELSE NULL END)
         );
 
-CREATE TABLE `user_answer` (
-                               `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                               `workbook_attempt_id` BIGINT NOT NULL,
-                               `problem_id` BIGINT NOT NULL,
-                               `answer` VARCHAR(500) NULL,
-                               `is_correct` TINYINT(1) NOT NULL DEFAULT FALSE,
-                               `is_checked` TINYINT(1) NOT NULL DEFAULT FALSE,
-                               `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                               `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                               UNIQUE KEY `uk_user_answer_attempt_problem` (`workbook_attempt_id`, `problem_id`),
-                               CONSTRAINT `fk_user_answer_workbook_attempt_id`
-                                   FOREIGN KEY (`workbook_attempt_id`) REFERENCES `workbook_attempt` (`id`),
-                               CONSTRAINT `fk_user_answer_problem_id`
-                                   FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `user_answer`
+(
+    `id`                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `past_paper_attempt_id` BIGINT       NOT NULL,
+    `problem_id`            BIGINT       NOT NULL,
+    `user_answer`            VARCHAR(500) NULL,
+    `correct`            TINYINT(1)   NULL DEFAULT NULL,
+    `marked_for_review`            TINYINT(1)   NOT NULL DEFAULT FALSE,
+    `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_user_answer_attempt_problem` (`past_paper_attempt_id`, `problem_id`),
+    CONSTRAINT `fk_user_answer_past_paper_attempt_id`
+        FOREIGN KEY (`past_paper_attempt_id`) REFERENCES `past_paper_attempt` (`id`),
+    CONSTRAINT `fk_user_answer_problem_id`
+        FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
 
-CREATE TABLE `problem_choice` (
-                                  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                  `problem_id` BIGINT NOT NULL,
-                                  `sort_order` INT NOT NULL,
-                                  `content` VARCHAR(500) NOT NULL,
-                                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                  `updated_at` DATETIME NOT NULL ON UPDATE CURRENT_TIMESTAMP,
-                                  UNIQUE KEY `uk_problem_choice_order` (`problem_id`, `sort_order`),
-                                  CONSTRAINT `fk_problem_choice_problem_id`
-                                      FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
-                                  CONSTRAINT `chk_problem_choice_sort_order`
-                                      CHECK (`sort_order` >= 1)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE `problem_choice`
+(
+    `id`         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `problem_id` BIGINT       NOT NULL,
+    `sort_order` INT          NOT NULL,
+    `content`    VARCHAR(500) NOT NULL,
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_problem_choice_order` (`problem_id`, `sort_order`),
+    CONSTRAINT `fk_problem_choice_problem_id`
+        FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`),
+    CONSTRAINT `chk_problem_choice_sort_order`
+        CHECK (`sort_order` >= 1)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;

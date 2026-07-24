@@ -12,9 +12,10 @@ import SignupPage from "../features/auth/pages/SignupPage.jsx";
 import AiLearningPage from "../features/ailearn/pages/AiLearningPage.jsx";
 import MainPage from "../features/home/pages/MainPage.jsx";
 import MyPage from "../features/user/pages/MyPage.jsx";
-import WorkbookPage from "../features/workbook/pages/WorkbookPage.jsx";
-import WorkbookAttemptPage from "../features/workbook/pages/WorkbookAttemptPage.jsx";
-import WorkbookResultPage from "../features/workbook/pages/WorkbookResultPage.jsx";
+import PastPaperListPage from "../features/pastpaper/pages/PastPaperListPage.jsx";
+import PastPaperAttemptPage from "../features/pastpaper/pages/PastPaperAttemptPage.jsx";
+import PastPaperResultPage from "../features/pastpaper/pages/PastPaperResultPage.jsx";
+import PastPaperExplanationPage from "../features/pastpaper/pages/PastPaperExplanationPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
 
 import { useAuth } from "../features/auth/context/useAuth.js";
@@ -164,20 +165,22 @@ function App() {
                 />
 
                 <Route
-                    path="/problems"
-                    element={<WorkbookPage />}
+                    path="/past-papers"
+                    element={<PastPaperListPage />}
                 />
 
                 <Route
-                    path="/problems/:workbookId/attempts/:attemptId"
-                    element={
-                        <WorkbookAttemptPage />
-                    }
+                    path="/past-papers/:pastPaperId/attempts/:attemptId"
+                    element={<PastPaperAttemptPage />}
                 />
 
                 <Route
-                    path="/problems/:workbookId/attempts/:attemptId/result"
-                    element={<WorkbookResultPage />}
+                    path="/past-papers/:pastPaperId/attempts/:attemptId/result"
+                    element={<PastPaperResultPage />}
+                />
+                <Route
+                    path="/past-papers/:pastPaperId/attempts/:attemptId/explanation"
+                    element={<PastPaperExplanationPage />}
                 />
                 <Route
                     path="/mypage"
