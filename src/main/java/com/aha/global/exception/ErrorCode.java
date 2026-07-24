@@ -63,25 +63,22 @@ public enum ErrorCode {
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
     //EXAM
-    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_002","시험 버전이 비활성 상태 입니다."),
     EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
     EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
 
-    //WORKBOOK
-    WORKBOOK_NOT_FOUND(404,"WORKBOOK_001","워크북에 접근할 수 없습니다."),
-    WORKBOOK_NOT_PUBLISHED(409,"WORKBOOK_002","워크북에 접근할 수 없습니다." ),
-    ATTEMPT_NOT_FOUND(422,"WORKBOOK_004", "워크북에 접근할 수 없습니다."),
-    WORKBOOK_ITEM_COUNT_MISMATCH(500,"WORKBOOK_005","워크북에 문제가 발생했습니다." ),
-    WORKBOOK_NOT_INCLUDE_PROBLEM(404,"WORKBOOK_006","문제를 찾을 수 없습니다." ),
-    WORKBOOK_NOT_MATCH_PAST(500,"WORKBOOK_007","서버 내부 오류입니다."),
-    ATTEMPT_EXCEEDED_TIME_LIMIT(422,"WORKBOOK_008","풀이를 진행할 수 없습니다."),
-    ATTEMPT_ALREADY_GRADED(409,"WORKBOOK_009" ,"풀이를 진행할 수 없습니다."),
-    WORKBOOK_TYPE_NOT_SUPPORTED( 404, "WORKBOOK_010","지원하지 않는 워크북 타입입니다." ),
-    UNANSWERED_ITEMS_EXIST(422,"WORKBOOK_011","미응답 문항이 있습니다." ),
-    ATTEMPT_NOT_GRADED(409,"WORKBOOK_012" , "채점 완료 상태가 아닙니다."),
     //PROBLEM
-    PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." );
+    PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." ),
+    PROBLEM_NOT_IN_PAST_PAPER(409,"PROBLEM_002" ,"문제가 풀고 있는 복원 기출에 포함되지 않았습니다." ),
+
+    //PAST_PAPER
+    PAST_PAPER_NOT_FOUND(404,"PAST_PAPER_001" ,"복원 기출을 찾을 수 없습니다."),
+    PAST_PAPER_NOT_PUBLISHED(409,"PAST_PAPER_002" ,"복원 기출이 노출 가능 상태가 아닙니다." ),
+    PAST_PAPER_ATTEMPT_NOT_FOUND(404 ,"PAST_PAPER_003" , "복원 기출 풀이가 없습니다." ),
+    PAST_PAPER_ATTEMPT_NOT_YOURS(403,"PAST_PAPER_004" , "풀이 소유자가 아닙니다."),
+    PAST_PAPER_ATTEMPT_NOT_SOLVING(409,"PAST_PAPER_005" , "풀이 중 상태가 아닙니다."),
+    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." );
 
     private final int status;
     private final String code;
