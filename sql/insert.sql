@@ -29,7 +29,7 @@ SET @exam_version_id = (SELECT `id` FROM `exam_version` WHERE `version_name` = '
 
 -- 3) '2025년 제1회 복원기출' 신규 등록
 INSERT INTO `past_paper` (`exam_version_id`, `status`, `total_item_count`, `is_reviewed`, `year`, `round_no`, `time_limit`, `exam_date`, `created_at`, `updated_at`)
-VALUES (@exam_version_id, 'PUBLISHED', 10, 1, 2025, 1, 5400, '2026-03-01', NOW(), NOW());
+VALUES (@exam_version_id, 'PUBLISHED', 50, 1, 2025, 1, 5400, '2026-03-01', NOW(), NOW());
 SET @past_paper_id = LAST_INSERT_ID();
 
 
@@ -61,16 +61,16 @@ VALUES (
            'SINGLE_CHOICE',
            '### 다음 중 데이터 모델링이 갖추어야 할 3가지 관점(Perspective)에 해당하지 않는 것은?
 
-       데이터 모델링은 복잡한 현실 세계의 비즈니스 프로세스를 추상화하고 단순화하여 정보 시스템으로 이전하는 핵심 기법입니다. 이때 관점 중심의 설계가 필수적입니다.',
+데이터 모델링은 복잡한 현실 세계의 비즈니스 프로세스를 추상화하고 단순화하여 정보 시스템으로 이전하는 핵심 기법입니다. 이때 관점 중심의 설계가 필수적입니다.',
            2,
            '4',
            '**정답 설명:**
-       데이터 모델링의 3대 관점은 다음과 같습니다.
-       * **데이터 관점(What)**: 업무가 어떤 데이터와 관련이 있으며 데이터 사이의 관계는 무엇인지 규명합니다.
-       * **프로세스 관점(How)**: 업무가 실제 어떤 시나리오와 흐름으로 수행되는지 규명합니다.
-       * **상관 관점(Data vs Process)**: 업무 흐름에 따라 데이터가 어떤 영향을 받는지(CRUD 분석 등) 규명합니다.
+데이터 모델링의 3대 관점은 다음과 같습니다.
+* **데이터 관점(What)**: 업무가 어떤 데이터와 관련이 있으며 데이터 사이의 관계는 무엇인지 규명합니다.
+* **프로세스 관점(How)**: 업무가 실제 어떤 시나리오와 흐름으로 수행되는지 규명합니다.
+* **상관 관점(Data vs Process)**: 업무 흐름에 따라 데이터가 어떤 영향을 받는지(CRUD 분석 등) 규명합니다.
 
-       따라서 `통제/제어 관점`은 속해 있지 않습니다.',
+따라서 `통제/제어 관점`은 속해 있지 않습니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_1 = LAST_INSERT_ID();
@@ -94,16 +94,16 @@ VALUES (
            'SINGLE_CHOICE',
            '### 엔터티(Entity)는 발생 시점에 따라 여러 종류로 분류할 수 있습니다. 다음 중 아래에서 설명하는 엔터티 유형으로 가장 올바른 것은?
 
-       > "업무가 수행되는 과정에서 발생하며, 두 개 이상의 부모 엔터티로부터 속성을 상속받아 생성되는 경우가 많습니다. 데이터양이 가장 유동적이고 빠르게 누적되는 특성을 지닙니다. 대표적인 예시로는 주문, 결제, 배송 등이 있습니다."',
+> "업무가 수행되는 과정에서 발생하며, 두 개 이상의 부모 엔터티로부터 속성을 상속받아 생성되는 경우가 많습니다. 데이터양이 가장 유동적이고 빠르게 누적되는 특성을 지닙니다. 대표적인 예시로는 주문, 결제, 배송 등이 있습니다."',
            2,
            '3',
            '**정답 설명:**
-       발생 시점에 따른 엔터티 분류는 크게 3가지입니다.
-       1. **기본 엔터티(Key Entity)**: 타 엔터티의 도움 없이 독자적으로 존재 가능 (예: 고객, 상품)
-       2. **중심 엔터티(Main Entity)**: 기본 엔터티로부터 발생하며 업무의 핵심 역할 수행 (예: 계약, 접수)
-       3. **행위 엔터티(Active Entity)**: 두 개 이상의 엔터티 작용에 의해 생성되며 가장 빈번하게 발생 (예: 주문, 결제)
+발생 시점에 따른 엔터티 분류는 크게 3가지입니다.
+1. **기본 엔터티(Key Entity)**: 타 엔터티의 도움 없이 독자적으로 존재 가능 (예: 고객, 상품)
+2. **중심 엔터티(Main Entity)**: 기본 엔터티로부터 발생하며 업무의 핵심 역할 수행 (예: 계약, 접수)
+3. **행위 엔터티(Active Entity)**: 두 개 이상의 엔터티 작용에 의해 생성되며 가장 빈번하게 발생 (예: 주문, 결제)
 
-       따라서 제시문은 `행위 엔터티`에 대한 설명입니다.',
+따라서 제시문은 `행위 엔터티`에 대한 설명입니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_2 = LAST_INSERT_ID();
@@ -129,9 +129,9 @@ VALUES (
            2,
            '2',
            '**정답 설명:**
-       * **속성은 원자값(Single Value)**을 가져야 하므로 하나의 속성에 다중값(Multi-value)이 올 수 없습니다. 만약 다중값이 존재한다면 1차 정규화를 통해 엔터티를 분리해야 합니다. (따라서 2번 설명이 정답)
-       * 엔터티는 두 개 이상의 인스턴스(Instance)의 집합이어야 하며, 하나의 속성은 반드시 하나의 엔터티에 종속됩니다.
-       * 주식별자에 함수적으로 완전히 종속되어야 합니다.',
+* **속성은 원자값(Single Value)**을 가져야 하므로 하나의 속성에 다중값(Multi-value)이 올 수 없습니다. 만약 다중값이 존재한다면 1차 정규화를 통해 엔터티를 분리해야 합니다. (따라서 2번 설명이 정답)
+* 엔터티는 두 개 이상의 인스턴스(Instance)의 집합이어야 하며, 하나의 속성은 반드시 하나의 엔터티에 종속됩니다.
+* 주식별자에 함수적으로 완전히 종속되어야 합니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_3 = LAST_INSERT_ID();
@@ -155,14 +155,14 @@ VALUES (
            'SINGLE_CHOICE',
            '### 다음 식별자(Identifier) 유형 중 분류 기준과 해당 명칭이 올바르게 짝지어지지 않은 것은?
 
-       식별자는 엔터티 내에서 각 인스턴스들을 고유하게 구분해 주는 역할을 하며, 대표성 여부, 스스로 생성 여부 등에 따라 다양하게 분류할 수 있습니다.',
+식별자는 엔터티 내에서 각 인스턴스들을 고유하게 구분해 주는 역할을 하며, 대표성 여부, 스스로 생성 여부 등에 따라 다양하게 분류할 수 있습니다.',
            2,
            '1',
            '**정답 설명:**
-       * 대표성 여부에 따른 분류는 **주식별자(Primary Identifier)**와 **보조식별자(Alternate Identifier)**입니다.
-       * 내부 식별자와 외부 식별자는 **스스로 생성 여부(엔터티 내 생성 여부)**에 따른 분류 기준입니다.
-       * 단일 식별자와 복합 식별자는 **속성의 수(단일 속성인가, 복수 속성인가)**에 따른 분류 기준입니다.
-       * 본질 식별자와 인조 식별자는 **대체 여부(원래 존재하던 업무 식별자인가, 임의 가공한 식별자인가)**에 따른 분류 기준입니다.',
+* 대표성 여부에 따른 분류는 **주식별자(Primary Identifier)**와 **보조식별자(Alternate Identifier)**입니다.
+* 내부 식별자와 외부 식별자는 **스스로 생성 여부(엔터티 내 생성 여부)**에 따른 분류 기준입니다.
+* 단일 식별자와 복합 식별자는 **속성의 수(단일 속성인가, 복수 속성인가)**에 따른 분류 기준입니다.
+* 본질 식별자와 인조 식별자는 **대체 여부(원래 존재하던 업무 식별자인가, 임의 가공한 식별자인가)**에 따른 분류 기준입니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_4 = LAST_INSERT_ID();
@@ -186,22 +186,22 @@ VALUES (
            'SINGLE_CHOICE',
            '### 다음 테이블 구조를 분석하고, 테이블 설계의 이상 현상(Anomaly)을 근본적으로 제거하기 위해 가장 먼저 수행해야 할 정규화 단계는 무엇인가?
 
-       | 사원번호 (PK) | 프로젝트코드 (PK) | 프로젝트명 | 급여 | 직무 |
-       | :--- | :--- | :--- | :--- | :--- |
-       | 201103 | P_SYSTEM | ERP 고도화 | 4500 | 개발 |
-       | 201103 | P_SECURITY | 보안망 구축 | 4500 | 개발 |
-       | 201205 | P_SYSTEM | ERP 고도화 | 3800 | 분석 |
+| 사원번호 (PK) | 프로젝트코드 (PK) | 프로젝트명 | 급여 | 직무 |
+| :--- | :--- | :--- | :--- | :--- |
+| 201103 | P_SYSTEM | ERP 고도화 | 4500 | 개발 |
+| 201103 | P_SECURITY | 보안망 구축 | 4500 | 개발 |
+| 201205 | P_SYSTEM | ERP 고도화 | 3800 | 분석 |
 
-       > **분석 전제**: 복합키(`사원번호 + 프로젝트코드`)가 기본키이며, 비식별자 속성 중 `프로젝트명`은 `프로젝트코드`에만 종속되고 `급여`와 `직무`는 `사원번호`에만 종속되어 있습니다.',
+> **분석 전제**: 복합키(`사원번호 + 프로젝트코드`)가 기본키이며, 비식별자 속성 중 `프로젝트명`은 `프로젝트코드`에만 종속되고 `급여`와 `직무`는 `사원번호`에만 종속되어 있습니다.',
            2,
            '2',
            '**정답 설명:**
-       현재 복합 기본키의 일부분에 종속되는 속성(`프로젝트명`, `급여`, `직무`)들이 존재하므로 **부분 함수 종속성(Partial Functional Dependency)**이 발생하고 있는 상태입니다.
+현재 복합 기본키의 일부분에 종속되는 속성(`프로젝트명`, `급여`, `직무`)들이 존재하므로 **부분 함수 종속성(Partial Functional Dependency)**이 발생하고 있는 상태입니다.
 
-       이러한 부분 함수 종속성을 제거하여 완전 함수 종속 관계로 테이블을 분리하는 단계를 **제2정규화(2NF)**라고 합니다.
-       * 제1정규화: 모든 속성은 원자값을 가져야 함
-       * 제3정규화: 이행적 함수 종속 제거 (A -> B, B -> C 관계 해소)
-       * BCNF: 결정자이면서 후보키가 아닌 것 제거',
+이러한 부분 함수 종속성을 제거하여 완전 함수 종속 관계로 테이블을 분리하는 단계를 **제2정규화(2NF)**라고 합니다.
+* 제1정규화: 모든 속성은 원자값을 가져야 함
+* 제3정규화: 이행적 함수 종속 제거 (A -> B, B -> C 관계 해소)
+* BCNF: 결정자이면서 후보키가 아닌 것 제거',
            4, NOW(), NOW()
        );
 SET @prob_id_5 = LAST_INSERT_ID();
@@ -221,32 +221,32 @@ VALUES (@past_paper_id, @prob_id_5, 5, NOW(), NOW());
 -- -----------------------------------------------------------------
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
 VALUES (
-           @node_select_stmt,
+           @node_model_understand,
            'SINGLE_CHOICE',
            '### 아래의 가상 테이블 데이터 및 SQL 쿼리를 실행하여 도출되는 최종 행(Row)의 개수로 올바른 것은?
 
-       **[T1 테이블]**
+**[T1 테이블]**
 
-       | ID | SCORE |
-       | :--- | :--- |
-       | 1 | 80 |
-       | 2 | NULL |
-       | 3 | 90 |
+| ID | SCORE |
+| :--- | :--- |
+| 1 | 80 |
+| 2 | NULL |
+| 3 | 90 |
 
-       ```sql
-       SELECT SCORE + 10
-       FROM T1
-       WHERE SCORE IS NOT NULL OR SCORE = 80;
-       ```',
+```sql
+SELECT SCORE + 10
+FROM T1
+WHERE SCORE IS NOT NULL OR SCORE = 80;
+```',
            2,
            '2',
            '**정답 설명:**
-       WHERE 절 조건을 면밀히 분석합니다.
-       1. `SCORE IS NOT NULL`: ID 1번(80), ID 3번(90)이 참입니다. (2건)
-       2. `SCORE = 80`: ID 1번(80)이 참이고, ID 2번(NULL)은 NULL에 대한 동등 연산이므로 거짓/알수없음(Unknown)이 됩니다.
-       3. 두 조건이 `OR`로 연결되어 있으므로 최종 만족하는 행은 ID 1번과 ID 3번 두 가지입니다.
+WHERE 절 조건을 면밀히 분석합니다.
+1. `SCORE IS NOT NULL`: ID 1번(80), ID 3번(90)이 참입니다. (2건)
+2. `SCORE = 80`: ID 1번(80)이 참이고, ID 2번(NULL)은 NULL에 대한 동등 연산이므로 거짓/알수없음(Unknown)이 됩니다.
+3. 두 조건이 `OR`로 연결되어 있으므로 최종 만족하는 행은 ID 1번과 ID 3번 두 가지입니다.
 
-       따라서 연산 결과(`90`, `100`)를 포함한 최종 출력 행의 개수는 **2개**입니다.',
+따라서 연산 결과(`90`, `100`)를 포함한 최종 출력 행의 개수는 **2개**입니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_6 = LAST_INSERT_ID();
@@ -266,28 +266,28 @@ VALUES (@past_paper_id, @prob_id_6, 6, NOW(), NOW());
 -- -----------------------------------------------------------------
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
 VALUES (
-           @node_where_clause,
+           @node_entity,
            'SINGLE_CHOICE',
            '### 다음 중 아래 SQL 문의 WHERE 조건절이 해석되는 우선순위 순서로 가장 올바른 것은?
 
-       ```sql
-       SELECT emp_name
-       FROM employee
-       WHERE job_code = ''MANAGER''
-          OR salary >= 5000000
-         AND dept_id = 10;
-       ```',
+```sql
+SELECT emp_name
+FROM employee
+WHERE job_code = ''MANAGER''
+   OR salary >= 5000000
+  AND dept_id = 10;
+```',
            2,
            '2',
            '**정답 설명:**
-       SQL 조건절에서 연산자 우선순위는 다음과 같습니다.
-       1. 산술 연산자
-       2. 비교 연산자 (`=`, `>=`, `<` 등)
-       3. `NOT`
-       4. `AND`
-       5. `OR`
+SQL 조건절에서 연산자 우선순위는 다음과 같습니다.
+1. 산술 연산자
+2. 비교 연산자 (`=`, `>=`, `<` 등)
+3. `NOT`
+4. `AND`
+5. `OR`
 
-       따라서 비교 연산이 먼저 일어난 뒤, `AND` 연산이 `OR` 연산보다 우선하여 해석됩니다. 즉 `(salary >= 5000000 AND dept_id = 10)` 연산이 평가된 뒤 그 결과가 `job_code = ''MANAGER''` 조건과 OR 연산으로 묶입니다.',
+따라서 비교 연산이 먼저 일어난 뒤, `AND` 연산이 `OR` 연산보다 우선하여 해석됩니다. 즉 `(salary >= 5000000 AND dept_id = 10)` 연산이 평가된 뒤 그 결과가 `job_code = ''MANAGER''` 조건과 OR 연산으로 묶입니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_7 = LAST_INSERT_ID();
@@ -307,16 +307,16 @@ VALUES (@past_paper_id, @prob_id_7, 7, NOW(), NOW());
 -- -----------------------------------------------------------------
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
 VALUES (
-           @node_groupby_clause,
+           @node_attribute,
            'SINGLE_CHOICE',
            '### 다음 SQL 문 중 실행 시 오류가 발생하는 잘못 작성된 쿼리는 어떤 것인가?
 
-       * 전제: `employee` 테이블은 컬럼으로 `id`, `salary`, `dept_id`, `job_code`를 가지고 있습니다.',
+* 전제: `employee` 테이블은 컬럼으로 `id`, `salary`, `dept_id`, `job_code`를 가지고 있습니다.',
            2,
            '2',
            '**정답 설명:**
-       * **2번 쿼리**는 에러가 발생합니다. `GROUP BY dept_id`에 의해 부서 코드별로 그룹화가 되었지만, `HAVING salary >= 3000000`처럼 그룹 함수(`SUM`, `AVG`, `MAX` 등)를 통하지 않고 개별 원적외선 형태인 컬럼(`salary`)을 단독 조건으로 명시했기 때문입니다.
-       * 개별 행 데이터 필터링은 반드시 `WHERE` 절에서 수행해야 하며, 만약 HAVING 절에 오려면 `AVG(salary) >= 3000000` 형태로 집계되어야 합니다.',
+* **2번 쿼리**는 에러가 발생합니다. `GROUP BY dept_id`에 의해 부서 코드별로 그룹화가 되었지만, `HAVING salary >= 3000000`처럼 그룹 함수(`SUM`, `AVG`, `MAX` 등)를 통하지 않고 개별 원적외선 형태인 컬럼(`salary`)을 단독 조건으로 명시했기 때문입니다.
+* 개별 행 데이터 필터링은 반드시 `WHERE` 절에서 수행해야 하며, 만약 HAVING 절에 오려면 `AVG(salary) >= 3000000` 형태로 집계되어야 합니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_8 = LAST_INSERT_ID();
@@ -336,14 +336,14 @@ VALUES (@past_paper_id, @prob_id_8, 8, NOW(), NOW());
 -- -----------------------------------------------------------------
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
 VALUES (
-           @node_subquery,
+           @node_identifier,
            'SINGLE_CHOICE',
            '### 서브쿼리의 반환 데이터 형태에 따라 다중 행 서브쿼리 연산자를 사용해야 합니다. 다음 중 다중 행 서브쿼리 연산자와 관련 설명이 가장 올바르지 않은 것은?',
            2,
            '1',
            '**정답 설명:**
-       * `IN` 연산자는 서브쿼리가 반환하는 값의 집합 중에서 하나라도 일치하면 참이 됩니다. (OR 연산 형태와 흡사)
-       * **`ALL` 연산자**는 모든 값에 만족해야 참이 됩니다. 만약 서브쿼리 결과에 NULL이 존재하고 `salary > ALL (SELECT ...)` 형태의 연산을 적용하면, 어떠한 행도 결과로 추출되지 않게 되므로 1번 설명은 반대로 매핑되어 명확히 틀렸습니다.',
+* `IN` 연산자는 서브쿼리가 반환하는 값의 집합 중에서 하나라도 일치하면 참이 됩니다. (OR 연산 형태와 흡사)
+* **`ALL` 연산자**는 모든 값에 만족해야 참이 됩니다. 만약 서브쿼리 결과에 NULL이 존재하고 `salary > ALL (SELECT ...)` 형태의 연산을 적용하면, 어떠한 행도 결과로 추출되지 않게 되므로 1번 설명은 반대로 매핑되어 명확히 틀렸습니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_9 = LAST_INSERT_ID();
@@ -363,30 +363,30 @@ VALUES (@past_paper_id, @prob_id_9, 9, NOW(), NOW());
 -- -----------------------------------------------------------------
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
 VALUES (
-           @node_window_func,
+           @node_normalization,
            'SINGLE_CHOICE',
            '### 다음 중 동점이 존재할 때의 순위 산정 방식에 따라 출력되는 윈도우 함수(Window Function)의 결과 값으로 올바르지 않은 항목은?
 
-       **[학생 성적 리스트]**
+**[학생 성적 리스트]**
 
-       | 이름 | 점수 |
-       | :--- | :--- |
-       | 김철수 | 95 |
-       | 이영희 | 95 |
-       | 박민수 | 80 |
+| 이름 | 점수 |
+| :--- | :--- |
+| 김철수 | 95 |
+| 이영희 | 95 |
+| 박민수 | 80 |
 
-       위 데이터를 기준으로 높은 점수 순으로 순위를 집계하고자 합니다.',
+위 데이터를 기준으로 높은 점수 순으로 순위를 집계하고자 합니다.',
            2,
            '3',
            '**정답 설명:**
-       * `RANK()`: 동일한 값에 동일한 순위를 부여하고 다음 순위는 건너뜁니다.
-         * 김철수(1위), 이영희(1위), 박민수(**3위**)
-       * `DENSE_RANK()`: 동일한 값에 동일한 순위를 부여하되 다음 순위를 건너뛰지 않고 순차적으로 나열합니다.
-         * 김철수(1위), 이영희(1위), 박민수(**2위**)
-       * `ROW_NUMBER()`: 값의 동일 여부와 무관하게 고유한 일련번호를 고정 부여합니다.
-         * 김철수(1번), 이영희(2번), 박민수(3번) - 정렬 우선에 따라 다를 수 있음.
+* `RANK()`: 동일한 값에 동일한 순위를 부여하고 다음 순위는 건너뜁니다.
+  * 김철수(1위), 이영희(1위), 박민수(**3위**)
+* `DENSE_RANK()`: 동일한 값에 동일한 순위를 부여하되 다음 순위를 건너뛰지 않고 순차적으로 나열합니다.
+  * 김철수(1위), 이영희(1위), 박민수(**2위**)
+* `ROW_NUMBER()`: 값의 동일 여부와 무관하게 고유한 일련번호를 고정 부여합니다.
+  * 김철수(1번), 이영희(2번), 박민수(3번) - 정렬 우선에 따라 다를 수 있음.
 
-       따라서 3번 지문인 `DENSE_RANK() 적용 시 박민수의 순위는 3위이다`라는 진술은 틀렸습니다. (실제로는 2위가 됨)',
+따라서 3번 지문인 `DENSE_RANK() 적용 시 박민수의 순위는 3위이다`라는 진술은 틀렸습니다. (실제로는 2위가 됨)',
            4, NOW(), NOW()
        );
 SET @prob_id_10 = LAST_INSERT_ID();
@@ -399,6 +399,118 @@ INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at
 
 INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `created_at`, `updated_at`)
 VALUES (@past_paper_id, @prob_id_10, 10, NOW(), NOW());
+
+-- =================================================================
+-- 4. 11번 ~ 50번 가상 문제 등록
+--    SQLD 구성: 11~50번은 모두 2과목(SQL 기본 및 활용), 문항당 2점
+-- =================================================================
+
+INSERT INTO `problem` (
+    `exam_scope_node_id`,
+    `format`,
+    `content`,
+    `score`,
+    `answer`,
+    `explanation`,
+    `choice_count`,
+    `created_at`,
+    `updated_at`
+)
+WITH RECURSIVE `problem_numbers` (`number`) AS (
+    SELECT 11
+    UNION ALL
+    SELECT `number` + 1
+    FROM `problem_numbers`
+    WHERE `number` < 50
+)
+SELECT
+    CASE MOD(`number` - 11, 5)
+        WHEN 0 THEN @node_select_stmt
+        WHEN 1 THEN @node_where_clause
+        WHEN 2 THEN @node_groupby_clause
+        WHEN 3 THEN @node_subquery
+        ELSE @node_window_func
+    END,
+    'SINGLE_CHOICE',
+    CONCAT(
+        '### SQLD 2025년 1회차 ',
+        `number`,
+        '번 가상 문제',
+        '\n\n다음 중 SQL 기본 및 활용에 대한 설명으로 가장 올바른 것을 고르시오.'
+    ),
+    2,
+    CAST(MOD(`number` - 1, 4) + 1 AS CHAR),
+    CONCAT(
+        '**정답 설명:** ',
+        MOD(`number` - 1, 4) + 1,
+        '번 선택지가 올바른 설명입니다.'
+    ),
+    4,
+    NOW(),
+    NOW()
+FROM `problem_numbers`
+ORDER BY `number`;
+
+-- 위 다중 INSERT에서 생성된 첫 문제 ID(11번)를 기준으로 연결한다.
+-- create.sql 실행 직후 단일 세션에서 insert.sql을 실행하는 초기화 데이터 전용 방식이다.
+SET @prob_id_11 = LAST_INSERT_ID();
+
+INSERT INTO `problem_choice` (
+    `problem_id`,
+    `sort_order`,
+    `content`,
+    `created_at`,
+    `updated_at`
+)
+WITH RECURSIVE `problem_numbers` (`number`) AS (
+    SELECT 11
+    UNION ALL
+    SELECT `number` + 1
+    FROM `problem_numbers`
+    WHERE `number` < 50
+),
+`choice_numbers` (`number`) AS (
+    SELECT 1
+    UNION ALL
+    SELECT `number` + 1
+    FROM `choice_numbers`
+    WHERE `number` < 4
+)
+SELECT
+    @prob_id_11 + `problem_numbers`.`number` - 11,
+    `choice_numbers`.`number`,
+    CONCAT(
+        `choice_numbers`.`number`,
+        '번 선택지: SQL 기본 및 활용 가상 설명'
+    ),
+    NOW(),
+    NOW()
+FROM `problem_numbers`
+CROSS JOIN `choice_numbers`
+ORDER BY `problem_numbers`.`number`, `choice_numbers`.`number`;
+
+INSERT INTO `past_paper_item` (
+    `past_paper_id`,
+    `problem_id`,
+    `sort_order`,
+    `created_at`,
+    `updated_at`
+)
+WITH RECURSIVE `problem_numbers` (`number`) AS (
+    SELECT 11
+    UNION ALL
+    SELECT `number` + 1
+    FROM `problem_numbers`
+    WHERE `number` < 50
+)
+SELECT
+    @past_paper_id,
+    @prob_id_11 + `number` - 11,
+    `number`,
+    NOW(),
+    NOW()
+FROM `problem_numbers`
+ORDER BY `number`;
 
 COMMIT;
 
@@ -726,11 +838,11 @@ CONNECT BY id = PRIOR parent_id;
            2,
            '2',
            '**정답 설명:**
-       계층형 질의에서 전개 방향은 `PRIOR` 연산자가 어느 컬럼에 붙어있느냐에 따라 결정됩니다.
-       * `CONNECT BY 자식_컬럼 = PRIOR 부모_컬럼` 구조인 경우, 부모에서 자식 방향으로 내려가는 **순방향 전개**입니다.
-       * 본 문제처럼 `CONNECT BY id(부모) = PRIOR parent_id(자식)` 혹은 `PRIOR 자식_컬럼 = 부모_컬럼` 구조인 경우, 자식에서 부모 방향으로 올라가는 **역방향 전개**가 됩니다.
+계층형 질의에서 전개 방향은 `PRIOR` 연산자가 어느 컬럼에 붙어있느냐에 따라 결정됩니다.
+* `CONNECT BY 자식_컬럼 = PRIOR 부모_컬럼` 구조인 경우, 부모에서 자식 방향으로 내려가는 **순방향 전개**입니다.
+* 본 문제처럼 `CONNECT BY id(부모) = PRIOR parent_id(자식)` 혹은 `PRIOR 자식_컬럼 = 부모_컬럼` 구조인 경우, 자식에서 부모 방향으로 올라가는 **역방향 전개**가 됩니다.
 
-       따라서 `id가 100인 행을 시작으로 하위 노드에서 상위 상속 노드로 거슬러 올라가는 역방향 전개`인 2번이 정답입니다.',
+따라서 `id가 100인 행을 시작으로 하위 노드에서 상위 상속 노드로 거슬러 올라가는 역방향 전개`인 2번이 정답입니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_3_8 = LAST_INSERT_ID();
@@ -754,10 +866,10 @@ VALUES (
            2,
            '4',
            '**정답 설명:**
-       * `PIVOT` 절은 행(Row) 형태로 나열된 데이터를 열(Column) 형태로 전환하여 가로로 넓은 테이블 집계를 만듭니다. (1, 2번 설명 올바름)
-       * `UNPIVOT` 절은 반대로 열(Column) 구조로 되어 있는 데이터를 행(Row) 구조로 쪼개어 세로로 긴 형태로 변환합니다. (3번 설명 올바름)
+* `PIVOT` 절은 행(Row) 형태로 나열된 데이터를 열(Column) 형태로 전환하여 가로로 넓은 테이블 집계를 만듭니다. (1, 2번 설명 올바름)
+* `UNPIVOT` 절은 반대로 열(Column) 구조로 되어 있는 데이터를 행(Row) 구조로 쪼개어 세로로 긴 형태로 변환합니다. (3번 설명 올바름)
 
-       4번 지문에서 `UNPIVOT을 수행하면 다차원 집계인 CUBE와 동일한 합계 데이터 행이 생성된다`고 기술하였으나, UNPIVOT은 단순히 컬럼을 행으로 회전(Unpivot)시키는 정형 변환 구문일 뿐, 소계나 총계를 계산하는 그룹 함수가 아닙니다. 따라서 4번 진술은 완전히 틀렸습니다.',
+4번 지문에서 `UNPIVOT을 수행하면 다차원 집계인 CUBE와 동일한 합계 데이터 행이 생성된다`고 기술하였으나, UNPIVOT은 단순히 컬럼을 행으로 회전(Unpivot)시키는 정형 변환 구문일 뿐, 소계나 총계를 계산하는 그룹 함수가 아닙니다. 따라서 4번 진술은 완전히 틀렸습니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_3_9 = LAST_INSERT_ID();
@@ -781,11 +893,11 @@ VALUES (
            2,
            '1',
            '**정답 설명:**
-       * **`TRUNCATE TABLE`** 명령어는 테이블 내의 모든 데이터 행을 삭제하고 사용 공간을 반납하는 **DDL(Data Definition Language)** 명령어입니다.
-       * DDL은 실행 즉시 자동 커밋(Auto Commit)이 발생하기 때문에, `ROLLBACK`을 통해 데이터를 복구할 수 없습니다.
-       * 트랜잭션 로그를 최소한으로 남겨 `DELETE`보다 속도가 빠르다는 장점이 있으나 복구가 불가능하므로 1번 진술은 거짓입니다.
+* **`TRUNCATE TABLE`** 명령어는 테이블 내의 모든 데이터 행을 삭제하고 사용 공간을 반납하는 **DDL(Data Definition Language)** 명령어입니다.
+* DDL은 실행 즉시 자동 커밋(Auto Commit)이 발생하기 때문에, `ROLLBACK`을 통해 데이터를 복구할 수 없습니다.
+* 트랜잭션 로그를 최소한으로 남겨 `DELETE`보다 속도가 빠르다는 장점이 있으나 복구가 불가능하므로 1번 진술은 거짓입니다.
 
-       * 참고: `DELETE`는 DML이므로 롤백이 가능하고, `DROP`은 테이블 구조 자체를 스키마에서 완전히 제거합니다.',
+* 참고: `DELETE`는 DML이므로 롤백이 가능하고, `DROP`은 테이블 구조 자체를 스키마에서 완전히 제거합니다.',
            4, NOW(), NOW()
        );
 SET @prob_id_3_10 = LAST_INSERT_ID();
