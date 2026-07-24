@@ -1,5 +1,7 @@
 package com.aha.domain.exam.entity;
 
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -116,7 +118,9 @@ public class ExamVersion {
         }
     }
 
-    public boolean isActive() {
-        return status==ExamVersionStatus.ACTIVE;
+    public void validateActive() {
+        if (status != ExamVersionStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.EXAM_VERSION_NOT_ACTIVE);
+        }
     }
 }
