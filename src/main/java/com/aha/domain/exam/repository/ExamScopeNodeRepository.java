@@ -1,5 +1,6 @@
 package com.aha.domain.exam.repository;
 
+import com.aha.domain.exam.entity.ExamPart;
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.exam.enums.ExamScopeNodeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -34,4 +35,6 @@ public interface ExamScopeNodeRepository extends JpaRepository<ExamScopeNode, Lo
 
 
     List<ExamScopeNode> findAllByExamVersion_IdAndIsLeafTrueAndIsActiveTrueOrderByDepthAscDisplayOrderAsc(Long examVersionId);
+
+    List<ExamScopeNode> findAllByExamPart_IdInAndNodeTypeAndIsActiveTrueOrderByDisplayOrderAsc(List<Long> partIds , ExamScopeNodeType examScopeNodeType);
 }
