@@ -3,7 +3,7 @@ package com.aha.domain.ailearn.document.entity;
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.domain.ailearn.document.enums.LearningContentSourceType;
 import com.aha.domain.exam.enums.ExamScopeNodeType;
-import com.aha.domain.user.entity.UserExam;
+import com.aha.domain.userexam.entity.UserExam;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

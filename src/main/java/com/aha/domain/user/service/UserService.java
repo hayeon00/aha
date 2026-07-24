@@ -1,5 +1,6 @@
 package com.aha.domain.user.service;
 
+import com.aha.domain.auth.repository.RefreshTokenRepository;
 import com.aha.domain.user.dto.request.UpdateProfileRequestDto;
 import com.aha.domain.user.dto.response.MyInfoResponseDto;
 import com.aha.domain.user.entity.User;
@@ -29,14 +30,15 @@ public class UserService {
     private static final Set<String> ALLOWED_IMAGE_EXTENSIONS =
             Set.of("jpg", "jpeg", "png", "webp");
 
-    private final UserRepository userRepository;
-
     @Value("${file.profile-upload-dir:uploads/profile}")
     private String profileUploadDir;
 
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+
+
     public MyInfoResponseDto getMyInfo(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = findUser(userId);
 
         return MyInfoResponseDto.from(user);
     }
@@ -46,11 +48,15 @@ public class UserService {
             Long userId,
             UpdateProfileRequestDto request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = findUser(userId);
 
-        if (userRepository.existsByNicknameAndIdNot(request.nickname(), userId)) {
-            throw new BusinessException(ErrorCode.NICKNAME_ALREADY_EXISTS);
+        if (userRepository.existsByNicknameAndIdNot(
+                request.nickname(),
+                userId
+        )) {
+            throw new BusinessException(
+                    ErrorCode.NICKNAME_ALREADY_EXISTS
+            );
         }
 
         user.updateProfileInfo(
@@ -61,42 +67,31 @@ public class UserService {
         return MyInfoResponseDto.from(user);
     }
 
-
     @Transactional
     public MyInfoResponseDto updateProfileImage(
             Long userId,
             MultipartFile profileImage
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User user = findUser(userId);
 
-        if (profileImage == null || profileImage.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_PROFILE_IMAGE);
-        }
+        validateProfileImage(profileImage);
 
-        if (profileImage.getSize() > MAX_PROFILE_IMAGE_SIZE) {
-            throw new BusinessException(ErrorCode.INVALID_PROFILE_IMAGE);
-        }
+        String originalFileName =
+                profileImage.getOriginalFilename();
 
-        String originalFileName = profileImage.getOriginalFilename();
-
-        if (originalFileName == null || originalFileName.isBlank() || !originalFileName.contains(".")) {
-            throw new BusinessException(ErrorCode.INVALID_PROFILE_IMAGE);
-        }
-
-        String extension = originalFileName
-                .substring(originalFileName.lastIndexOf(".") + 1)
-                .toLowerCase();
-
-        if (!ALLOWED_IMAGE_EXTENSIONS.contains(extension)) {
-            throw new BusinessException(ErrorCode.INVALID_PROFILE_IMAGE);
-        }
+        String extension = extractExtension(
+                originalFileName
+        );
 
         try {
-            String storedFileName = UUID.randomUUID() + "." + extension;
+            String storedFileName =
+                    UUID.randomUUID() + "." + extension;
 
             Path userProfilePath = Paths
-                    .get(profileUploadDir, String.valueOf(userId))
+                    .get(
+                            profileUploadDir,
+                            String.valueOf(userId)
+                    )
                     .toAbsolutePath()
                     .normalize();
 
@@ -107,22 +102,131 @@ public class UserService {
                     .toAbsolutePath()
                     .normalize();
 
-            profileImage.transferTo(targetPath.toFile());
+            profileImage.transferTo(
+                    targetPath.toFile()
+            );
 
-            String profileImageUrl = "/uploads/profile/" + userId + "/" + storedFileName;
+            String profileImageUrl =
+                    "/uploads/profile/"
+                            + userId
+                            + "/"
+                            + storedFileName;
 
-            user.updateProfileImageUrl(profileImageUrl);
+            user.updateProfileImageUrl(
+                    profileImageUrl
+            );
 
             return MyInfoResponseDto.from(user);
         } catch (Exception e) {
-            log.error("프로필 이미지 업로드 실패. userId={}, originalFileName={}, uploadDir={}",
+            log.error(
+                    "프로필 이미지 업로드 실패. userId={}, originalFileName={}, uploadDir={}",
                     userId,
                     originalFileName,
                     profileUploadDir,
                     e
             );
 
-            throw new BusinessException(ErrorCode.PROFILE_IMAGE_UPLOAD_FAILED);
+            throw new BusinessException(
+                    ErrorCode.PROFILE_IMAGE_UPLOAD_FAILED
+            );
         }
+    }
+
+    @Transactional
+    public void suspendUser(Long userId) {
+        User user = findUser(userId);
+
+        user.suspend();
+
+        deleteRefreshToken(userId);
+    }
+
+    @Transactional
+    public void withdrawUser(Long userId) {
+        User user = findUser(userId);
+
+        user.withdraw();
+
+        deleteRefreshToken(userId);
+    }
+
+    @Transactional
+    public void deactivateUser(Long userId) {
+        User user = findUser(userId);
+
+        user.deactivate();
+
+        deleteRefreshToken(userId);
+    }
+
+    @Transactional
+    public void activateUser(Long userId) {
+        User user = findUser(userId);
+
+        user.activate();
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new BusinessException(
+                                ErrorCode.USER_NOT_FOUND
+                        )
+                );
+    }
+
+    private void deleteRefreshToken(Long userId) {
+        refreshTokenRepository.deleteByUser_Id(
+                userId
+        );
+    }
+
+    private void validateProfileImage(
+            MultipartFile profileImage
+    ) {
+        if (profileImage == null
+                || profileImage.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PROFILE_IMAGE
+            );
+        }
+
+        if (profileImage.getSize()
+                > MAX_PROFILE_IMAGE_SIZE) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PROFILE_IMAGE
+            );
+        }
+
+        String originalFileName =
+                profileImage.getOriginalFilename();
+
+        if (originalFileName == null
+                || originalFileName.isBlank()
+                || !originalFileName.contains(".")) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PROFILE_IMAGE
+            );
+        }
+    }
+
+    private String extractExtension(
+            String originalFileName
+    ) {
+        String extension = originalFileName
+                .substring(
+                        originalFileName.lastIndexOf(".") + 1
+                )
+                .toLowerCase();
+
+        if (!ALLOWED_IMAGE_EXTENSIONS.contains(
+                extension
+        )) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PROFILE_IMAGE
+            );
+        }
+
+        return extension;
     }
 }

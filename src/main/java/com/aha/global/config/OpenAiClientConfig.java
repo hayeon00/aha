@@ -10,8 +10,8 @@ public class OpenAiClientConfig {
 
     @Bean
     public RestClient openAiRestClient(
-            @Value("${openai.api-key}") String apiKey,
-            @Value("${openai.base-url:https://api.openai.com/v1}") String baseUrl
+            @Value("${openAI.api-key}") String apiKey,
+            @Value("${openAI.base-url:https://api.openai.com/v1}") String baseUrl
     ) {
         return RestClient.builder()
                 .baseUrl(baseUrl)

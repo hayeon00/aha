@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyInfo, updateProfile, updateProfileImage } from "../api/userApi.js";
-import { getUserExams, updateUserExamHidden } from "../../exam/api/userExamApi.js";
+import { addUserExams, getUserExams, updateUserExamHidden } from "../../exam/api/userExamApi.js";
+import { getExams } from "../../exam/api/examApi.js";
 import "./MyPage.css";
 
 const API_BASE_URL =
@@ -32,6 +33,11 @@ function MyPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [message, setMessage] = useState("");
     const [updatingExamId, setUpdatingExamId] = useState(null);
+    const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+    const [availableExams, setAvailableExams] = useState([]);
+    const [selectedNewExamIds, setSelectedNewExamIds] = useState([]);
+    const [isExamCatalogLoading, setIsExamCatalogLoading] = useState(false);
+    const [isAddingExams, setIsAddingExams] = useState(false);
 
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [profileForm, setProfileForm] = useState({
@@ -218,6 +224,76 @@ function MyPage() {
         }
     };
 
+    const openExamModal = async () => {
+        setIsExamModalOpen(true);
+        setSelectedNewExamIds([]);
+        setIsExamCatalogLoading(true);
+        setMessage("");
+
+        try {
+            const response = await getExams();
+            const supportedExams = getApiData(response);
+            const registeredExamIds = new Set(userExams.map((exam) => exam.examId));
+
+            setAvailableExams(
+                Array.isArray(supportedExams)
+                    ? supportedExams.filter((exam) =>
+                        exam.activeVersionId && !registeredExamIds.has(exam.id)
+                    )
+                    : []
+            );
+        } catch (error) {
+            console.error("추가 가능한 시험 조회 실패:", error);
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
+            }
+            setAvailableExams([]);
+            setMessage("추가 가능한 시험을 불러오지 못했습니다.");
+        } finally {
+            setIsExamCatalogLoading(false);
+        }
+    };
+
+    const closeExamModal = () => {
+        if (isAddingExams) return;
+        setIsExamModalOpen(false);
+    };
+
+    const toggleNewExam = (examId) => {
+        setSelectedNewExamIds((current) => current.includes(examId)
+            ? current.filter((id) => id !== examId)
+            : [...current, examId]);
+    };
+
+    const handleAddExams = async () => {
+        if (selectedNewExamIds.length === 0 || isAddingExams) return;
+
+        try {
+            setIsAddingExams(true);
+            setMessage("");
+            const response = await addUserExams(selectedNewExamIds);
+            const addedExams = getApiData(response);
+
+            if (Array.isArray(addedExams)) {
+                setUserExams((current) => [...current, ...addedExams]
+                    .sort((a, b) => a.examId - b.examId));
+            }
+
+            setIsExamModalOpen(false);
+            setSelectedNewExamIds([]);
+        } catch (error) {
+            console.error("내 시험 추가 실패:", error);
+            if (isUnauthorizedError(error)) {
+                handleUnauthorized();
+                return;
+            }
+            setMessage(error.response?.data?.message ?? "시험을 추가하지 못했습니다.");
+        } finally {
+            setIsAddingExams(false);
+        }
+    };
+
     const openProfileModal = () => {
         setProfileForm({
             name: userInfo?.name || "",
@@ -356,67 +432,51 @@ function MyPage() {
                 <section className="mypage-card exam-setting-card">
                     <div className="section-title-row">
                         <div>
-                            <h2>학습 시험 설정</h2>
+                            <h2>내 시험 관리</h2>
+                            <p>선택한 시험을 관리하고 학습 화면 표시 여부를 설정하세요.</p>
                         </div>
+
+                        <button type="button" className="exam-add-button" onClick={openExamModal}>
+                            <span aria-hidden="true">+</span> 시험 추가
+                        </button>
                     </div>
 
-                    <div className="exam-table">
-                        <div className="exam-table-head">
-                            <span>시험명</span>
-                            <span>학습 상태</span>
-                            <span>마지막 학습</span>
-                            <span>표시 설정</span>
-                        </div>
-
+                    <div className="my-exam-grid">
                         {userExams.length === 0 ? (
-                            <div className="exam-empty-row">
-                                등록된 시험이 없습니다. 다시 로그인하거나 관리자에게 문의해주세요.
+                            <div className="my-exam-empty">
+                                <span aria-hidden="true">＋</span>
+                                <strong>아직 선택한 시험이 없어요</strong>
+                                <p>준비할 시험을 추가하고 Aha 학습을 시작해보세요.</p>
+                                <button type="button" onClick={openExamModal}>시험 선택하기</button>
                             </div>
                         ) : (
                             userExams.map((exam) => (
                                 <div
-                                    className="exam-table-row"
+                                    className={exam.hidden ? "my-exam-card is-inactive" : "my-exam-card"}
                                     key={exam.userExamId}
                                 >
-                                    <div className="exam-title-cell">
-                                        <strong>
-                                            {exam.examCode || exam.examName}
-                                        </strong>
-                                        <span>
-                                            {exam.examName ||
-                                                exam.versionName ||
-                                                "지원 시험"}
+                                    <div className="my-exam-card-top">
+                                        <span className="my-exam-symbol" aria-hidden="true">
+                                            {(exam.examCode || exam.examName || "A").slice(0, 2)}
+                                        </span>
+                                        <span className={exam.hidden ? "status-badge muted" : "status-badge"}>
+                                            {exam.hidden ? "비활성" : "활성"}
                                         </span>
                                     </div>
 
-                                    <div>
-                                        <span
-                                            className={
-                                                exam.hidden
-                                                    ? "status-badge muted"
-                                                    : "status-badge"
-                                            }
-                                        >
-                                            {exam.hidden ? "숨김" : "학습 가능"}
-                                        </span>
+                                    <div className="my-exam-copy">
+                                        <strong>{exam.examName || exam.examCode}</strong>
+                                        <span>{exam.versionName || "최신 시험 버전"}</span>
                                     </div>
 
-                                    <span className="exam-date">
-                                        {formatLastStudiedAt(exam.lastStudiedAt)}
-                                    </span>
-
-                                    <div className="exam-toggle-wrap">
+                                    <div className="my-exam-card-footer">
+                                        <span>최근 학습 {formatLastStudiedAt(exam.lastStudiedAt)}</span>
                                         <button
                                             type="button"
-                                            className={
-                                                exam.hidden
-                                                    ? "exam-toggle"
-                                                    : "exam-toggle active"
-                                            }
-                                            aria-label="시험 표시 설정"
-                                            disabled={
-                                                updatingExamId === exam.userExamId
-                                            }
+                                            className={exam.hidden ? "exam-toggle" : "exam-toggle active"}
+                                            aria-label={`${exam.examName} ${exam.hidden ? "활성화" : "비활성화"}`}
+                                            aria-pressed={!exam.hidden}
+                                            disabled={updatingExamId === exam.userExamId}
                                             onClick={() => handleToggleExam(exam)}
                                         >
                                             <span />
@@ -623,6 +683,46 @@ function MyPage() {
                     </section>
                 </section>
             </section>
+
+            {isExamModalOpen && (
+                <div className="profile-modal-backdrop" onClick={closeExamModal}>
+                    <section className="exam-manager-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="exam-manager-title">
+                        <header className="profile-modal-header">
+                            <div>
+                                <h2 id="exam-manager-title">시험 추가</h2>
+                                <p>새롭게 학습할 시험을 선택해주세요. 복수 선택도 가능해요.</p>
+                            </div>
+                            <button type="button" className="profile-modal-close" onClick={closeExamModal} aria-label="닫기">×</button>
+                        </header>
+
+                        {isExamCatalogLoading ? (
+                            <div className="exam-catalog-loading"><div className="mypage-spinner" /><span>시험 목록을 불러오는 중이에요.</span></div>
+                        ) : availableExams.length === 0 ? (
+                            <div className="exam-catalog-empty"><strong>추가 가능한 시험이 없어요</strong><span>현재 지원하는 시험을 모두 추가했습니다.</span></div>
+                        ) : (
+                            <div className="exam-catalog-grid">
+                                {availableExams.map((exam) => {
+                                    const selected = selectedNewExamIds.includes(exam.id);
+                                    return (
+                                        <button key={exam.id} type="button" className={selected ? "exam-catalog-card selected" : "exam-catalog-card"} onClick={() => toggleNewExam(exam.id)} aria-pressed={selected}>
+                                            <span className="exam-catalog-symbol" aria-hidden="true">{exam.code.slice(0, 2)}</span>
+                                            <span><strong>{exam.name}</strong><small>{exam.versionName || "최신 버전"}</small></span>
+                                            <i aria-hidden="true">✓</i>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="exam-manager-actions">
+                            <button type="button" className="modal-cancel-button" onClick={closeExamModal} disabled={isAddingExams}>취소</button>
+                            <button type="button" className="modal-save-button" onClick={handleAddExams} disabled={selectedNewExamIds.length === 0 || isAddingExams}>
+                                {isAddingExams ? "추가 중..." : `${selectedNewExamIds.length || ""}${selectedNewExamIds.length ? "개 " : ""}추가하기`}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
 
             {isProfileModalOpen && (
                 <div

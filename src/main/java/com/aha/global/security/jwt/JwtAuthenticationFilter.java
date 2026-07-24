@@ -24,12 +24,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService customUserDetailsService;
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
+    protected boolean shouldNotFilter(
+            HttpServletRequest request
+    ) {
         String uri = request.getRequestURI();
 
         return uri.equals("/api/v1/auth/signup")
                 || uri.equals("/api/v1/auth/login")
                 || uri.equals("/api/v1/auth/reissue")
+                || uri.equals("/api/v1/auth/oauth/exchange")
+                || uri.startsWith("/oauth2/")
+                || uri.startsWith("/login/oauth2/")
                 || uri.startsWith("/swagger-ui")
                 || uri.startsWith("/v3/api-docs");
     }
@@ -48,25 +53,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!jwtTokenProvider.validateToken(token)) {
-            SecurityContextHolder.clearContext();
-
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("""
-                    {
-                      "status": 401,
-                      "message": "유효하지 않거나 만료된 토큰입니다.",
-                      "data": null
-                    }
-                    """);
+        if (!jwtTokenProvider.validateAccessToken(token)) {
+            writeUnauthorizedResponse(
+                    response,
+                    "유효하지 않거나 만료된 토큰입니다."
+            );
             return;
         }
 
-        String email = jwtTokenProvider.getEmail(token);
+        Long userId = jwtTokenProvider.getUserId(token);
 
         CustomUserDetails userDetails =
-                (CustomUserDetails) customUserDetailsService.loadUserByUsername(email);
+                customUserDetailsService.loadUserById(userId);
+
+        if (!userDetails.isEnabled()
+                || !userDetails.isAccountNonLocked()) {
+            writeUnauthorizedResponse(
+                    response,
+                    "사용할 수 없는 계정입니다."
+            );
+            return;
+        }
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -76,21 +83,51 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
 
         authentication.setDetails(
-                new WebAuthenticationDetailsSource().buildDetails(request)
+                new WebAuthenticationDetailsSource()
+                        .buildDetails(request)
         );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext()
+                .setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
     }
 
-    private String resolveToken(HttpServletRequest request) {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+    private String resolveToken(
+            HttpServletRequest request
+    ) {
+        String authorization =
+                request.getHeader(
+                        HttpHeaders.AUTHORIZATION
+                );
 
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
+        if (authorization == null
+                || !authorization.startsWith("Bearer ")) {
             return null;
         }
 
         return authorization.substring(7);
+    }
+
+    private void writeUnauthorizedResponse(
+            HttpServletResponse response,
+            String message
+    ) throws IOException {
+        SecurityContextHolder.clearContext();
+
+        response.setStatus(
+                HttpServletResponse.SC_UNAUTHORIZED
+        );
+        response.setContentType(
+                "application/json;charset=UTF-8"
+        );
+
+        response.getWriter().write("""
+                {
+                  "status": 401,
+                  "message": "%s",
+                  "data": null
+                }
+                """.formatted(message));
     }
 }

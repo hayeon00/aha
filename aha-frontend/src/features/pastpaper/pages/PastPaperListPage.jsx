@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getVisibleUserExams } from "../../exam/api/userExamApi.js";
 import {
-    getPastPaperExams,
     getPastPapers,
     startPastPaperAttempt,
 } from "../api/pastPaperApi.js";
@@ -61,7 +61,7 @@ const formatProblemCount = (totalItemCount) => {
 
 const getExamVersionLabel = (exam) => {
     const versionName = exam.versionName?.trim() || "2025 개정판";
-    const duplicatedCode = `${exam.code} `;
+    const duplicatedCode = `${exam.examCode} `;
 
     return versionName.startsWith(duplicatedCode)
         ? versionName.slice(duplicatedCode.length)
@@ -97,7 +97,7 @@ function PastPaperListPage() {
 
         const fetchExams = async () => {
             try {
-                const response = await getPastPaperExams();
+                const response = await getVisibleUserExams();
 
                 if (!isMounted) {
                     return;
@@ -128,22 +128,30 @@ function PastPaperListPage() {
                 "[pastPaper] EXAM_VERSION_001 감지 - 사용자 알림 없이 시험 목록을 다시 동기화합니다."
             );
 
-            const examsResponse = await getPastPaperExams();
+            const examsResponse = await getVisibleUserExams();
             const latestExams = examsResponse.data;
-            const latestExam =
-                latestExams.find((exam) => exam.code === staleExam.code) ||
-                latestExams[0];
+            const latestExam = latestExams.find(
+                (exam) => exam.userExamId === staleExam.userExamId
+            );
 
             setExams(latestExams);
+
+            if (
+                !latestExam ||
+                latestExam.examVersionId === staleExam.examVersionId
+            ) {
+                throw new Error("사용자 시험 버전이 갱신되지 않았습니다.");
+            }
+
             setSelectedExam(latestExam);
 
             console.log("[pastPaper] 실패했던 기출 조회를 최신 ID로 재시도합니다.", {
-                previousExamVersionId: staleExam.activeVersionId,
-                nextExamVersionId: latestExam.activeVersionId,
+                previousExamVersionId: staleExam.examVersionId,
+                nextExamVersionId: latestExam.examVersionId,
             });
 
             const retryResponse = await getPastPapers({
-                examVersionId: latestExam.activeVersionId,
+                examVersionId: latestExam.examVersionId,
                 forceExamVersionError: false,
             });
 
@@ -158,7 +166,7 @@ function PastPaperListPage() {
 
             try {
                 const response = await getPastPapers({
-                    examVersionId: exam.activeVersionId,
+                    examVersionId: exam.examVersionId,
                     forceExamVersionError: false,
                 });
 
@@ -180,7 +188,7 @@ function PastPaperListPage() {
     );
 
     const handleSelectExam = async (exam) => {
-        if (selectedExam || exam.code !== "SQLD") {
+        if (selectedExam) {
             return;
         }
 
@@ -282,22 +290,26 @@ function PastPaperListPage() {
 
                 {exams.map((exam, index) => (
                     <div
-                        key={exam.id}
+                        key={exam.userExamId}
                         role="button"
                         tabIndex={selectedExam ? -1 : 0}
                         className={[
                             "exam-card",
-                            selectedExam?.id === exam.id ? "is-selected" : "",
-                            selectedExam && selectedExam.id !== exam.id
+                            selectedExam?.userExamId === exam.userExamId
+                                ? "is-selected"
+                                : "",
+                            selectedExam &&
+                            selectedExam.userExamId !== exam.userExamId
                                 ? "is-hidden"
                                 : "",
-                            exam.code !== "SQLD" ? "is-disabled" : "",
                         ]
                             .filter(Boolean)
                             .join(" ")}
                         style={{
                             "--card-index": index,
-                            "--card-offset": `${(index - 1) * 300}px`,
+                            "--card-offset": `${
+                                (index - (exams.length - 1) / 2) * 300
+                            }px`,
                         }}
                         onClick={() => handleSelectExam(exam)}
                         onKeyDown={(event) => {
@@ -307,14 +319,14 @@ function PastPaperListPage() {
                         }}
                     >
                         <div className="exam-card-copy">
-                            <strong>{exam.name}</strong>
-                            {selectedExam?.id === exam.id && (
+                            <strong>{exam.examName}</strong>
+                            {selectedExam?.userExamId === exam.userExamId && (
                                 <span className="exam-card-version">
-                                    {exam.code} {getExamVersionLabel(exam)}
+                                    {exam.examCode} {getExamVersionLabel(exam)}
                                 </span>
                             )}
                         </div>
-                        {selectedExam?.id === exam.id && (
+                        {selectedExam?.userExamId === exam.userExamId && (
                             <button
                                 type="button"
                                 className="change-exam-button"
@@ -322,9 +334,6 @@ function PastPaperListPage() {
                             >
                                 다른 시험 선택
                             </button>
-                        )}
-                        {!selectedExam && exam.code !== "SQLD" && (
-                            <span className="exam-ready-label">준비 중</span>
                         )}
                     </div>
                 ))}

@@ -32,14 +32,6 @@ const createExamVersionError = () => {
     return error;
 };
 
-export const getPastPaperExams = async () => {
-    const response = await axiosInstance.get("/api/v1/exams");
-
-    return {
-        data: getApiData(response),
-    };
-};
-
 export const getPastPapers = async ({
     examVersionId,
     forceExamVersionError = false,

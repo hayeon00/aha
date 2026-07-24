@@ -1,6 +1,7 @@
 package com.aha.domain.user.dto.response;
 
 import com.aha.domain.user.entity.User;
+import com.aha.domain.user.enums.UserStatus;
 
 import java.time.LocalDateTime;
 
@@ -10,10 +11,10 @@ public record MyInfoResponseDto(
         String name,
         String nickname,
         String role,
-        String status,
-        String loginType,
+        UserStatus status,
         Boolean emailVerified,
         String profileImageUrl,
+        Boolean examOnboardingCompleted,
         LocalDateTime createdAt
 ) {
 
@@ -25,9 +26,9 @@ public record MyInfoResponseDto(
                 user.getNickname(),
                 user.getRole().name(),
                 user.getStatus(),
-                user.getLoginType(),
                 user.isEmailVerified(),
                 user.getProfileImageUrl(),
+                user.isExamOnboardingCompleted(),
                 user.getCreatedAt()
         );
     }

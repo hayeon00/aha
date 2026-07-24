@@ -1,5 +1,8 @@
 package com.aha.global.exception;
 
+import lombok.Getter;
+
+@Getter
 public enum ErrorCode {
 
     // COMMON
@@ -8,6 +11,7 @@ public enum ErrorCode {
     INVALID_REQUEST_FORMAT(400, "COMMON_003", "잘못된 요청 형식입니다."),
     INTERNAL_SERVER_ERROR(500, "COMMON_999", "서버 내부 오류입니다."),
 
+
     // AUTH
     UNAUTHORIZED(401, "AUTH_001", "로그인이 필요합니다."),
     EMAIL_ALREADY_EXISTS(409, "AUTH_002", "이미 사용 중인 이메일입니다."),
@@ -15,11 +19,33 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(401, "AUTH_004", "이메일 또는 비밀번호가 일치하지 않습니다."),
     INVALID_TOKEN(401, "AUTH_005", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(401, "AUTH_006", "만료된 토큰입니다."),
+    INVALID_REFRESH_TOKEN(401, "AUTH_007", "유효하지 않은 리프레시 토큰입니다."),
+    INVALID_SOCIAL_USER_INFO(401, "AUTH_008", "소셜 로그인 사용자 정보를 확인할 수 없습니다."),
+    SOCIAL_ACCOUNT_LINK_REQUIRED(409, "AUTH_009", "이미 가입된 이메일입니다. 기존 계정으로 로그인한 후 소셜 계정을 연결해 주세요."),
+    NICKNAME_GENERATION_FAILED(500, "AUTH_010", "사용 가능한 닉네임을 생성하지 못했습니다."),
+    LOCAL_LOGIN_NOT_AVAILABLE(401, "AUTH_011", "이메일 또는 비밀번호가 일치하지 않습니다."),
+    OAUTH_LOGIN_FAILED(401, "AUTH_012", "소셜 로그인에 실패했습니다."),
+    UNSUPPORTED_SOCIAL_PROVIDER(400, "AUTH_013", "지원하지 않는 소셜 로그인 제공자입니다."),
+    INVALID_OAUTH_AUTHORIZATION_CODE(401, "AUTH_014", "유효하지 않거나 만료된 OAuth 인증 코드입니다."),
+    ACCOUNT_NOT_ACTIVE(401, "AUTH_015", "로그인할 수 없는 계정입니다."),
+    SOCIAL_EMAIL_REQUIRED(401, "AUTH_016", "소셜 계정의 인증된 이메일 정보가 필요합니다."),
+
+
 
     // USER
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
     PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
     INVALID_PROFILE_IMAGE(400, "USER_003", "지원하지 않는 프로필 이미지 형식입니다."),
+    USER_EXAM_ALREADY_CONFIGURED(409, "USER_EXAM_002", "이미 학습할 시험을 설정했습니다."),
+
+
+    //EXAM
+    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
+    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
+    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
+
+
 
     // USER_EXAM
     USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다."),
@@ -62,11 +88,7 @@ public enum ErrorCode {
     SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
-    //EXAM
-    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_002","시험 버전이 비활성 상태 입니다."),
-    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
-    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
+
 
     //PROBLEM
     PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." ),
@@ -80,6 +102,11 @@ public enum ErrorCode {
     PAST_PAPER_ATTEMPT_NOT_SOLVING(409,"PAST_PAPER_005" , "풀이 중 상태가 아닙니다."),
     PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." );
 
+
+
+
+
+
     private final int status;
     private final String code;
     private final String message;
@@ -90,15 +117,4 @@ public enum ErrorCode {
         this.message = message;
     }
 
-    public int getStatus() {
-        return status;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
 }
