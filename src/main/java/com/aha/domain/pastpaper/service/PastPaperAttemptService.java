@@ -3,6 +3,7 @@ package com.aha.domain.pastpaper.service;
 import com.aha.domain.pastpaper.aggregation.TotalResultAggregator;
 import com.aha.domain.pastpaper.dto.response.PastPaperAttemptStartResponseDto;
 import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptResponseDto;
+import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptResultResponseDto;
 import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptSubmitResponseDto;
 import com.aha.domain.pastpaper.entity.PastPaper;
 import com.aha.domain.pastpaper.entity.PastPaperAttempt;
@@ -84,7 +85,7 @@ public class PastPaperAttemptService {
             .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
         attempt.validateCanSubmit(userId);
 
-        List<UserAnswer> userAnswers = userAnswerRepository.findByPastPaperAttempt_IdWithProblem(
+        List<UserAnswer> userAnswers = userAnswerRepository.findByPastPaperAttempt_IdWithProblemAndExamScopeNode(
             attemptId);
         Set<Long> answeredProblemIds = userAnswers.stream().map(ua -> ua.getProblem().getId())
             .collect(Collectors.toSet());
@@ -103,7 +104,8 @@ public class PastPaperAttemptService {
             }
         }
 
-        TotalResultAggregator totalAggregator = pastPaperAttemptResultService.gradeAttempt(attempt,userAnswers);
+        TotalResultAggregator totalAggregator = pastPaperAttemptResultService.gradeAttempt(attempt,
+            userAnswers);
 
         attempt.updateAfterGraded(totalAggregator);
 
@@ -122,5 +124,21 @@ public class PastPaperAttemptService {
             .map(PastPaperAttemptResponseDto::from);
 
         return PageResponseDto.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public PastPaperAttemptResultResponseDto getResult(CustomUserDetails userDetails, Long attemptId) {
+
+        PastPaperAttempt attempt = pastPaperAttemptRepository.findByIdWithPastPaperAndExamVersionAndExamParts(
+                attemptId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
+
+        attempt.validateCanSeeResult(userDetails.getId());
+
+        List<UserAnswer> userAnswers = userAnswerRepository.findByPastPaperAttempt_IdWithProblemAndExamScopeNode(attemptId);
+
+        TotalResultAggregator totalAggregator = pastPaperAttemptResultService.calculateResult(attempt, userAnswers);
+
+        return PastPaperAttemptResultResponseDto.from(totalAggregator);
     }
 }
