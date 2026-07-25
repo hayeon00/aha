@@ -275,6 +275,36 @@ function MainLayout({ onLogout }) {
 
                     <button
                         type="button"
+                        className={isActive("/past-paper-attempts") ? "active" : ""}
+                        onClick={() => navigate("/past-paper-attempts")}
+                    >
+                        <span className="nav-icon">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M5 5H19V20H5V5Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    d="M8 3V7M16 3V7M8 11H16M8 15H13"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </span>
+                        <span>풀이 목록</span>
+                    </button>
+
+                    <button
+                        type="button"
                         className={isActive("/wrong-notes") ? "active" : ""}
                         onClick={() => navigate("/wrong-notes")}
                     >

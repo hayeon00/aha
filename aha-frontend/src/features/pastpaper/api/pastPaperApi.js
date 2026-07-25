@@ -53,6 +53,31 @@ export const getPastPapers = async ({
     }
 };
 
+export const getPastPaperAttempts = async ({
+    attemptStatus = "GRADED",
+    page = 0,
+    size = 10,
+} = {}) => {
+    try {
+        const response = await axiosInstance.get(
+            "/api/v1/past-paper-attempts",
+            {
+                params: {
+                    attemptStatus,
+                    page,
+                    size,
+                },
+            }
+        );
+
+        return {
+            data: getApiData(response),
+        };
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
 export const startPastPaperAttempt = async (pastPaperId) => {
     try {
         const response = await axiosInstance.post(

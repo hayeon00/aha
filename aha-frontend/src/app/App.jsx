@@ -13,6 +13,7 @@ import AiLearningPage from "../features/ailearn/pages/AiLearningPage.jsx";
 import MainPage from "../features/home/pages/MainPage.jsx";
 import MyPage from "../features/user/pages/MyPage.jsx";
 import PastPaperListPage from "../features/pastpaper/pages/PastPaperListPage.jsx";
+import PastPaperAttemptListPage from "../features/pastpaper/pages/PastPaperAttemptListPage.jsx";
 import PastPaperAttemptPage from "../features/pastpaper/pages/PastPaperAttemptPage.jsx";
 import PastPaperResultPage from "../features/pastpaper/pages/PastPaperResultPage.jsx";
 import PastPaperExplanationPage from "../features/pastpaper/pages/PastPaperExplanationPage.jsx";
@@ -167,6 +168,11 @@ function App() {
                 <Route
                     path="/past-papers"
                     element={<PastPaperListPage />}
+                />
+
+                <Route
+                    path="/past-paper-attempts"
+                    element={<PastPaperAttemptListPage />}
                 />
 
                 <Route
