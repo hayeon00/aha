@@ -120,4 +120,15 @@ public class PastPaperAttempt {
         LocalDateTime now = LocalDateTime.now();
         elapsedTime = (int) Duration.between(startedAt, now).getSeconds();
     }
+
+    public void validateGraded() {
+        if(status != PastPaperAttemptStatus.GRADED){
+            throw new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_GRADED);
+        }
+    }
+
+    public void validateCanSeeResult(Long userId){
+        validateOwner(userId);
+        validateGraded();
+    }
 }

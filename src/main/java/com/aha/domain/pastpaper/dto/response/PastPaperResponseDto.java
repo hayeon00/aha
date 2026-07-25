@@ -3,6 +3,7 @@ package com.aha.domain.pastpaper.dto.response;
 import com.aha.domain.exam.entity.Exam;
 import com.aha.domain.pastpaper.entity.PastPaper;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 
@@ -16,24 +17,29 @@ public record PastPaperResponseDto(
     long year,
     long roundNo,
     long timeLimit,
-    LocalDate examDate
+    LocalDate examDate,
+
+    Long solvingAttemptId,
+    LocalDateTime attemptStartedAt,
+    LocalDateTime attemptDueAt
 ) {
 
-    public static PastPaperResponseDto of(PastPaper paper,Exam exam) {
-        String examName = exam.getName();
+    public static PastPaperResponseDto from(PastPaper paper, Long solvingAttemptId, LocalDateTime attemptStartedAt) {
 
-        int year = paper.getYear();
-        int roundNo = paper.getRoundNo();
+        LocalDateTime attemptDueAt = attemptStartedAt == null ? null : attemptStartedAt.plusSeconds(paper.getTimeLimit());
 
         return PastPaperResponseDto.builder()
             .pastPaperId(paper.getId())
             .totalItemCount(paper.getTotalItemCount())
             .reviewed(paper.isReviewed())
             .title(paper.createTitle())
-            .year(year)
-            .roundNo(roundNo)
+            .year(paper.getYear())
+            .roundNo(paper.getRoundNo())
             .timeLimit(paper.getTimeLimit())
             .examDate(paper.getExamDate())
+            .solvingAttemptId(solvingAttemptId)
+            .attemptStartedAt(attemptStartedAt)
+            .attemptDueAt(attemptDueAt)
             .build();
     }
 

@@ -210,6 +210,7 @@ function PastPaperListPage() {
 
         const pastPaperId = pastPaper.pastPaperId;
         const pastPaperTitle = getPastPaperTitle(pastPaper);
+        const isContinuing = Boolean(pastPaper.solvingAttemptId);
 
         setStartingPastPaperId(pastPaperId);
         setAttemptFeedback(null);
@@ -234,7 +235,9 @@ function PastPaperListPage() {
             setAttemptFeedback({
                 pastPaperId,
                 type: "success",
-                message: "풀이 준비가 완료되었습니다.",
+                message: isContinuing
+                    ? "진행 중인 풀이를 불러왔습니다."
+                    : "풀이 준비가 완료되었습니다.",
                 attempt: {
                     attemptId,
                     attemptStatus,
@@ -409,6 +412,10 @@ function PastPaperListPage() {
                                         pastPaper.pastPaperId
                                             ? "is-loading"
                                             : ""
+                                    } ${
+                                        pastPaper.solvingAttemptId
+                                            ? "is-resume"
+                                            : ""
                                     }`}
                                     disabled={
                                         startingPastPaperId !== null ||
@@ -420,12 +427,16 @@ function PastPaperListPage() {
                                 >
                                     {startingPastPaperId ===
                                     pastPaper.pastPaperId
-                                        ? "준비 중..."
+                                        ? pastPaper.solvingAttemptId
+                                            ? "풀이 불러오는 중..."
+                                            : "준비 중..."
                                         : attemptFeedback?.pastPaperId ===
                                               pastPaper.pastPaperId &&
                                             attemptFeedback.type === "success"
                                           ? "준비 완료"
-                                          : "풀이 시작"}
+                                          : pastPaper.solvingAttemptId
+                                            ? "이어풀기"
+                                            : "풀이 시작"}
                                 </button>
                             </div>
 

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getPastPaperAttempts } from "../api/pastPaperApi.js";
+import {
+    getPastPaperAttemptResult,
+    getPastPaperAttempts,
+    startPastPaperAttempt,
+} from "../api/pastPaperApi.js";
 import "./PastPaperAttemptListPage.css";
 
 const PAGE_SIZE = 10;
@@ -89,6 +93,10 @@ function PastPaperAttemptListPage() {
     const [totalElements, setTotalElements] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
+    const [loadingResultId, setLoadingResultId] = useState(null);
+    const [resultErrorId, setResultErrorId] = useState(null);
+    const [retryingAttemptId, setRetryingAttemptId] = useState(null);
+    const [retryErrorId, setRetryErrorId] = useState(null);
 
     const loadAttempts = useCallback(async () => {
         setIsLoading(true);
@@ -120,19 +128,35 @@ function PastPaperAttemptListPage() {
         queueMicrotask(loadAttempts);
     }, [loadAttempts]);
 
-    const handleOpenExplanation = (attempt) => {
+    const handleOpenResult = async (attempt) => {
+        setLoadingResultId(attempt.attemptId);
+        setResultErrorId(null);
+
         sessionStorage.setItem(
             `past-paper-title-${attempt.pastPaperId}`,
             attempt.paperTitle
         );
-        navigate(
-            `/past-papers/${attempt.pastPaperId}/attempts/${attempt.attemptId}/explanation`,
-            {
-                state: {
-                    pastPaperTitle: attempt.paperTitle,
-                },
-            }
-        );
+
+        try {
+            const response = await getPastPaperAttemptResult(
+                attempt.attemptId
+            );
+
+            navigate(
+                `/past-papers/${attempt.pastPaperId}/attempts/${attempt.attemptId}/result`,
+                {
+                    state: {
+                        result: response.data,
+                        pastPaperTitle: attempt.paperTitle,
+                    },
+                }
+            );
+        } catch (error) {
+            console.error("풀이 결과 조회 실패:", error);
+            setResultErrorId(attempt.attemptId);
+        } finally {
+            setLoadingResultId(null);
+        }
     };
 
     const handleContinueAttempt = (attempt) => {
@@ -159,6 +183,50 @@ function PastPaperAttemptListPage() {
                 },
             }
         );
+    };
+
+    const handleRetryAttempt = async (attempt) => {
+        if (!attempt.pastPaperId) {
+            setRetryErrorId(attempt.attemptId);
+            return;
+        }
+
+        setRetryingAttemptId(attempt.attemptId);
+        setRetryErrorId(null);
+
+        try {
+            const response = await startPastPaperAttempt(
+                attempt.pastPaperId
+            );
+            const nextAttempt = response.data;
+
+            if (!nextAttempt?.attemptId) {
+                throw new Error("풀이 시작 응답에 attemptId가 없습니다.");
+            }
+
+            sessionStorage.setItem(
+                `past-paper-title-${attempt.pastPaperId}`,
+                attempt.paperTitle
+            );
+            sessionStorage.setItem(
+                `past-paper-attempt-${nextAttempt.attemptId}`,
+                JSON.stringify(nextAttempt)
+            );
+
+            navigate(
+                `/past-papers/${attempt.pastPaperId}/attempts/${nextAttempt.attemptId}`,
+                {
+                    state: {
+                        attempt: nextAttempt,
+                    },
+                }
+            );
+        } catch (error) {
+            console.error("기출 문제 다시 풀기 실패:", error);
+            setRetryErrorId(attempt.attemptId);
+        } finally {
+            setRetryingAttemptId(null);
+        }
     };
 
     const handleFilterChange = (status) => {
@@ -332,21 +400,68 @@ function PastPaperAttemptListPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    type="button"
-                                    className="attempt-explanation-button"
-                                    onClick={() => {
-                                        if (isGraded) {
-                                            handleOpenExplanation(attempt);
-                                            return;
+                                <div className="attempt-record-actions">
+                                    {isGraded && attempt.pastPaperId && (
+                                        <button
+                                            type="button"
+                                            className="attempt-retry-button"
+                                            disabled={
+                                                loadingResultId !== null ||
+                                                retryingAttemptId !== null
+                                            }
+                                            onClick={() =>
+                                                handleRetryAttempt(attempt)
+                                            }
+                                        >
+                                            {retryingAttemptId ===
+                                            attempt.attemptId
+                                                ? "준비 중"
+                                                : "다시 풀기"}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className={`attempt-explanation-button ${
+                                            loadingResultId ===
+                                            attempt.attemptId
+                                                ? "is-loading"
+                                                : ""
+                                        }`}
+                                        disabled={
+                                            isGraded &&
+                                            (loadingResultId !== null ||
+                                                retryingAttemptId !== null)
                                         }
+                                        onClick={() => {
+                                            if (isGraded) {
+                                                handleOpenResult(attempt);
+                                                return;
+                                            }
 
-                                        handleContinueAttempt(attempt);
-                                    }}
-                                >
-                                    {isGraded ? "해설 보기" : "이어서 풀기"}
-                                    <span aria-hidden="true">›</span>
-                                </button>
+                                            handleContinueAttempt(attempt);
+                                        }}
+                                    >
+                                        {isGraded
+                                            ? loadingResultId ===
+                                              attempt.attemptId
+                                                ? "결과 불러오는 중"
+                                                : "결과 보기"
+                                            : "이어서 풀기"}
+                                        <span aria-hidden="true">›</span>
+                                    </button>
+                                </div>
+                                {resultErrorId === attempt.attemptId && (
+                                    <p className="attempt-result-error">
+                                        결과를 불러오지 못했어요. 다시 시도해
+                                        주세요.
+                                    </p>
+                                )}
+                                {retryErrorId === attempt.attemptId && (
+                                    <p className="attempt-result-error">
+                                        풀이를 시작하지 못했어요. 다시 시도해
+                                        주세요.
+                                    </p>
+                                )}
                             </article>
                         ))}
                     </div>

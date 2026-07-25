@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,8 +24,18 @@ public class PastPaperAttemptResultService {
     private final ExamScopeNodeRepository examScopeNodeRepository;
 
     public TotalResultAggregator gradeAttempt(PastPaperAttempt attempt, List<UserAnswer> userAnswers){
+
         userAnswers.forEach(UserAnswer::requestGrading);
 
+        return aggregate(attempt, userAnswers);
+    }
+
+
+    public TotalResultAggregator calculateResult(PastPaperAttempt attempt, List<UserAnswer> userAnswers){
+        return aggregate(attempt, userAnswers);
+    }
+
+    private TotalResultAggregator aggregate(PastPaperAttempt attempt,List<UserAnswer> userAnswers){
         List<Long> partIds = attempt.getPastPaper().getExamVersion().getParts().stream().map(
             ExamPart::getId).toList();
         List<ExamScopeNode> sectionScopeNodes = examScopeNodeRepository.findAllByExamPart_IdInAndNodeTypeAndIsActiveTrueOrderByDisplayOrderAsc(

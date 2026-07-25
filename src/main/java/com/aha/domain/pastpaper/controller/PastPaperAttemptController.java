@@ -5,6 +5,7 @@ import com.aha.domain.pastpaper.dto.response.PastPaperAttemptAnswersResponseDto;
 import com.aha.domain.pastpaper.dto.response.PastPaperAttemptStartResponseDto;
 import com.aha.domain.pastpaper.dto.response.PastPaperItemResponseDto;
 import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptResponseDto;
+import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptResultResponseDto;
 import com.aha.domain.pastpaper.dto.response.result.PastPaperAttemptSubmitResponseDto;
 import com.aha.domain.pastpaper.enums.PastPaperAttemptStatus;
 import com.aha.domain.pastpaper.service.PastPaperAttemptService;
@@ -48,8 +49,8 @@ public class PastPaperAttemptController {
     ) {
 
         return ResponseEntity.ok().body(ApiResponse.success(200, "풀이를 시작 성공",
-                    pastPaperAttemptService.getOrStartAttempt(pastPaperId, userDetails))
-            );
+            pastPaperAttemptService.getOrStartAttempt(pastPaperId, userDetails))
+        );
 
     }
 
@@ -129,7 +130,19 @@ public class PastPaperAttemptController {
         ) PastPaperAttemptStatus status
     ) {
 
-        return ResponseEntity.ok(ApiResponse.success(200,"풀이 목록 조회 성공",
+        return ResponseEntity.ok(ApiResponse.success(200, "풀이 목록 조회 성공",
             pastPaperAttemptService.getAttempts(userDetails, pageable, status)));
     }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/past-paper-attempts/{pastPaperAttemptId}")
+    public ResponseEntity<ApiResponse<PastPaperAttemptResultResponseDto>> getResult(
+        @PathVariable("pastPaperAttemptId") Long pastPaperAttemptId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok()
+            .body(ApiResponse.success(200, "결과 조회 성공",
+                pastPaperAttemptService.getResult(userDetails, pastPaperAttemptId)));
+    }
+
 }

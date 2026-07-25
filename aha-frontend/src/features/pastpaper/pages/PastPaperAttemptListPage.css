@@ -257,6 +257,43 @@
         transform 0.16s ease;
 }
 
+.attempt-record-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.attempt-retry-button {
+    height: 38px;
+    padding: 0 15px;
+    border: 1px solid #f0c5a7;
+    border-radius: 999px;
+    background: #fff8f2;
+    color: #c75a16;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        border-color 0.16s ease,
+        background 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.16s ease;
+}
+
+.attempt-retry-button:hover:not(:disabled) {
+    border-color: #ff9d58;
+    background: #fff1e6;
+    box-shadow: 0 7px 16px rgba(212, 118, 52, 0.1);
+    transform: translateY(-1px);
+}
+
+.attempt-retry-button:disabled {
+    opacity: 0.58;
+    cursor: wait;
+}
+
 .attempt-explanation-button {
     display: inline-flex;
     align-items: center;
@@ -274,6 +311,27 @@
     background: #ed6200;
     box-shadow: 0 8px 18px rgba(255, 106, 0, 0.18);
     transform: translateY(-1px);
+}
+
+.attempt-explanation-button:disabled {
+    border-color: #f0c5a7;
+    background: #f6b486;
+    cursor: wait;
+    box-shadow: none;
+    transform: none;
+}
+
+.attempt-explanation-button.is-loading span {
+    display: none;
+}
+
+.attempt-result-error {
+    grid-column: 1 / -1;
+    margin: -14px 0 0;
+    color: #c73b32;
+    font-size: 11px;
+    font-weight: 750;
+    text-align: right;
 }
 
 .attempt-list-state {
@@ -466,7 +524,7 @@
         grid-row: 2;
     }
 
-    .attempt-explanation-button {
+    .attempt-record-actions {
         grid-column: 2;
         grid-row: 1;
     }
