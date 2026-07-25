@@ -100,7 +100,8 @@ public enum ErrorCode {
     PAST_PAPER_ATTEMPT_NOT_FOUND(404 ,"PAST_PAPER_003" , "복원 기출 풀이가 없습니다." ),
     PAST_PAPER_ATTEMPT_NOT_YOURS(403,"PAST_PAPER_004" , "풀이 소유자가 아닙니다."),
     PAST_PAPER_ATTEMPT_NOT_SOLVING(409,"PAST_PAPER_005" , "풀이 중 상태가 아닙니다."),
-    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." );
+    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." ),
+    PAST_PAPER_ATTEMPT_NOT_GRADED(409,"PAST_PAPER_007" ,"채점 완료 상태가 아닙니다." );
 
 
 
