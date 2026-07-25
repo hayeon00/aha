@@ -120,6 +120,26 @@ export const getPastPaperAttemptAnswers = async (attemptId) => {
     }
 };
 
+export const getPastPaperAttemptResult = async (attemptId) => {
+    try {
+        const response = await axiosInstance.get(
+            `/api/v1/past-paper-attempts/${attemptId}`
+        );
+        const result = getApiData(response);
+
+        sessionStorage.setItem(
+            `${RESULT_STORAGE_PREFIX}${attemptId}`,
+            JSON.stringify({ result })
+        );
+
+        return {
+            data: result,
+        };
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
 export const savePastPaperAnswer = async ({
     attemptId,
     problemId,
