@@ -29,7 +29,7 @@ public record PastPaperResponseDto(
             .pastPaperId(paper.getId())
             .totalItemCount(paper.getTotalItemCount())
             .reviewed(paper.isReviewed())
-            .title(createTitle(examName, year, roundNo))
+            .title(paper.createTitle())
             .year(year)
             .roundNo(roundNo)
             .timeLimit(paper.getTimeLimit())
@@ -37,7 +37,5 @@ public record PastPaperResponseDto(
             .build();
     }
 
-    private static String createTitle(String examName, int year, int roundNo) {
-        return "%s %d년 %d회차 시험".formatted(examName, year, roundNo);
-    }
+
 }
