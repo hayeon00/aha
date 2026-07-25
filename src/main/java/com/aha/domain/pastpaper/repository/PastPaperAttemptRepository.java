@@ -12,13 +12,6 @@ import org.springframework.data.repository.query.Param;
 public interface PastPaperAttemptRepository extends JpaRepository<PastPaperAttempt, Long> {
 
     @Query("""
-    select ppa from PastPaperAttempt ppa
-    join fetch ppa.pastPaper
-    where ppa.id = :attemptId
-""")
-    Optional<PastPaperAttempt> findByIdWithPastPaper(Long attemptId);
-
-    @Query("""
             select ppa from PastPaperAttempt ppa
             join fetch ppa.pastPaper pp
             where pp.id = :paperId and ppa.userId = :userId and ppa.status = :status
