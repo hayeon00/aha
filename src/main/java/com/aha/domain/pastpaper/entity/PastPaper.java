@@ -94,4 +94,8 @@ public class PastPaper {
         examVersion.getExam().validateActive();
         validatePublished();
     }
+
+    public String createTitle() {
+        return "%s %d년 %d회차 시험".formatted(examVersion.getExam().getName(), year, roundNo);
+    }
 }
