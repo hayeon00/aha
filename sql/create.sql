@@ -2,9 +2,9 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 
 
-DROP TABLE IF EXISTS `learning_content_reference`;
 DROP TABLE IF EXISTS `user_document_concept`;
-DROP TABLE IF EXISTS `user_learning_content`;
+DROP TABLE IF EXISTS `learning_note_content`;
+DROP TABLE IF EXISTS `learning_note`;
 DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk`;
 DROP TABLE IF EXISTS `document_processing`;
@@ -495,35 +495,39 @@ CREATE TABLE `document_scope_mapping` (
                                               CHECK (`confidence_score` >= 0 AND `confidence_score` <= 1)
 );
 
-
-CREATE TABLE `user_learning_content` (
-                                         `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
-                                         `user_exam_id`       BIGINT       NOT NULL,
-                                         `exam_scope_node_id` BIGINT       NOT NULL,
-                                         `title`              VARCHAR(200) NOT NULL,
-                                         `content`            LONGTEXT         NULL,
-                                         `source_type`        VARCHAR(30)  NOT NULL DEFAULT 'DOCUMENT',
-                                         `keywords_json`      JSON             NULL,
-                                         `status`             VARCHAR(30)  NOT NULL DEFAULT 'NOT_MAPPED',
-                                         `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                         `updated_at`         DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
-
-                                         PRIMARY KEY (`id`),
-                                         UNIQUE KEY `uk_ulc_user_exam_scope` (`user_exam_id`, `exam_scope_node_id`),
-
-                                         INDEX `idx_ulc_user_exam_id` (`user_exam_id`),
-                                         INDEX `idx_ulc_exam_scope_node_id` (`exam_scope_node_id`),
-                                         INDEX `idx_ulc_status` (`status`),
-                                         INDEX `idx_ulc_scope_source` (`exam_scope_node_id`, `source_type`),
-
-                                         CONSTRAINT `fk_ulc_user_exam_id`
-                                             FOREIGN KEY (`user_exam_id`) REFERENCES `user_exam` (`id`)
-                                                 ON DELETE CASCADE,
-
-                                         CONSTRAINT `fk_ulc_exam_scope_node_id`
-                                             FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
-                                                 ON DELETE CASCADE
+CREATE TABLE `learning_note` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `processing_group_id` BIGINT NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `status` VARCHAR(30) NOT NULL,
+    `error_message` VARCHAR(1000) NULL,
+    `completed_at` DATETIME NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_learning_note_processing_group` (`processing_group_id`),
+    CONSTRAINT `fk_learning_note_processing_group`
+        FOREIGN KEY (`processing_group_id`) REFERENCES `document_processing_group` (`id`)
 );
+
+CREATE TABLE `learning_note_content` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT,
+    `learning_note_id` BIGINT NOT NULL,
+    `exam_scope_node_id` BIGINT NOT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `content` LONGTEXT NOT NULL,
+    `source_type` VARCHAR(30) NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_learning_note_content_note_scope`
+        (`learning_note_id`, `exam_scope_node_id`),
+    CONSTRAINT `fk_learning_note_content_note`
+        FOREIGN KEY (`learning_note_id`) REFERENCES `learning_note` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_learning_note_content_scope`
+        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
+);
+
 
 CREATE TABLE `user_document_concept` (
                                          `id`          BIGINT       NOT NULL AUTO_INCREMENT,
@@ -543,49 +547,6 @@ CREATE TABLE `user_document_concept` (
                                          CONSTRAINT `fk_udc_document` FOREIGN KEY (`document_id`) REFERENCES `source_document` (`id`) ON DELETE CASCADE,
                                          CONSTRAINT `fk_udc_toc` FOREIGN KEY (`toc_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE
 );
-
-
-CREATE TABLE `learning_content_reference` (
-                                              `id`                       BIGINT   NOT NULL AUTO_INCREMENT,
-                                              `user_learning_content_id` BIGINT   NOT NULL,
-                                              `document_chunk_id`        BIGINT   NOT NULL,
-                                              `page_no`                  INT          NULL,
-                                              `snippet`                  TEXT         NULL,
-                                              `display_order`            INT      NOT NULL DEFAULT 1,
-                                              `created_at`               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                              `updated_at`               DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
-
-                                              PRIMARY KEY (`id`),
-
-                                              INDEX `idx_lcr_user_learning_content_id`
-                                                  (`user_learning_content_id`),
-
-                                              INDEX `idx_lcr_document_chunk_id`
-                                                  (`document_chunk_id`),
-
-                                              INDEX `idx_lcr_content_order`
-                                                  (`user_learning_content_id`, `display_order`),
-
-                                              CONSTRAINT `fk_lcr_user_learning_content_id`
-                                                  FOREIGN KEY (`user_learning_content_id`)
-                                                      REFERENCES `user_learning_content` (`id`)
-                                                      ON DELETE CASCADE,
-
-                                              CONSTRAINT `fk_lcr_document_chunk_id`
-                                                  FOREIGN KEY (`document_chunk_id`)
-                                                      REFERENCES `document_chunk` (`id`)
-                                                      ON DELETE CASCADE,
-
-                                              CONSTRAINT `chk_lcr_page_no`
-                                                  CHECK (`page_no` IS NULL OR `page_no` >= 1),
-
-                                              CONSTRAINT `chk_lcr_display_order`
-                                                  CHECK (`display_order` >= 1)
-);
-
-
-
-
 CREATE TABLE `refresh_tokens` (
                                   `id`         BIGINT       NOT NULL AUTO_INCREMENT,
                                   `user_id`    BIGINT       NOT NULL,

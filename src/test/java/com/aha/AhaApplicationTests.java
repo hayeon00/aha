@@ -1,6 +1,6 @@
 package com.aha;
 
-import com.aha.domain.ailearn.document.client.mapping.OpenAiDocumentScopeMappingClient;
+import com.aha.domain.notestudio.document.client.mapping.OpenAiDocumentScopeMappingClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;

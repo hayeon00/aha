@@ -16,7 +16,11 @@ export const generateMissingDocumentConcepts = (documentId) =>
     axiosInstance.post(`/api/documents/${documentId}/generate-missing-concepts`);
 
 export const createDocumentLearningNote = (documentId) =>
-    axiosInstance.post(`/api/documents/${documentId}/learning-note`);
+    axiosInstance.post(
+        `/api/documents/${documentId}/learning-note`,
+        null,
+        { timeout: 300000 },
+    );
 
 export const updateDocumentConcept = (documentId, tocId, content) =>
     axiosInstance.patch(

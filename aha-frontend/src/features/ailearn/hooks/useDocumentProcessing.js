@@ -112,14 +112,17 @@ export const useDocumentProcessing = ({
                 console.error("업로드 작업 복구 조회 실패:", recoveryError);
             }
 
-            setUploadErrorMessage("문서 업로드에 실패했습니다.");
+            const uploadMessage =
+                error?.response?.data?.message
+                || "문서 업로드에 실패했습니다.";
+            setUploadErrorMessage(uploadMessage);
             setProcessingStatus({
                 status: "FAILED",
                 currentStep: "FAILED",
                 progressRate: 0,
                 totalFileCount: files.length,
                 completedFileCount: 0,
-                errorMessage: "문서 업로드에 실패했습니다.",
+                errorMessage: uploadMessage,
             });
             setIsProgressModalOpen(true);
         } finally {

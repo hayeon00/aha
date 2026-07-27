@@ -2,34 +2,35 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import NoteCardGrid from "../components/NoteCardGrid.jsx";
-import {
-    getLearningNotes,
-    LEARNING_NOTES_UPDATED_EVENT,
-    removeLearningNote,
-} from "../../ailearn/utils/learningNoteStorage.js";
+import { getCompletedLearningNotes } from "../../ailearn/api/learningNoteApi.js";
+import { getApiData } from "../../ailearn/utils/apiResponseUtils.js";
 
 import "./MainPage.css";
 
 function MainPage() {
     const navigate = useNavigate();
-    const [notes, setNotes] = useState(() => getLearningNotes());
+    const [notes, setNotes] = useState([]);
+    const [message, setMessage] = useState("");
 
     useEffect(() => {
-        const refresh = () => setNotes(getLearningNotes());
-        window.addEventListener(LEARNING_NOTES_UPDATED_EVENT, refresh);
-        window.addEventListener("storage", refresh);
-        return () => {
-            window.removeEventListener(LEARNING_NOTES_UPDATED_EVENT, refresh);
-            window.removeEventListener("storage", refresh);
-        };
+        let cancelled = false;
+        getCompletedLearningNotes()
+            .then((response) => {
+                if (!cancelled) setNotes(getApiData(response) || []);
+            })
+            .catch((error) => {
+                if (!cancelled) {
+                    setMessage(
+                        error.response?.data?.message
+                        || "학습노트를 불러오지 못했습니다.",
+                    );
+                }
+            });
+        return () => { cancelled = true; };
     }, []);
 
     const createNote = () => navigate("/learning");
     const openNote = (note) => navigate(`/learning?view=notes&documentId=${note.documentId}&tocId=${note.tocId}`);
-    const removeNote = (noteId) => {
-        removeLearningNote(noteId);
-        setNotes(getLearningNotes());
-    };
 
     return (
         <div className="main-page">
@@ -44,8 +45,8 @@ function MainPage() {
                     notes={notes}
                     onCreate={createNote}
                     onOpen={openNote}
-                    onRemove={removeNote}
                 />
+                {message && <p role="alert">{message}</p>}
             </main>
         </div>
     );

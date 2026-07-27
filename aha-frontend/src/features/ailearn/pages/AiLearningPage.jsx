@@ -26,6 +26,7 @@ function AiLearningPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const fileInputRef = useRef(null);
     const examDropdownRef = useRef(null);
+    const wasStudyModeRef = useRef(false);
     const [isDragging, setIsDragging] = useState(false);
     const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
     const [localFiles, setLocalFiles] = useState([]);
@@ -156,6 +157,18 @@ function AiLearningPage() {
         : null;
     const noteTitle = noteTitlesByDocument[documentRoom.documentId]
         ?? `${selectedUserExam?.examCode ?? "나의"} 개념 학습`;
+
+    useEffect(() => {
+        const wasStudyMode = wasStudyModeRef.current;
+        wasStudyModeRef.current = isStudyMode;
+
+        if (wasStudyMode && !isStudyMode) {
+            setLocalFiles([]);
+            setHiddenDocumentIds([]);
+            setFileMessage("");
+            documentRoom.refresh();
+        }
+    }, [documentRoom, isStudyMode]);
 
     useEffect(() => {
         const requestedDocumentId = Number(searchParams.get("documentId"));
