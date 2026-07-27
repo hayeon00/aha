@@ -51,3 +51,11 @@ export function removeLearningNote(noteId) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextNotes));
     window.dispatchEvent(new CustomEvent(LEARNING_NOTES_UPDATED_EVENT));
 }
+
+export function removeLearningNoteByDocumentId(documentId) {
+    const nextNotes = getLearningNotes().filter(
+        (note) => Number(note.documentId) !== Number(documentId),
+    );
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextNotes));
+    window.dispatchEvent(new CustomEvent(LEARNING_NOTES_UPDATED_EVENT));
+}

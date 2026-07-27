@@ -8,9 +8,14 @@ import NoteHeader from "../components/NoteHeader.jsx";
 import UploadProgressModal from "../components/UploadProgressModal.jsx";
 import { useDocumentProcessing } from "../hooks/useDocumentProcessing.js";
 import { useDocumentConceptDashboard } from "../hooks/useDocumentConceptDashboard.js";
+import { deleteLearningDocument } from "../api/learningDocumentApi.js";
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
-import { getLearningNotes, saveLearningNote } from "../utils/learningNoteStorage.js";
+import {
+    getLearningNotes,
+    removeLearningNoteByDocumentId,
+    saveLearningNote,
+} from "../utils/learningNoteStorage.js";
 
 import "./AiLearningPage.css";
 
@@ -228,12 +233,23 @@ function AiLearningPage() {
         await handleFiles(event.dataTransfer.files);
     };
 
-    const handleRemoveDocument = (document) => {
+    const handleRemoveDocument = async (document) => {
         if (document.local) {
             setLocalFiles((current) => current.filter((file) => file.id !== document.id));
             return;
         }
-        setHiddenDocumentIds((current) => [...current, document.documentId]);
+
+        try {
+            setFileMessage("");
+            await deleteLearningDocument(document.documentId);
+            removeLearningNoteByDocumentId(document.documentId);
+            setHiddenDocumentIds((current) => [...current, document.documentId]);
+            await documentRoom.refresh();
+        } catch (error) {
+            setFileMessage(
+                error.response?.data?.message || "문서를 삭제하지 못했습니다.",
+            );
+        }
     };
 
     const handleStartLearning = async () => {
@@ -658,7 +674,7 @@ function AiLearningPage() {
                                         type="button"
                                         className="trash-button"
                                         onClick={() => handleRemoveDocument(document)}
-                                        aria-label={`${document.name} 목록에서 삭제`}
+                                        aria-label={`${document.name} 삭제`}
                                     >
                                         <TrashIcon />
                                     </button>

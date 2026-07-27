@@ -222,6 +222,24 @@ public class DocumentFileStorageService {
         );
     }
 
+    public void deleteStoredFile(String storageKey) {
+        Path storedFilePath = resolveStoragePath(storageKey);
+        deleteFileOrThrow(storedFilePath);
+
+        Path batchDirectory = storedFilePath.getParent();
+        if (batchDirectory == null || batchDirectory.equals(baseUploadDirectory)) {
+            return;
+        }
+
+        try (var children = Files.list(batchDirectory)) {
+            if (children.findAny().isEmpty()) {
+                Files.deleteIfExists(batchDirectory);
+            }
+        } catch (IOException exception) {
+            log.warn("빈 업로드 디렉터리 정리에 실패했습니다. path={}", batchDirectory, exception);
+        }
+    }
+
     private void validateStoredFile(
             ValidatedDocumentFile validatedFile,
             Path storedFilePath

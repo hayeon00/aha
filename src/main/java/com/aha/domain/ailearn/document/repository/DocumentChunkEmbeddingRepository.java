@@ -19,6 +19,13 @@ public interface DocumentChunkEmbeddingRepository extends JpaRepository<Document
     """)
     int deleteAllByProcessingGroupId(@Param("processingGroupId") Long processingGroupId);
 
+    @Modifying(flushAutomatically = true)
+    @Query("""
+        delete from DocumentChunkEmbedding embedding
+        where embedding.documentChunk.sourceDocument.id = :documentId
+        """)
+    int deleteAllByDocumentId(@Param("documentId") Long documentId);
+
     List<DocumentChunkEmbedding> findAllByDocumentChunk_IdInAndEmbeddingModel(
             Collection<Long> documentChunkIds,
             String embeddingModel

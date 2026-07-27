@@ -19,7 +19,7 @@ export const uploadLearningDocuments = async (
     });
 
     const response = await axiosInstance.post(
-        "/api/v1/ai-learning/document-uploads",
+        "/api/v1/document/upload",
         formData,
         {
             params: {
@@ -30,6 +30,14 @@ export const uploadLearningDocuments = async (
     );
 
     return response.data;
+};
+
+export const deleteLearningDocument = (documentId) => {
+    if (!documentId) {
+        throw new Error("documentId가 필요합니다.");
+    }
+
+    return axiosInstance.delete(`/api/v1/document/${documentId}`);
 };
 
 export const getDocumentProcessingStatus = (

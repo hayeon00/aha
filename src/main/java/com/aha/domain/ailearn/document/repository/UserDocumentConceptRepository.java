@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserDocumentConceptRepository extends JpaRepository<UserDocumentConcept, Long> {
+    void deleteAllByDocument_Id(Long documentId);
+
     @EntityGraph(attributePaths = "toc")
     Optional<UserDocumentConcept> findByUser_IdAndDocument_IdAndToc_Id(
             Long userId, Long documentId, Long tocId);
