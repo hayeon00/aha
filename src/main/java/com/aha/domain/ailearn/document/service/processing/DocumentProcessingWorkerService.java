@@ -1,7 +1,6 @@
 package com.aha.domain.ailearn.document.service.processing;
 
 import com.aha.domain.ailearn.document.enums.DocumentProcessingStep;
-import com.aha.domain.ailearn.document.service.content.LearningContentBatchGenerationService;
 import com.aha.domain.ailearn.document.service.extraction.DocumentExtractionPipelineService;
 import com.aha.domain.ailearn.document.service.extraction.model.ExtractedDocumentContext;
 import com.aha.domain.ailearn.document.service.mapping.DocumentScopeMappingService;
@@ -22,7 +21,6 @@ public class DocumentProcessingWorkerService {
     private final DocumentProcessingStatusService processingStatusService;
     private final DocumentExtractionPipelineService extractionService;
     private final DocumentScopeMappingService documentScopeMappingService;
-    private final LearningContentBatchGenerationService learningContentBatchGenerationService;
 
     @Async("documentProcessingTaskExecutor")
     public void process(Long processingGroupId) {
@@ -51,8 +49,6 @@ public class DocumentProcessingWorkerService {
             extractDocuments(processingGroupId);
 
             mapDocumentScopes(processingGroupId);
-
-            generateLearningContents(processingGroupId);
 
             processingStatusService.complete(processingGroupId);
 
@@ -134,34 +130,6 @@ public class DocumentProcessingWorkerService {
 
         log.info(
                 "문서 목차 매핑 완료. processingGroupId={}",
-                processingGroupId
-        );
-    }
-
-    private void generateLearningContents(
-            Long processingGroupId
-    ) {
-        processingStatusService.updateStep(
-                processingGroupId,
-                DocumentProcessingStep.LEARNING_CONTENT_GENERATING
-        );
-
-        log.info(
-                "목차별 개념 설명 생성 시작. processingGroupId={}",
-                processingGroupId
-        );
-
-        learningContentBatchGenerationService.generate(
-                processingGroupId
-        );
-
-        processingStatusService.updateStep(
-                processingGroupId,
-                DocumentProcessingStep.LEARNING_CONTENT_GENERATED
-        );
-
-        log.info(
-                "목차별 개념 설명 생성 완료. processingGroupId={}",
                 processingGroupId
         );
     }

@@ -77,4 +77,20 @@ public class UserDocumentConcept {
         return new UserDocumentConcept(user, document, toc,
                 UserDocumentConceptSourceType.AI_GENERATED, title, content);
     }
+
+    public void replaceGeneratedContent(String title, String content) {
+        if (title == null || title.isBlank() || content == null || content.isBlank()) {
+            throw new IllegalArgumentException("생성 개념의 제목과 내용은 필수입니다.");
+        }
+        this.title = title.trim();
+        this.content = content.trim();
+        this.sourceType = UserDocumentConceptSourceType.AI_GENERATED;
+    }
+
+    public void updateContent(String content) {
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("개념 설명 내용은 필수입니다.");
+        }
+        this.content = content.trim();
+    }
 }

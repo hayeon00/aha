@@ -27,6 +27,13 @@ public interface DocumentScopeMappingRepository extends JpaRepository<DocumentSc
         """)
     int deleteAllByProcessingGroupId(@Param("processingGroupId") Long processingGroupId);
 
+    @Modifying(flushAutomatically = true)
+    @Query("""
+        delete from DocumentScopeMapping mapping
+        where mapping.documentChunk.sourceDocument.id = :documentId
+        """)
+    int deleteAllByDocumentId(@Param("documentId") Long documentId);
+
     void deleteAllByDocumentChunk_Id(Long documentChunkId);
 
     @Query("""

@@ -46,11 +46,6 @@ public interface DocumentProcessingGroupRepository extends JpaRepository<Documen
             Long userId
     );
 
-    List<DocumentProcessingGroup>
-    findAllByUserExam_User_IdAndStatusInOrderByCreatedAtDesc(
-            Long userId,
-            List<DocumentProcessingStatus> statuses
-    );
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""

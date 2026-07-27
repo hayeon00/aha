@@ -14,9 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 비동기 문서 처리 상태 조회 요청을 처리한다.
- */
 @RestController
 @RequestMapping("/api/v1/ai-learning/document-processings")
 @RequiredArgsConstructor
@@ -25,20 +22,8 @@ public class DocumentProcessingController {
     private final DocumentProcessingQueryService documentProcessingQueryService;
     private final DocumentProcessingRetryService documentProcessingRetryService;
 
-    @GetMapping("/active")
-    public ResponseEntity<ApiResponse<List<DocumentProcessingGroupResponseDto>>>
-    getActiveProcessingGroups(@AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        List<DocumentProcessingGroupResponseDto> response =
-                documentProcessingQueryService.getActiveProcessingGroups(userDetails.getId());
-
-        return ResponseEntity.ok(ApiResponse.success(
-                HttpStatus.OK.value(),
-                "진행 중인 문서 처리 목록 조회에 성공했습니다.",
-                response
-        ));
-    }
-
+    // 문서 업로드에 실패했을 경우 프론트에서 재시도 요청
     @PostMapping("/{processingGroupId}/retry")
     public ResponseEntity<ApiResponse<DocumentProcessingGroupResponseDto>> retryProcessing(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -55,12 +40,8 @@ public class DocumentProcessingController {
         ));
     }
 
-    /**
-     * 특정 처리 그룹의 상태를 조회한다.
-     *
-     * 문서 업로드 응답으로 받은 processingGroupId를 이용해
-     * 프론트에서 주기적으로 호출한다.
-     */
+
+    // 처리 상태 조회 -> 프론트에서 2초마다 폴링
     @GetMapping("/{processingGroupId}")
     public ResponseEntity<ApiResponse<DocumentProcessingGroupResponseDto>> getProcessingGroup(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -81,9 +62,7 @@ public class DocumentProcessingController {
         );
     }
 
-    /**
-     * 특정 사용자 시험의 가장 최근 처리 상태를 조회한다.
-     */
+    // 가장 최근 처리 상태 조회, 새로고침 이후에도 기존 작업 복구
     @GetMapping("/user-exams/{userExamId}/latest")
     public ResponseEntity<ApiResponse<DocumentProcessingStateResponseDto>> getLatestProcessingState(
             @AuthenticationPrincipal CustomUserDetails userDetails,

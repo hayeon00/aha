@@ -13,6 +13,7 @@ public record UserDocumentConceptResponseDto(
         String title,
         String content,
         UserDocumentConceptSourceType sourceType,
+        boolean isExternalKnowledge,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -20,6 +21,8 @@ public record UserDocumentConceptResponseDto(
         return new UserDocumentConceptResponseDto(
                 concept.getId(), concept.getDocument().getId(), concept.getToc().getId(),
                 concept.getToc().getTitle(), concept.getTitle(), concept.getContent(),
-                concept.getSourceType(), concept.getCreatedAt(), concept.getUpdatedAt());
+                concept.getSourceType(),
+                concept.getSourceType() == UserDocumentConceptSourceType.AI_GENERATED,
+                concept.getCreatedAt(), concept.getUpdatedAt());
     }
 }

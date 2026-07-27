@@ -130,8 +130,8 @@ public class DocumentProcessingGroup {
         validateNotFinished();
         validateProcessingStatus();
 
-        if (this.currentStep != DocumentProcessingStep.LEARNING_CONTENT_GENERATED) {
-            throw new IllegalStateException("학습 콘텐츠 생성이 완료된 작업만 최종 완료 처리할 수 있습니다.");
+        if (this.currentStep != DocumentProcessingStep.SCOPE_MAPPING) {
+            throw new IllegalStateException("문서 목차 매핑이 완료된 작업만 최종 완료 처리할 수 있습니다.");
         }
 
         this.status = DocumentProcessingStatus.COMPLETED;
