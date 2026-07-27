@@ -22,6 +22,11 @@ public class AiConceptGenerationClient {
     }
 
     public GeneratedLearningContent generate(String title, String parentContext) {
+        return generate(title, parentContext, null);
+    }
+
+    public GeneratedLearningContent generate(
+            String title, String parentContext, String customPrompt) {
         String systemPrompt = """
                 당신은 자격증 시험 학습을 돕는 전문 교육 콘텐츠 작성자입니다.
                 아래 목차의 표준 개념 설명을 정확하고 간결한 한국어 마크다운으로 작성하세요.
@@ -36,7 +41,15 @@ public class AiConceptGenerationClient {
 
                 [설명할 목차]
                 %s
-                """.formatted(parentContext, title);
+
+                [학습자의 추가 요청]
+                %s
+                """.formatted(
+                parentContext,
+                title,
+                customPrompt == null || customPrompt.isBlank()
+                        ? "기본 구성으로 설명해 주세요."
+                        : customPrompt.trim());
 
         try {
             OpenAiChatResponse response = openAiRestClient.post()

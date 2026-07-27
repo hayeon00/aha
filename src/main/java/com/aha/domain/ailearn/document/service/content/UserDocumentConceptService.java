@@ -34,6 +34,7 @@ public class UserDocumentConceptService {
     private final UserDocumentConceptRepository conceptRepository;
     private final UserLearningContentRepository learningContentRepository;
     private final AiConceptGenerationClient generationClient;
+    private final LearningContentBatchGenerationService learningContentBatchGenerationService;
 
     @Transactional(readOnly = true)
     public List<OwnedDocumentResponseDto> getOwnedDocuments(Long userId, Long userExamId) {
@@ -82,31 +83,80 @@ public class UserDocumentConceptService {
 
     @Transactional
     public UserDocumentConceptResponseDto generate(Long userId, Long documentId, Long tocId) {
+        return generate(userId, documentId, tocId, null);
+    }
+
+    @Transactional
+    public UserDocumentConceptResponseDto generate(
+            Long userId, Long documentId, Long tocId, String customPrompt) {
         validateIds(userId, documentId, tocId);
+        if (customPrompt != null && customPrompt.length() > 1000) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
         // 문서 행 잠금이 동일 tenant/document/toc 요청을 직렬화한다.
         SourceDocument document = documentRepository.findOwnedByIdForUpdate(documentId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
         UserDocumentConcept cached = conceptRepository
                 .findByUser_IdAndDocument_IdAndToc_Id(userId, documentId, tocId)
                 .orElse(null);
-        if (cached != null) return UserDocumentConceptResponseDto.from(cached);
+        if (cached != null && (customPrompt == null || customPrompt.isBlank())) {
+            return UserDocumentConceptResponseDto.from(cached);
+        }
 
         ExamScopeNode topic = getValidTopic(document, tocId);
         if (mappingRepository.findMappedTocIdsByDocumentId(documentId).contains(tocId)) {
             throw new BusinessException(ErrorCode.INVALID_LEARNING_CONTENT_TARGET);
         }
         GeneratedLearningContent generated = generationClient.generate(
-                topic.getTitle(), buildParentContext(topic));
-        UserDocumentConcept saved = conceptRepository.save(UserDocumentConcept.aiGenerated(
-                document.getProcessingGroup().getUserExam().getUser(), document, topic,
-                generated.title(), generated.body()));
+                topic.getTitle(), buildParentContext(topic), customPrompt);
+        UserDocumentConcept saved;
+        if (cached == null) {
+            saved = conceptRepository.save(UserDocumentConcept.aiGenerated(
+                    document.getProcessingGroup().getUserExam().getUser(), document, topic,
+                    generated.title(), generated.body()));
+        } else {
+            cached.replaceGeneratedContent(generated.title(), generated.body());
+            saved = conceptRepository.save(cached);
+        }
         return UserDocumentConceptResponseDto.from(saved);
+    }
+
+    @Transactional
+    public UserDocumentConceptResponseDto update(
+            Long userId, Long documentId, Long tocId, String content) {
+        validateIds(userId, documentId, tocId);
+        if (content == null || content.isBlank() || content.length() > 50000) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        getOwnedDocument(userId, documentId);
+        UserDocumentConcept concept = conceptRepository
+                .findByUser_IdAndDocument_IdAndToc_Id(userId, documentId, tocId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.USER_LEARNING_CONTENT_NOT_FOUND));
+        if (concept.getSourceType() != UserDocumentConceptSourceType.AI_GENERATED) {
+            throw new BusinessException(ErrorCode.INVALID_LEARNING_CONTENT_TARGET);
+        }
+        concept.updateContent(content);
+        return UserDocumentConceptResponseDto.from(conceptRepository.save(concept));
+    }
+
+    @Transactional
+    public void createLearningNote(Long userId, Long documentId) {
+        SourceDocument document = documentRepository.findOwnedByIdForUpdate(documentId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
+        learningContentBatchGenerationService.generate(document.getProcessingGroup().getId());
     }
 
     @Transactional
     public List<UserDocumentConceptResponseDto> generateMissing(Long userId, Long documentId) {
         SourceDocument document = documentRepository.findOwnedByIdForUpdate(documentId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SOURCE_DOCUMENT_NOT_FOUND));
+        return generateMissingConcepts(userId, document);
+    }
+
+    private List<UserDocumentConceptResponseDto> generateMissingConcepts(
+            Long userId, SourceDocument document) {
+        Long documentId = document.getId();
         Set<Long> mapped = mappingRepository.findMappedTocIdsByDocumentId(documentId);
         Map<Long, UserDocumentConcept> existing = conceptRepository
                 .findAllByUser_IdAndDocument_IdOrderByToc_DisplayOrderAsc(userId, documentId)
