@@ -44,20 +44,6 @@ public class DocumentProcessingQueryService {
                 .orElseGet(DocumentProcessingStateResponseDto::idle);
     }
 
-    public List<DocumentProcessingGroupResponseDto> getActiveProcessingGroups(Long userId) {
-        if (userId == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-
-        return documentProcessingGroupRepository
-                .findAllByUserExam_User_IdAndStatusInOrderByCreatedAtDesc(
-                        userId,
-                        List.of(DocumentProcessingStatus.PENDING, DocumentProcessingStatus.PROCESSING)
-                )
-                .stream()
-                .map(DocumentProcessingGroupResponseDto::from)
-                .toList();
-    }
 
     private void validateInput(Long userId, Long processingGroupId) {
 
