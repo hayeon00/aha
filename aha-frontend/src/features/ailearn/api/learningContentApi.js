@@ -9,11 +9,3 @@ export const getUserLearningContent = (
     );
 };
 
-export const getMappedDocumentChunks = (
-    userExamId,
-    examScopeNodeId
-) => {
-    return axiosInstance.get(
-        `/api/v1/ai-learning/document-mappings/user-exams/${userExamId}/scope-nodes/${examScopeNodeId}/chunks`
-    );
-};

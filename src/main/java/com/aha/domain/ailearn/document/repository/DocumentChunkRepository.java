@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import com.aha.domain.ailearn.document.enums.DocumentChunkMappingStatus;
 
 public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Long> {
 
@@ -29,22 +28,6 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
             order by dc.chunkOrder asc
             """)
     List<DocumentChunk> findAllByProcessingGroupId(@Param("processingGroupId") Long processingGroupId);
-
-    @Query("""
-            select chunk
-            from DocumentChunk chunk
-            join fetch chunk.sourceDocument document
-            join fetch document.processingGroup processingGroup
-            where processingGroup.userExam.id = :userExamId
-              and processingGroup.userExam.user.id = :userId
-              and chunk.mappingStatus = :status
-            order by chunk.id desc
-            """)
-    List<DocumentChunk> findAllByUserExamAndMappingStatus(
-            @Param("userId") Long userId,
-            @Param("userExamId") Long userExamId,
-            @Param("status") DocumentChunkMappingStatus status
-    );
 
     @Query("""
             select chunk
