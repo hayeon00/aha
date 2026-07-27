@@ -11,10 +11,20 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer,Long> {
 
     @Query("""
     select ua from UserAnswer ua
-    join fetch ua.problem
+    join fetch ua.problem p
     where ua.pastPaperAttempt.id = :attemptId
 """)
     List<UserAnswer> findByPastPaperAttempt_IdWithProblem(@Param("attemptId")Long attemptId);
 
+    @Query("""
+    select ua from UserAnswer ua
+    join fetch ua.problem p
+    join fetch p.examScopeNode
+    where ua.pastPaperAttempt.id = :attemptId
+""")
+    List<UserAnswer> findByPastPaperAttempt_IdWithProblemAndExamScopeNode(@Param("attemptId")Long attemptId);
+
     Optional<UserAnswer> findByPastPaperAttempt_IdAndProblem_Id(Long attemptId, Long problemId);
+
+    List<UserAnswer> findByPastPaperAttempt_Id(Long attemptId);
 }

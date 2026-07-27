@@ -464,6 +464,20 @@
     transform: translateY(-2px);
 }
 
+.workbook-start-button.is-resume {
+    border-color: #e86b19;
+    background: #fff4ea;
+    color: #d85b08;
+    box-shadow: inset 0 0 0 1px rgba(232, 107, 25, 0.05);
+}
+
+.workbook-start-button.is-resume:hover:not(:disabled) {
+    border-color: #d85b08;
+    background: #ffe9d8;
+    color: #c44f05;
+    box-shadow: 0 8px 18px rgba(216, 91, 8, 0.13);
+}
+
 .workbook-start-button:focus-visible {
     outline: 3px solid rgba(255, 106, 0, 0.22);
     outline-offset: 2px;
