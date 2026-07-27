@@ -234,7 +234,7 @@ function MainLayout({ onLogout }) {
                                 />
                             </svg>
                         </span>
-                        <span>개념 학습</span>
+                        <span>노트 스튜디오</span>
                     </button>
 
                     <button

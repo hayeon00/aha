@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+    createDocumentLearningNote,
     generateDocumentConcept,
-    generateMissingDocumentConcepts,
     getDocumentConceptDashboard,
     getOwnedDocuments,
+    updateDocumentConcept,
 } from "../api/documentConceptApi.js";
 import { getApiData } from "../utils/apiResponseUtils.js";
 
@@ -14,6 +15,7 @@ export function useDocumentConceptDashboard({ userExamId, enabled }) {
     const [loading, setLoading] = useState(false);
     const [generatingIds, setGeneratingIds] = useState([]);
     const [batchGenerating, setBatchGenerating] = useState(false);
+    const [savingIds, setSavingIds] = useState([]);
     const [error, setError] = useState("");
 
     const loadDashboard = useCallback(async (nextDocumentId) => {
@@ -57,13 +59,14 @@ export function useDocumentConceptDashboard({ userExamId, enabled }) {
         loadDashboard(nextId);
     }, [loadDashboard]);
 
-    const generateOne = useCallback(async (tocId) => {
+    const generateOne = useCallback(async (tocId, prompt) => {
         if (!documentId || generatingIds.includes(tocId)) return;
         try {
             setGeneratingIds((ids) => [...ids, tocId]);
             setError("");
-            await generateDocumentConcept(documentId, tocId);
+            const response = await generateDocumentConcept(documentId, tocId, prompt);
             await loadDashboard(documentId);
+            return getApiData(response);
         } catch (requestError) {
             setError(requestError.response?.data?.message || "AI 보완 설명 생성에 실패했습니다.");
         } finally {
@@ -71,20 +74,39 @@ export function useDocumentConceptDashboard({ userExamId, enabled }) {
         }
     }, [documentId, generatingIds, loadDashboard]);
 
-    const generateAll = useCallback(async () => {
-        if (!documentId || batchGenerating) return;
+    const generateAll = useCallback(async (targetDocumentId = documentId) => {
+        if (!targetDocumentId || batchGenerating) return false;
         try {
             setBatchGenerating(true);
             setError("");
-            await generateMissingDocumentConcepts(documentId);
-            await loadDashboard(documentId);
+            await createDocumentLearningNote(targetDocumentId);
+            await loadDashboard(targetDocumentId);
+            return true;
         } catch (requestError) {
-            setError(requestError.response?.data?.message || "일괄 생성 중 일부 작업에 실패했습니다.");
+            setError(requestError.response?.data?.message || "학습노트를 만들지 못했습니다.");
+            return false;
         } finally {
             setBatchGenerating(false);
         }
     }, [documentId, batchGenerating, loadDashboard]);
 
+    const saveOne = useCallback(async (tocId, content) => {
+        if (!documentId || savingIds.includes(tocId)) return null;
+        try {
+            setSavingIds((ids) => [...ids, tocId]);
+            setError("");
+            const response = await updateDocumentConcept(documentId, tocId, content);
+            await loadDashboard(documentId);
+            return getApiData(response);
+        } catch (requestError) {
+            setError(requestError.response?.data?.message || "개념 설명 저장에 실패했습니다.");
+            return null;
+        } finally {
+            setSavingIds((ids) => ids.filter((id) => id !== tocId));
+        }
+    }, [documentId, savingIds, loadDashboard]);
+
     return { documents, documentId, dashboard, loading, error, generatingIds,
-        batchGenerating, selectDocument, generateOne, generateAll, refresh: loadDocuments };
+        batchGenerating, savingIds, selectDocument, generateOne, generateAll,
+        saveOne, refresh: loadDocuments };
 }

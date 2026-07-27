@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import ConceptContentView from "../components/ConceptContentView.jsx";
+import ConceptEditor from "../components/ConceptEditor.jsx";
+import UnmappedTopicEmptyState from "../components/UnmappedTopicEmptyState.jsx";
+import NoteHeader from "../components/NoteHeader.jsx";
 import UploadProgressModal from "../components/UploadProgressModal.jsx";
 import { useDocumentProcessing } from "../hooks/useDocumentProcessing.js";
 import { useDocumentConceptDashboard } from "../hooks/useDocumentConceptDashboard.js";
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
+import { getLearningNotes, saveLearningNote } from "../utils/learningNoteStorage.js";
 
 import "./AiLearningPage.css";
 
@@ -16,14 +20,30 @@ function AiLearningPage() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const fileInputRef = useRef(null);
+    const examDropdownRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
     const [localFiles, setLocalFiles] = useState([]);
     const [hiddenDocumentIds, setHiddenDocumentIds] = useState([]);
     const [fileMessage, setFileMessage] = useState("");
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [draftNote, setDraftNote] = useState("");
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [saveFeedback, setSaveFeedback] = useState("");
+    const [noteOverrides, setNoteOverrides] = useState(() => Object.fromEntries(
+        getLearningNotes().flatMap((note) => {
+            if (note.topicContents) return Object.entries(note.topicContents);
+            return note.tocId ? [[note.tocId, note.content]] : [];
+        }),
+    ));
+    const [noteTitlesByDocument, setNoteTitlesByDocument] = useState(() => Object.fromEntries(
+        getLearningNotes().map((note) => [note.documentId, note.title]),
+    ));
 
     const {
         userExams,
         selectedUserExamId,
+        selectedUserExam,
         selectedExamVersionId,
         isExamLoading,
         examMessage,
@@ -37,7 +57,7 @@ function AiLearningPage() {
         isScopeLoading,
         scopeMessage,
         toggleNode,
-        handleSelectNode,
+        selectNodeById,
         resetScopeNodes,
     } = useExamScopeNodes({ examVersionId: selectedExamVersionId });
 
@@ -72,6 +92,26 @@ function AiLearningPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [completedProcessingKey]);
 
+    useEffect(() => {
+        if (!isExamDropdownOpen) return undefined;
+
+        const closeOnOutsideClick = (event) => {
+            if (!examDropdownRef.current?.contains(event.target)) {
+                setIsExamDropdownOpen(false);
+            }
+        };
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape") setIsExamDropdownOpen(false);
+        };
+
+        document.addEventListener("mousedown", closeOnOutsideClick);
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.removeEventListener("mousedown", closeOnOutsideClick);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [isExamDropdownOpen]);
+
     const uploadedDocuments = useMemo(() => {
         const serverDocuments = documentRoom.documents
             .filter((document) => !hiddenDocumentIds.includes(document.documentId))
@@ -88,19 +128,58 @@ function AiLearningPage() {
     }, [documentRoom.documents, hiddenDocumentIds, localFiles]);
 
     const completedDocuments = uploadedDocuments.filter((document) => !document.local);
-    const canStartLearning = completedDocuments.length > 0 && !isUploading && !documentRoom.loading;
+    const canStartLearning = completedDocuments.length > 0
+        && !isUploading
+        && !documentRoom.loading
+        && !documentRoom.batchGenerating;
     const isStudyMode = searchParams.get("view") === "notes";
-    const dashboardChapters = [
+    const dashboardChapters = useMemo(() => [
         ...(documentRoom.dashboard?.mapped ?? []).map((chapter) => ({ ...chapter, mapped: true })),
         ...(documentRoom.dashboard?.unmapped ?? []).map((chapter) => ({ ...chapter, mapped: false })),
-    ];
+    ], [documentRoom.dashboard]);
     const selectedChapter = dashboardChapters.find(
         (chapter) => Number(chapter.tocId) === Number(selectedNodeId),
     ) ?? null;
+    const mappedChapters = dashboardChapters.filter((chapter) => chapter.mapped);
+    const mappedTocIds = new Set(mappedChapters.map((chapter) => Number(chapter.tocId)));
+    const knownTocIds = new Set(dashboardChapters.map((chapter) => Number(chapter.tocId)));
+    const selectedChapterWithOverride = selectedChapter
+        ? {
+            ...selectedChapter,
+            content: noteOverrides[selectedChapter.tocId] ?? selectedChapter.content,
+        }
+        : null;
+    const noteTitle = noteTitlesByDocument[documentRoom.documentId]
+        ?? `${selectedUserExam?.examCode ?? "나의"} 개념 학습`;
+
+    useEffect(() => {
+        const requestedDocumentId = Number(searchParams.get("documentId"));
+        if (
+            isStudyMode
+            && requestedDocumentId
+            && documentRoom.documentId !== requestedDocumentId
+            && documentRoom.documents.some((document) => document.documentId === requestedDocumentId)
+        ) {
+            documentRoom.selectDocument(requestedDocumentId);
+        }
+    }, [documentRoom, isStudyMode, searchParams]);
+
+    useEffect(() => {
+        const requestedTocId = Number(searchParams.get("tocId"));
+        if (
+            isStudyMode
+            && requestedTocId
+            && selectedNodeId !== requestedTocId
+            && dashboardChapters.some((chapter) => Number(chapter.tocId) === requestedTocId)
+        ) {
+            selectNodeById(requestedTocId);
+        }
+    }, [dashboardChapters, isStudyMode, searchParams, selectNodeById, selectedNodeId]);
 
     const message = examMessage || scopeMessage || fileMessage;
 
     const handleUserExamChange = (userExamId) => {
+        setIsExamDropdownOpen(false);
         changeUserExam(userExamId);
         resetScopeNodes();
         resetDocumentState();
@@ -138,7 +217,7 @@ function AiLearningPage() {
     };
 
     const handleFileChange = async (event) => {
-        const files = event.target.files;
+        const files = Array.from(event.target.files || []);
         event.target.value = "";
         await handleFiles(files);
     };
@@ -157,13 +236,142 @@ function AiLearningPage() {
         setHiddenDocumentIds((current) => [...current, document.documentId]);
     };
 
-    const handleStartLearning = () => {
+    const handleStartLearning = async () => {
         if (!canStartLearning) return;
         const firstDocumentId = completedDocuments[0].documentId;
         if (firstDocumentId && documentRoom.documentId !== firstDocumentId) {
             documentRoom.selectDocument(firstDocumentId);
         }
-        setSearchParams({ view: "notes" });
+        const hasCompleteNote = documentRoom.documentId === firstDocumentId
+            && mappedChapters.length > 0
+            && mappedChapters.every((chapter) => chapter.content);
+        if (!hasCompleteNote) {
+            const created = await documentRoom.generateAll(firstDocumentId);
+            if (!created) return;
+        }
+        setSearchParams({ view: "notes", documentId: String(firstDocumentId) });
+    };
+
+    const handleChapterSelect = (chapter) => {
+        selectNodeById(chapter.tocId);
+        setIsEditMode(false);
+        setAiPrompt("");
+        setSaveFeedback("");
+        setDraftNote(noteOverrides[chapter.tocId] ?? chapter.content ?? "");
+    };
+
+    const handleEditToggle = () => {
+        if (!selectedChapterWithOverride) return;
+        setDraftNote(selectedChapterWithOverride.content ?? "");
+        setIsEditMode((current) => !current);
+    };
+
+    const handleEditComplete = async () => {
+        if (!selectedChapterWithOverride) return;
+        if (!selectedChapterWithOverride.mapped) {
+            const saved = await documentRoom.saveOne(
+                selectedChapterWithOverride.tocId,
+                draftNote,
+            );
+            if (!saved) return;
+        }
+        setNoteOverrides((current) => ({
+            ...current,
+            [selectedChapterWithOverride.tocId]: draftNote,
+        }));
+        saveLearningNote({
+            documentId: documentRoom.documentId,
+            tocId: selectedChapterWithOverride.tocId,
+            title: noteTitle,
+            content: draftNote,
+        });
+        setIsEditMode(false);
+    };
+
+    const handleTitleSave = async (title) => {
+        if (!selectedChapterWithOverride) return;
+        setNoteTitlesByDocument((current) => ({
+            ...current,
+            [documentRoom.documentId]: title,
+        }));
+        saveLearningNote({
+            documentId: documentRoom.documentId,
+            tocId: selectedChapterWithOverride.tocId,
+            title,
+            content: selectedChapterWithOverride.content ?? "",
+        });
+    };
+
+    const handleAiGenerate = async (prompt = aiPrompt) => {
+        if (!selectedChapterWithOverride || selectedChapterWithOverride.mapped || !prompt.trim()) return;
+        setSaveFeedback("");
+        const generated = await documentRoom.generateOne(
+            selectedChapterWithOverride.tocId,
+            prompt.trim(),
+        );
+        if (generated?.content) {
+            setNoteOverrides((current) => ({
+                ...current,
+                [selectedChapterWithOverride.tocId]: generated.content,
+            }));
+            setDraftNote(generated.content);
+            setIsEditMode(true);
+        }
+    };
+
+    const handleEmptySummarySave = (content) => {
+        if (!selectedChapterWithOverride) return;
+        setNoteOverrides((current) => ({
+            ...current,
+            [selectedChapterWithOverride.tocId]: content,
+        }));
+        saveLearningNote({
+            documentId: documentRoom.documentId,
+            tocId: selectedChapterWithOverride.tocId,
+            title: noteTitle,
+            content,
+        });
+    };
+
+    const handleSaveConcept = async () => {
+        if (!selectedChapterWithOverride) return;
+        const content = isEditMode
+            ? draftNote
+            : selectedChapterWithOverride.content ?? "";
+        const saved = await documentRoom.saveOne(
+            selectedChapterWithOverride.tocId,
+            content,
+        );
+        if (!saved) return;
+        setNoteOverrides((current) => ({
+            ...current,
+            [selectedChapterWithOverride.tocId]: content,
+        }));
+        saveLearningNote({
+            documentId: documentRoom.documentId,
+            tocId: selectedChapterWithOverride.tocId,
+            title: noteTitle,
+            content,
+        });
+        setIsEditMode(false);
+        setSaveFeedback("저장됨");
+    };
+
+    const handleStudyTreeSelect = (node) => {
+        if (node.children?.length) {
+            toggleNode(node.id);
+            return;
+        }
+
+        const chapter = dashboardChapters.find(
+            (item) => Number(item.tocId) === Number(node.id),
+        ) ?? {
+            tocId: node.id,
+            tocTitle: node.title,
+            content: "",
+            mapped: false,
+        };
+        handleChapterSelect(chapter);
     };
 
     if (isExamLoading) {
@@ -181,23 +389,39 @@ function AiLearningPage() {
         <main className="concept-page">
             <header className="concept-topbar">
                 <div className="concept-topbar-left">
-                    <div className="exam-dropdown-wrap">
-                        <select
-                            className="exam-select-control"
-                            value={selectedUserExamId ?? ""}
-                            onChange={(event) => handleUserExamChange(Number(event.target.value))}
+                    <div className="exam-dropdown-wrap" ref={examDropdownRef}>
+                        <button
+                            type="button"
+                            className={`exam-select-trigger ${isExamDropdownOpen ? "is-open" : ""}`}
+                            onClick={() => setIsExamDropdownOpen((current) => !current)}
                             disabled={userExams.length === 0}
+                            aria-expanded={isExamDropdownOpen}
+                            aria-haspopup="listbox"
                             aria-label="학습 시험 선택"
                         >
-                            {userExams.length === 0 ? (
-                                <option value="">활성 시험 없음</option>
-                            ) : userExams.map((userExam) => (
-                                <option key={userExam.userExamId} value={userExam.userExamId}>
-                                    {userExam.examCode}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDownIcon className="exam-select-arrow" />
+                            <span>{selectedUserExam?.examCode ?? "활성 시험 없음"}</span>
+                            <ChevronDownIcon className="exam-select-arrow" />
+                        </button>
+                        {isExamDropdownOpen && (
+                            <div className="exam-select-menu" role="listbox" aria-label="학습 시험 목록">
+                                {userExams.map((userExam) => {
+                                    const isSelected = userExam.userExamId === selectedUserExamId;
+                                    return (
+                                        <button
+                                            type="button"
+                                            role="option"
+                                            aria-selected={isSelected}
+                                            className={isSelected ? "is-selected" : ""}
+                                            key={userExam.userExamId}
+                                            onClick={() => handleUserExamChange(userExam.userExamId)}
+                                        >
+                                            <span>{userExam.examCode}</span>
+                                            {isSelected && <span className="exam-option-check">✓</span>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                     <h1>개념 학습</h1>
                 </div>
@@ -227,57 +451,102 @@ function AiLearningPage() {
                             <ArrowLeftIcon /> 문서 관리로 돌아가기
                         </button>
                         <div className="study-section-heading">
-                            <span>LEARNING NOTE</span>
-                            <h2>목차별 개념 노트</h2>
+                            <h2>학습 목차</h2>
                         </div>
-                        <div className="toc-list">
+                        <div className="toc-list study-tree-list">
                             <StudyTocTree
                                 nodes={scopeNodes}
                                 expandedNodeIds={expandedNodeIds}
                                 selectedNodeId={selectedNodeId}
+                                mappedTocIds={mappedTocIds}
+                                knownTocIds={knownTocIds}
                                 onToggle={toggleNode}
-                                onSelect={handleSelectNode}
+                                onSelect={handleStudyTreeSelect}
                             />
                         </div>
                     </aside>
 
                     <section className="study-notes-content">
-                        <ConceptContentView
-                            chapter={selectedChapter}
-                            loading={documentRoom.loading}
-                            generating={documentRoom.generatingIds.includes(selectedChapter?.tocId)}
+                        <NoteHeader
+                            title={noteTitle}
+                            onTitleSave={handleTitleSave}
+                            documents={completedDocuments}
+                            selectedDocumentId={documentRoom.documentId}
+                            onDocumentSelect={documentRoom.selectDocument}
+                            editing={isEditMode}
+                            onEdit={isEditMode ? handleEditComplete : handleEditToggle}
                         />
+                        {selectedChapterWithOverride
+                            && !selectedChapterWithOverride.mapped
+                            && selectedChapterWithOverride.content && (
+                            <div className="ai-result-header">
+                                <span className="external-knowledge-badge">
+                                    💡 표준 개념 지식 기반 생성됨 (업로드 문서 내용 없음)
+                                </span>
+                                {!isEditMode && (
+                                    <div className="ai-result-actions">
+                                        <span>{saveFeedback}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAiGenerate(
+                                                aiPrompt || "핵심 개념을 다른 구성과 예시로 다시 설명해줘",
+                                            )}
+                                            disabled={documentRoom.generatingIds.includes(selectedChapterWithOverride.tocId)}
+                                        >
+                                            다시 생성 🔄
+                                        </button>
+                                        <button type="button" onClick={handleEditToggle}>편집 ✏️</button>
+                                        <button
+                                            type="button"
+                                            className="save"
+                                            onClick={handleSaveConcept}
+                                            disabled={documentRoom.savingIds.includes(selectedChapterWithOverride.tocId)}
+                                        >
+                                            저장 💾
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {selectedChapterWithOverride
+                            && !selectedChapterWithOverride.mapped
+                            && !selectedChapterWithOverride.content
+                            && !isEditMode ? (
+                            <UnmappedTopicEmptyState
+                                topicTitle={selectedChapterWithOverride.tocTitle}
+                                onAddFiles={handleFiles}
+                                onSaveSummary={handleEmptySummarySave}
+                            />
+                        ) : isEditMode ? (
+                            <ConceptEditor
+                                value={draftNote}
+                                onChange={setDraftNote}
+                                onRegenerate={() => handleAiGenerate(
+                                    aiPrompt || "핵심 개념을 다른 구성과 예시로 다시 설명해줘",
+                                )}
+                                onCancel={handleEditToggle}
+                                onSave={selectedChapterWithOverride?.mapped
+                                    ? handleEditComplete
+                                    : handleSaveConcept}
+                                generating={documentRoom.generatingIds.includes(selectedChapterWithOverride?.tocId)}
+                                saving={documentRoom.savingIds.includes(selectedChapterWithOverride?.tocId)}
+                                isExternalKnowledge={!selectedChapterWithOverride?.mapped}
+                            />
+                        ) : (
+                            <ConceptContentView
+                                chapter={selectedChapterWithOverride}
+                                loading={documentRoom.loading}
+                                generating={documentRoom.generatingIds.includes(selectedChapter?.tocId)}
+                            />
+                        )}
                     </section>
-
-                    <aside className="workspace-card study-source-panel">
-                        <div className="study-section-heading">
-                            <span>SOURCE DOCUMENT</span>
-                            <h2>학습 자료</h2>
-                        </div>
-                        <div className="study-source-list">
-                            {completedDocuments.map((document) => (
-                                <button
-                                    type="button"
-                                    key={document.id}
-                                    className={document.documentId === documentRoom.documentId ? "selected" : ""}
-                                    onClick={() => documentRoom.selectDocument(document.documentId)}
-                                >
-                                    <span className={`file-type ${getFileType(document.name).toLowerCase()}`}>
-                                        {getFileType(document.name)}
-                                    </span>
-                                    <strong>{document.name}</strong>
-                                    <CheckCircleIcon />
-                                </button>
-                            ))}
-                        </div>
-                        <p className="study-source-caption">
-                            선택한 문서를 바탕으로 목차별 핵심 개념을 정리했어요.
-                        </p>
-                    </aside>
                 </section>
             ) : (
                 <section className="concept-workspace">
                     <aside className="workspace-card toc-panel">
+                        <header className="panel-section-header">
+                            <h2>시험 목차</h2>
+                        </header>
                         <div className="toc-list">
                             {isScopeLoading ? (
                                 <PanelLoading label="목차를 불러오는 중입니다..." />
@@ -294,7 +563,11 @@ function AiLearningPage() {
                     </aside>
 
                     <section className="workspace-card upload-panel">
-                        <div
+                        <header className="panel-section-header">
+                            <h2>학습 자료 업로드</h2>
+                        </header>
+                        <label
+                            htmlFor="learning-document-upload"
                             className={`upload-dropzone ${isDragging ? "is-dragging" : ""} ${isUploading ? "is-uploading" : ""}`}
                             onDragEnter={(event) => {
                                 event.preventDefault();
@@ -305,15 +578,15 @@ function AiLearningPage() {
                                 if (!event.currentTarget.contains(event.relatedTarget)) setIsDragging(false);
                             }}
                             onDrop={handleDrop}
-                            onClick={() => !isUploading && fileInputRef.current?.click()}
-                            role="button"
                             tabIndex={0}
                             onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
+                                if (!isUploading && (event.key === "Enter" || event.key === " ")) {
+                                    event.preventDefault();
                                     fileInputRef.current?.click();
                                 }
                             }}
                             aria-label="학습 문서 업로드"
+                            aria-disabled={isUploading}
                         >
                             <div className="upload-visual" aria-hidden="true"><UploadCloudIcon /></div>
                             <h3>
@@ -331,24 +604,25 @@ function AiLearningPage() {
                                 )}
                             </p>
                             <span className="upload-hint">PDF, DOCX · 최대 10개 파일</span>
-                        </div>
+                        </label>
 
                         <input
+                            id="learning-document-upload"
                             ref={fileInputRef}
                             type="file"
                             accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             multiple
                             className="upload-file-input"
                             onChange={handleFileChange}
+                            disabled={isUploading}
                         />
                     </section>
 
                     <aside className="workspace-card documents-panel">
-                        <div className="documents-micro-header">
-                            <span>MY DOCUMENTS</span>
-                            <i />
+                        <header className="panel-section-header documents-section-header">
+                            <h2>MY DOCUMENTS</h2>
                             <strong>{uploadedDocuments.length}개</strong>
-                        </div>
+                        </header>
 
                         <div className="document-list">
                             {documentRoom.loading && uploadedDocuments.length === 0 ? (
@@ -365,10 +639,18 @@ function AiLearningPage() {
                                         {getFileType(document.name)}
                                     </span>
                                     <div className="document-info">
-                                        <strong title={document.name}>{document.name}</strong>
+                                        <div className="document-title-row">
+                                            <strong title={document.name}>{document.name}</strong>
+                                            {document.local && (
+                                                <i
+                                                    className="document-loading-indicator"
+                                                    role="status"
+                                                    aria-label={`${document.name} 처리 중`}
+                                                />
+                                            )}
+                                        </div>
                                         <span>
                                             {document.meta}
-                                            <i className={document.local ? "processing" : ""} />
                                             {document.status}
                                         </span>
                                     </div>
@@ -396,7 +678,13 @@ function AiLearningPage() {
                                 onClick={handleStartLearning}
                             >
                                 <span className="learning-start-sparkle">✦</span>
-                                <span>{isUploading ? "문서 분석 중..." : "개념 학습 시작하기"}</span>
+                                <span>
+                                    {isUploading
+                                        ? "문서 분석 중..."
+                                        : documentRoom.batchGenerating
+                                            ? "학습노트 만드는 중..."
+                                            : "학습노트 만들기"}
+                                </span>
                                 <ArrowRightIcon />
                             </button>
                         </div>
@@ -417,7 +705,15 @@ function AiLearningPage() {
     );
 }
 
-function StudyTocTree({ nodes, expandedNodeIds, selectedNodeId, onToggle, onSelect }) {
+function StudyTocTree({
+    nodes,
+    expandedNodeIds,
+    selectedNodeId,
+    mappedTocIds,
+    knownTocIds,
+    onToggle,
+    onSelect,
+}) {
     return nodes.map((node, index) => (
         <StudyTocTreeNode
             key={node.id}
@@ -426,6 +722,8 @@ function StudyTocTree({ nodes, expandedNodeIds, selectedNodeId, onToggle, onSele
             level={1}
             expandedNodeIds={expandedNodeIds}
             selectedNodeId={selectedNodeId}
+            mappedTocIds={mappedTocIds}
+            knownTocIds={knownTocIds}
             onToggle={onToggle}
             onSelect={onSelect}
         />
@@ -438,17 +736,27 @@ function StudyTocTreeNode({
     level,
     expandedNodeIds,
     selectedNodeId,
+    mappedTocIds,
+    knownTocIds,
     onToggle,
     onSelect,
 }) {
     const hasChildren = Boolean(node.children?.length);
     const isExpanded = expandedNodeIds.includes(node.id);
+    const isMapped = mappedTocIds?.has(Number(node.id));
+    const isKnownUnmapped = knownTocIds?.has(Number(node.id)) && !isMapped;
 
     return (
         <div className={`toc-node level-${level}`}>
             <button
                 type="button"
-                className={`toc-node-row ${level === 1 ? "chapter-row" : "topic-row"} ${Number(selectedNodeId) === Number(node.id) ? "selected" : ""}`}
+                className={[
+                    "toc-node-row",
+                    level === 1 ? "chapter-row" : "topic-row",
+                    Number(selectedNodeId) === Number(node.id) ? "selected" : "",
+                    isMapped ? "mapped" : "",
+                    isKnownUnmapped ? "unmapped" : "",
+                ].join(" ")}
                 onClick={() => {
                     if (onSelect) {
                         onSelect(node);
@@ -483,6 +791,8 @@ function StudyTocTreeNode({
                             level={level + 1}
                             expandedNodeIds={expandedNodeIds}
                             selectedNodeId={selectedNodeId}
+                            mappedTocIds={mappedTocIds}
+                            knownTocIds={knownTocIds}
                             onToggle={onToggle}
                             onSelect={onSelect}
                         />
@@ -515,7 +825,6 @@ const ChevronDownIcon = (props) => <Icon {...props} size={16}><path d="m6 9 6 6 
 const UploadCloudIcon = () => <Icon size={30}><path d="M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 5.5 19H7" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const TrashIcon = () => <Icon size={18}><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const FileIcon = () => <Icon size={25}><path d="M6 3h8l4 4v14H6V3Zm8 0v5h4M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const CheckCircleIcon = () => <Icon size={17}><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" /><path d="m8.5 12 2.2 2.2 4.8-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const ArrowRightIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const ArrowLeftIcon = () => <Icon size={17}><path d="M19 12H5m5 5-5-5 5-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const DocumentIcon = () => <Icon size={86}><path d="M7 2.5h7l5 5v14H7v-19Z" fill="#fff" stroke="#E8B995" strokeWidth="1.3" transform="scale(3.25) translate(-4.7 -1.2)" /><path d="M29 34h27M29 44h27M29 54h18" stroke="#C9A58B" strokeWidth="2.6" strokeLinecap="round" /></Icon>;
