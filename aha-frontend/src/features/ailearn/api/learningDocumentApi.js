@@ -59,9 +59,3 @@ export const retryDocumentProcessing = (processingGroupId) => {
         `/api/v1/ai-learning/document-processings/${processingGroupId}/retry`
     );
 };
-
-export const getActiveDocumentProcessings = () => {
-    return axiosInstance.get(
-        "/api/v1/ai-learning/document-processings/active"
-    );
-};

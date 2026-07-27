@@ -43,7 +43,9 @@ export const useDocumentProcessing = ({
                 setProcessingId(stateData.processingGroupId);
                 setProcessingStatus(stateData);
                 setUploadErrorMessage(stateData.errorMessage || "");
-                setIsProgressModalOpen(true);
+                setIsProgressModalOpen(
+                    ["FAILED", "PARTIAL_FAILED"].includes(stateData.status)
+                );
             }
         } catch (error) {
             console.error("문서 업로드 상태 조회 실패:", error);
@@ -75,7 +77,7 @@ export const useDocumentProcessing = ({
                 totalFileCount: files.length,
                 completedFileCount: 0,
             });
-            setIsProgressModalOpen(true);
+            setIsProgressModalOpen(false);
 
             const response = await uploadLearningDocuments(
                 selectedUserExamId,
@@ -92,7 +94,7 @@ export const useDocumentProcessing = ({
 
             setProcessingId(nextProcessingId);
             setProcessingStatus(uploadData);
-            setIsProgressModalOpen(true);
+            setIsProgressModalOpen(false);
         } catch (error) {
             console.error("문서 업로드 실패:", error);
 
@@ -103,7 +105,7 @@ export const useDocumentProcessing = ({
                 if (["PENDING", "PROCESSING"].includes(recoveredState?.status)) {
                     setProcessingId(recoveredState.processingGroupId);
                     setProcessingStatus(recoveredState);
-                    setIsProgressModalOpen(true);
+                    setIsProgressModalOpen(false);
                     return;
                 }
             } catch (recoveryError) {
@@ -128,7 +130,6 @@ export const useDocumentProcessing = ({
     useEffect(() => {
         if (
             !processingId ||
-            !isProgressModalOpen ||
             ["FAILED", "PARTIAL_FAILED"].includes(processingStatus?.status)
         ) {
             return undefined;
@@ -175,6 +176,7 @@ export const useDocumentProcessing = ({
                     statusData.status === "FAILED" ||
                     statusData.status === "PARTIAL_FAILED"
                 ) {
+                    setIsProgressModalOpen(true);
                     setUploadErrorMessage(
                         statusData.errorMessage ||
                         "문서 처리 중 오류가 발생했습니다."
@@ -204,7 +206,6 @@ export const useDocumentProcessing = ({
         };
     }, [
         processingId,
-        isProgressModalOpen,
         selectedUserExamId,
         selectedNodeId,
         fetchUserExamDocumentState,
@@ -225,7 +226,7 @@ export const useDocumentProcessing = ({
             const retryData = getApiData(response);
 
             setProcessingStatus(retryData);
-            setIsProgressModalOpen(true);
+            setIsProgressModalOpen(false);
         } catch (error) {
             console.error("문서 분석 재시도 실패:", error);
             setUploadErrorMessage(
