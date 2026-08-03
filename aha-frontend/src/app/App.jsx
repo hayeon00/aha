@@ -17,6 +17,7 @@ import PastPaperAttemptListPage from "../features/pastpaper/pages/PastPaperAttem
 import PastPaperAttemptPage from "../features/pastpaper/pages/PastPaperAttemptPage.jsx";
 import PastPaperResultPage from "../features/pastpaper/pages/PastPaperResultPage.jsx";
 import PastPaperExplanationPage from "../features/pastpaper/pages/PastPaperExplanationPage.jsx";
+import StudyRoomPage from "../features/study/pages/StudyRoomPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
 
 import { useAuth } from "../features/auth/context/useAuth.js";
@@ -173,6 +174,16 @@ function App() {
                 <Route
                     path="/past-paper-attempts"
                     element={<PastPaperAttemptListPage />}
+                />
+
+                <Route
+                    path="/study-rooms"
+                    element={<StudyRoomPage />}
+                />
+
+                <Route
+                    path="/study-rooms/:studyRoomId"
+                    element={<StudyRoomPage />}
                 />
 
                 <Route
