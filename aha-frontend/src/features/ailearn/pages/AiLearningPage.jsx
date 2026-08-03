@@ -11,6 +11,7 @@ import { useDocumentConceptDashboard } from "../hooks/useDocumentConceptDashboar
 import { deleteLearningDocument } from "../api/learningDocumentApi.js";
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
+import ExamSelectDropdown from "../../exam/components/ExamSelectDropdown.jsx";
 import {
     getLearningNotes,
     removeLearningNoteByDocumentId,
@@ -25,9 +26,7 @@ function AiLearningPage() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const fileInputRef = useRef(null);
-    const examDropdownRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [isExamDropdownOpen, setIsExamDropdownOpen] = useState(false);
     const [localFiles, setLocalFiles] = useState([]);
     const [hiddenDocumentIds, setHiddenDocumentIds] = useState([]);
     const [fileMessage, setFileMessage] = useState("");
@@ -97,26 +96,6 @@ function AiLearningPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [completedProcessingKey]);
 
-    useEffect(() => {
-        if (!isExamDropdownOpen) return undefined;
-
-        const closeOnOutsideClick = (event) => {
-            if (!examDropdownRef.current?.contains(event.target)) {
-                setIsExamDropdownOpen(false);
-            }
-        };
-        const closeOnEscape = (event) => {
-            if (event.key === "Escape") setIsExamDropdownOpen(false);
-        };
-
-        document.addEventListener("mousedown", closeOnOutsideClick);
-        document.addEventListener("keydown", closeOnEscape);
-        return () => {
-            document.removeEventListener("mousedown", closeOnOutsideClick);
-            document.removeEventListener("keydown", closeOnEscape);
-        };
-    }, [isExamDropdownOpen]);
-
     const uploadedDocuments = useMemo(() => {
         const serverDocuments = documentRoom.documents
             .filter((document) => !hiddenDocumentIds.includes(document.documentId))
@@ -184,7 +163,6 @@ function AiLearningPage() {
     const message = examMessage || scopeMessage || fileMessage;
 
     const handleUserExamChange = (userExamId) => {
-        setIsExamDropdownOpen(false);
         changeUserExam(userExamId);
         resetScopeNodes();
         resetDocumentState();
@@ -405,40 +383,14 @@ function AiLearningPage() {
         <main className="concept-page">
             <header className="concept-topbar">
                 <div className="concept-topbar-left">
-                    <div className="exam-dropdown-wrap" ref={examDropdownRef}>
-                        <button
-                            type="button"
-                            className={`exam-select-trigger ${isExamDropdownOpen ? "is-open" : ""}`}
-                            onClick={() => setIsExamDropdownOpen((current) => !current)}
-                            disabled={userExams.length === 0}
-                            aria-expanded={isExamDropdownOpen}
-                            aria-haspopup="listbox"
-                            aria-label="학습 시험 선택"
-                        >
-                            <span>{selectedUserExam?.examCode ?? "활성 시험 없음"}</span>
-                            <ChevronDownIcon className="exam-select-arrow" />
-                        </button>
-                        {isExamDropdownOpen && (
-                            <div className="exam-select-menu" role="listbox" aria-label="학습 시험 목록">
-                                {userExams.map((userExam) => {
-                                    const isSelected = userExam.userExamId === selectedUserExamId;
-                                    return (
-                                        <button
-                                            type="button"
-                                            role="option"
-                                            aria-selected={isSelected}
-                                            className={isSelected ? "is-selected" : ""}
-                                            key={userExam.userExamId}
-                                            onClick={() => handleUserExamChange(userExam.userExamId)}
-                                        >
-                                            <span>{userExam.examCode}</span>
-                                            {isSelected && <span className="exam-option-check">✓</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                    <ExamSelectDropdown
+                        exams={userExams}
+                        selectedExamId={selectedUserExamId}
+                        onChange={(exam) =>
+                            handleUserExamChange(exam.userExamId)
+                        }
+                        ariaLabel="학습 시험 선택"
+                    />
                     <h1>개념 학습</h1>
                 </div>
             </header>
