@@ -193,6 +193,10 @@
     gap: 10px;
 }
 
+.page-header-actions {
+    display: contents;
+}
+
 .notification-button {
     width: 34px;
     height: 34px;
