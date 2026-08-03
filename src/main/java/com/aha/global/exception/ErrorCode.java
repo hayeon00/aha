@@ -31,7 +31,6 @@ public enum ErrorCode {
     SOCIAL_EMAIL_REQUIRED(401, "AUTH_016", "소셜 계정의 인증된 이메일 정보가 필요합니다."),
 
 
-
     // USER
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
     PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
@@ -40,11 +39,10 @@ public enum ErrorCode {
 
 
     //EXAM
-    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
-    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
-    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
-
+    EXAM_VERSION_NOT_FOUND(404, "EXAM_VERSION_002", "시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409, "EXAM_VERSION_001", "시험 버전을 찾을 수 없습니다."),
+    EXAM_NOT_ACTIVE(409, "EXAM_001", "해당 시험을 찾을 수 없습니다"),
+    EXAM_SCOPE_NODE_NOT_FOUND(409, "EXAM_SCOPE_NODE_001", "시험 목차를 찾을 수 없습니다."),
 
 
     // USER_EXAM
@@ -69,9 +67,6 @@ public enum ErrorCode {
     INVALID_EXAM_SCOPE_NODE_TYPE(400, "EXAM_SCOPE_002", "개념설명을 생성할 수 없는 시험 목차 유형입니다."),
 
 
-
-
-
     DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
     DOCUMENT_TEXT_EXTRACTION_FAILED(500, "DOCUMENT_004", "문서 텍스트 추출에 실패했습니다."),
     DOCUMENT_TEXT_EMPTY(422, "DOCUMENT_005", "문서에서 추출할 수 있는 텍스트가 없습니다."),
@@ -89,23 +84,21 @@ public enum ErrorCode {
     INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
 
 
-
     //PROBLEM
-    PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." ),
-    PROBLEM_NOT_IN_PAST_PAPER(409,"PROBLEM_002" ,"문제가 풀고 있는 복원 기출에 포함되지 않았습니다." ),
+    PROBLEM_NOT_FOUND(404, "PROBLEM_001", "문제를 찾을 수 없습니다."),
+    PROBLEM_NOT_IN_PAST_PAPER(409, "PROBLEM_002", "문제가 풀고 있는 복원 기출에 포함되지 않았습니다."),
 
     //PAST_PAPER
-    PAST_PAPER_NOT_FOUND(404,"PAST_PAPER_001" ,"복원 기출을 찾을 수 없습니다."),
-    PAST_PAPER_NOT_PUBLISHED(409,"PAST_PAPER_002" ,"복원 기출이 노출 가능 상태가 아닙니다." ),
-    PAST_PAPER_ATTEMPT_NOT_FOUND(404 ,"PAST_PAPER_003" , "복원 기출 풀이가 없습니다." ),
-    PAST_PAPER_ATTEMPT_NOT_YOURS(403,"PAST_PAPER_004" , "풀이 소유자가 아닙니다."),
-    PAST_PAPER_ATTEMPT_NOT_SOLVING(409,"PAST_PAPER_005" , "풀이 중 상태가 아닙니다."),
-    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." ),
-    PAST_PAPER_ATTEMPT_NOT_GRADED(409,"PAST_PAPER_007" ,"채점 완료 상태가 아닙니다." );
+    PAST_PAPER_NOT_FOUND(404, "PAST_PAPER_001", "복원 기출을 찾을 수 없습니다."),
+    PAST_PAPER_NOT_PUBLISHED(409, "PAST_PAPER_002", "복원 기출이 노출 가능 상태가 아닙니다."),
+    PAST_PAPER_ATTEMPT_NOT_FOUND(404, "PAST_PAPER_003", "복원 기출 풀이가 없습니다."),
+    PAST_PAPER_ATTEMPT_NOT_YOURS(403, "PAST_PAPER_004", "풀이 소유자가 아닙니다."),
+    PAST_PAPER_ATTEMPT_NOT_SOLVING(409, "PAST_PAPER_005", "풀이 중 상태가 아닙니다."),
+    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409, "PAST_PAPER_006", "복원 기출 풀이 시간이 만료되었습니다."),
+    PAST_PAPER_ATTEMPT_NOT_GRADED(409, "PAST_PAPER_007", "채점 완료 상태가 아닙니다."),
 
-
-
-
+    //STUDY
+    STUDY_PARTICIPATION_ALREADY_EXISTS(409, "STUDY_001", "이미 스터디룸에 참가하고 있습니다.");
 
 
     private final int status;
