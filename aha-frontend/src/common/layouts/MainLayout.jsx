@@ -305,6 +305,47 @@ function MainLayout({ onLogout }) {
 
                     <button
                         type="button"
+                        className={isActive("/study-rooms") ? "active" : ""}
+                        onClick={() => navigate("/study-rooms")}
+                    >
+                        <span className="nav-icon">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M8 11C10.21 11 12 9.21 12 7C12 4.79 10.21 3 8 3C5.79 3 4 4.79 4 7C4 9.21 5.79 11 8 11Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                />
+                                <path
+                                    d="M16.5 10C18.43 10 20 8.43 20 6.5C20 4.57 18.43 3 16.5 3"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                                <path
+                                    d="M2.5 20C3.2 15.9 5.1 14 8 14C10.9 14 12.8 15.9 13.5 20"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                                <path
+                                    d="M15 14C18.2 14 20.3 16 21 20"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </span>
+                        <span>스터디</span>
+                    </button>
+
+                    <button
+                        type="button"
                         className={isActive("/wrong-notes") ? "active" : ""}
                         onClick={() => navigate("/wrong-notes")}
                     >
@@ -367,6 +408,10 @@ function MainLayout({ onLogout }) {
 
             <div className="main-wrap">
                 <header className="top-actions">
+                    <div
+                        id="page-header-actions"
+                        className="page-header-actions"
+                    />
                     <button
                         type="button"
                         className="notification-button"
