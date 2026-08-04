@@ -2,6 +2,7 @@ package com.aha.domain.study.controller;
 
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
+import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomResponseDto;
 import com.aha.domain.study.enums.StudyRoomSortType;
 import com.aha.domain.study.enums.StudyRoomStatus;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -70,7 +72,6 @@ public class StudyRoomController {
         StudyRoomSortType sortType
     ) {
 
-
         return ResponseEntity.ok()
             .body(
                 ApiResponse.success(
@@ -79,6 +80,41 @@ public class StudyRoomController {
                     studyRoomService.getStudyRooms(examVersionId, status, page, size, sortType)
                 )
             );
+    }
+
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/study-rooms/{studyRoomId}")
+    public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getStudyRoom(
+        @PathVariable(name = "studyRoomId") Long studyRoomId
+    ) {
+
+        return ResponseEntity.ok()
+            .body(
+                ApiResponse.success(
+                    200,
+                    "스터디룸 상세 조회 성공",
+                    studyRoomService.getStudyRoom(studyRoomId)
+                )
+            );
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/users/me/study-rooms/current")
+    public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getCurrentStudyRoom(
+        @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ){
+
+        return ResponseEntity.ok()
+            .body(
+                ApiResponse.success(
+                    200,
+                    "참가한 현재 스터디룸 조회 성공",
+                    studyRoomService.getCurrentStudyRoom(customUserDetails.getId())
+                )
+            );
+
+
     }
 
 }
