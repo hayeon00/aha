@@ -102,8 +102,27 @@ public class StudyRoom {
 
     public void validateNotCanceled() {
 
-        if(status==StudyRoomStatus.CANCELED){
+        if (status == StudyRoomStatus.CANCELED) {
             throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_CANCELED);
+        }
+    }
+
+    public void validateForJoin() {
+
+        validateNotCanceled();
+
+        validateNotSolving();
+
+        if (members.size() >= capacity) {
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_FULL);
+        }
+    }
+
+    private void validateNotSolving() {
+
+        if (status == StudyRoomStatus.SOLVING) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_SOLVING);
         }
     }
 }
