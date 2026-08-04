@@ -101,7 +101,9 @@ public enum ErrorCode {
     STUDY_PARTICIPATION_ALREADY_EXISTS(409, "STUDY_001", "이미 스터디룸에 참가하고 있습니다."),
     STUDY_ROOM_NOT_FOUND(404,"STUDY_002","스터디룸이 존재하지 않습니다."),
     JOINED_STUDY_ROOM_NOT_FOUND(404,"STUDY_003" ,"참가하고 있는 스터디가 없습니다." ),
-    STUDY_ROOM_ALREADY_CANCELED(409,"STUDY_004" ,"스터디룸이 취소되었습니다." );
+    STUDY_ROOM_ALREADY_CANCELED(409,"STUDY_004" ,"스터디룸이 취소되었습니다." ),
+    STUDY_ROOM_ALREADY_FULL(409,"STUDY_005" ,"스터디룸 정원이 전부 찼습니다." ),
+    STUDY_ROOM_ALREADY_SOLVING(409,"STUDY_006" ,"스터디룸은 풀이 중 상태입니다." );
 
     private final int status;
     private final String code;

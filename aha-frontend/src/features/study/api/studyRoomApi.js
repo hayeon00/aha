@@ -93,3 +93,15 @@ export const getCurrentStudyRoom = async () => {
         throw normalizeError(error);
     }
 };
+
+export const joinStudyRoom = async (studyRoomId) => {
+    try {
+        const response = await axiosInstance.post(
+            `/api/v1/study-rooms/${studyRoomId}/members`
+        );
+
+        return getApiData(response);
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};

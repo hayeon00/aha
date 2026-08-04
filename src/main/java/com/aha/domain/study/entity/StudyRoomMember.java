@@ -88,15 +88,14 @@ public class StudyRoomMember {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public static StudyRoomMember create(User createdBy, StudyRoom studyRoom) {
+    public static StudyRoomMember create(User user, StudyRoom studyRoom, StudyRoomMemberRole role) {
 
         return StudyRoomMember.builder()
-            .user(createdBy)
+            .user(user)
             .studyRoom(studyRoom)
             .pastPaperAttempt(null)
-            .role(StudyRoomMemberRole.HOST)
+            .role(role)
             .isReady(false)
             .build();
-
     }
 }
