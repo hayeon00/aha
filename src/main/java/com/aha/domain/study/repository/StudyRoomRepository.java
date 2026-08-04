@@ -3,6 +3,7 @@ package com.aha.domain.study.repository;
 import com.aha.domain.study.entity.StudyRoom;
 import com.aha.domain.study.enums.StudyRoomStatus;
 import com.aha.domain.study.repository.projection.StudyRoomProjection;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -53,4 +54,21 @@ public interface StudyRoomRepository extends JpaRepository<StudyRoom, Long> {
         @Param("status")StudyRoomStatus status,
         Pageable pageable
     );
+
+
+    @Query("""
+    select sr from StudyRoom sr
+        join fetch sr.pastPaper pp
+        join fetch pp.examVersion ev
+        join fetch ev.exam e
+        join fetch sr.members m
+        join fetch m.user
+          where sr.id = :studyRoomId
+             order by case m.role
+                 when 'HOST' then 1
+                 when 'MEMBER' then 2
+                 else 3
+             end asc
+""")
+    Optional<StudyRoom> findStudyRoom(@Param("studyRoomId") Long studyRoomId);
 }
