@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { getVisibleUserExams } from "../../exam/api/userExamApi.js";
@@ -7,6 +7,8 @@ import StudyFilterDropdown from "../components/StudyFilterDropdown.jsx";
 import { getPastPapers } from "../../pastpaper/api/pastPaperApi.js";
 import {
     createStudyRoom,
+    getCurrentStudyRoom,
+    getStudyRoom,
     getStudyRooms,
 } from "../api/studyRoomApi.js";
 import "./StudyRoomPage.css";
@@ -26,6 +28,12 @@ const STATUS_OPTIONS = [
     { value: "SOLVING", label: "풀이 중" },
     { value: "FEEDBACK", label: "피드백 중" },
 ];
+
+const STUDY_ERROR_MESSAGES = {
+    STUDY_001: "이미 참여 중인 활성 스터디룸이 있습니다.",
+    STUDY_002: "존재하지 않는 스터디룸입니다.",
+    STUDY_004: "취소된 스터디룸입니다.",
+};
 
 const initialCreateForm = {
     pastPaperId: "",
@@ -88,9 +96,27 @@ const getProfileImageUrl = (imageUrl) => {
     return `${API_BASE_URL}${imageUrl}`;
 };
 
+const formatExamDate = (value) => {
+    if (!value) {
+        return "-";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    }).format(date);
+};
+
 const getErrorMessage = (error, fallback) => {
-    if (error?.errorCode === "STUDY_001") {
-        return "이미 참여 중인 활성 스터디룸이 있습니다.";
+    if (STUDY_ERROR_MESSAGES[error?.errorCode]) {
+        return STUDY_ERROR_MESSAGES[error.errorCode];
     }
 
     return error?.response?.data?.message || error?.message || fallback;
@@ -152,13 +178,14 @@ function StudyRoomPage() {
     const [createError, setCreateError] = useState("");
     const [createFieldErrors, setCreateFieldErrors] = useState({});
     const [isCreating, setIsCreating] = useState(false);
+    const [currentStudyRoom, setCurrentStudyRoom] = useState(null);
+    const [isCurrentRoomLoading, setIsCurrentRoomLoading] = useState(true);
+    const [currentRoomError, setCurrentRoomError] = useState("");
+    const [detailRoom, setDetailRoom] = useState(null);
+    const [isDetailLoading, setIsDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState("");
     const headerActionsTarget =
         document.getElementById("page-header-actions");
-
-    const selectedDetailRoom = useMemo(
-        () => rooms.find((room) => String(room.id) === String(studyRoomId)),
-        [rooms, studyRoomId]
-    );
 
     useEffect(() => {
         let active = true;
@@ -239,6 +266,71 @@ function StudyRoomPage() {
             loadStudyRooms();
         });
     }, [loadStudyRooms]);
+
+    const loadCurrentStudyRoom = useCallback(async () => {
+        setIsCurrentRoomLoading(true);
+        setCurrentRoomError("");
+
+        try {
+            const response = await getCurrentStudyRoom();
+            setCurrentStudyRoom(response);
+        } catch (error) {
+            if (error?.errorCode === "STUDY_003") {
+                setCurrentStudyRoom(null);
+                return;
+            }
+
+            console.error("현재 참여 스터디룸 조회 실패:", error);
+            setCurrentStudyRoom(null);
+            setCurrentRoomError(
+                getErrorMessage(
+                    error,
+                    "현재 참여 중인 스터디룸을 불러오지 못했습니다."
+                )
+            );
+        } finally {
+            setIsCurrentRoomLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        queueMicrotask(() => {
+            loadCurrentStudyRoom();
+        });
+    }, [loadCurrentStudyRoom]);
+
+    const loadStudyRoomDetail = useCallback(async () => {
+        if (!studyRoomId) {
+            setDetailRoom(null);
+            setDetailError("");
+            return;
+        }
+
+        setIsDetailLoading(true);
+        setDetailError("");
+
+        try {
+            const response = await getStudyRoom(studyRoomId);
+            setDetailRoom(response);
+        } catch (error) {
+            console.error("스터디룸 상세 조회 실패:", error);
+            setDetailRoom(null);
+            setDetailError(
+                getErrorMessage(
+                    error,
+                    "스터디룸 상세 정보를 불러오지 못했습니다."
+                )
+            );
+        } finally {
+            setIsDetailLoading(false);
+        }
+    }, [studyRoomId]);
+
+    useEffect(() => {
+        queueMicrotask(() => {
+            loadStudyRoomDetail();
+        });
+    }, [loadStudyRoomDetail]);
 
     const handleSelectExam = (exam) => {
         setSelectedExam(exam);
@@ -330,10 +422,46 @@ function StudyRoomPage() {
         setCreateError("");
         setCreateFieldErrors({});
 
+        const validationErrors = {};
+        const title = createForm.title.trim();
+        const description = createForm.description.trim();
+        const capacity = Number(createForm.capacity);
+        const timeLimitMinutes = Number(createForm.timeLimitMinutes);
+
         if (!createForm.pastPaperId) {
-            setCreateFieldErrors({
-                pastPaperId: "함께 풀 기출문제를 선택해 주세요.",
-            });
+            validationErrors.pastPaperId =
+                "함께 풀 기출문제를 선택해 주세요.";
+        }
+
+        if (!title) {
+            validationErrors.title = "제목을 입력해 주세요.";
+        } else if (title.length > 100) {
+            validationErrors.title =
+                "제목은 최대 100글자까지 입력할 수 있습니다.";
+        }
+
+        if (!description) {
+            validationErrors.description = "설명을 입력해 주세요.";
+        } else if (description.length > 500) {
+            validationErrors.description =
+                "설명은 최대 500글자까지 입력할 수 있습니다.";
+        }
+
+        if (!Number.isInteger(capacity) || capacity < 2 || capacity > 5) {
+            validationErrors.capacity = "정원은 2명 이상 5명 이하여야 합니다.";
+        }
+
+        if (
+            !Number.isFinite(timeLimitMinutes) ||
+            timeLimitMinutes <= 0
+        ) {
+            validationErrors.timeLimitMinutes =
+                "제한 시간은 1분 이상이어야 합니다.";
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+            setCreateFieldErrors(validationErrors);
+            setCreateError("입력한 내용을 다시 확인해 주세요.");
             return;
         }
 
@@ -342,14 +470,14 @@ function StudyRoomPage() {
         try {
             await createStudyRoom({
                 pastPaperId: Number(createForm.pastPaperId),
-                title: createForm.title.trim(),
-                description: createForm.description.trim(),
-                capacity: Number(createForm.capacity),
-                timeLimit:
-                    Number(createForm.timeLimitMinutes) * 60,
+                title,
+                description,
+                capacity,
+                timeLimit: Math.round(timeLimitMinutes * 60),
             });
 
             setIsCreateOpen(false);
+            await loadCurrentStudyRoom();
             const needsListReset =
                 filters.status !== "WAITING" ||
                 filters.sortType !== "LATEST" ||
@@ -383,9 +511,7 @@ function StudyRoomPage() {
     };
 
     const openDetailModal = (room) => {
-        navigate(`/study-rooms/${room.id}`, {
-            state: { room },
-        });
+        navigate(`/study-rooms/${room.id}`);
     };
 
     const closeDetailModal = () => {
@@ -429,6 +555,176 @@ function StudyRoomPage() {
 
             {selectedExam && (
             <section className="study-list-area" aria-label="스터디룸 목록">
+                {isCurrentRoomLoading && (
+                    <div
+                        className="study-current-room skeleton"
+                        aria-label="현재 참여 중인 스터디룸을 불러오는 중"
+                    />
+                )}
+
+                {!isCurrentRoomLoading && currentRoomError && (
+                    <div className="study-current-room-error">
+                        <span>{currentRoomError}</span>
+                        <button type="button" onClick={loadCurrentStudyRoom}>
+                            다시 시도
+                        </button>
+                    </div>
+                )}
+
+                {!isCurrentRoomLoading &&
+                    !currentRoomError &&
+                    !currentStudyRoom && (
+                        <section className="study-current-room empty">
+                            <div className="study-current-room-label">
+                                <span>현재 참여 중</span>
+                                <strong>참여 없음</strong>
+                            </div>
+                            <div className="study-current-room-empty-copy">
+                                <h2>참가 중인 스터디룸이 없어요</h2>
+                                <p>
+                                    아래 모집 중인 스터디룸을 살펴보거나 새로운
+                                    스터디룸을 만들어 보세요.
+                                </p>
+                            </div>
+                        </section>
+                    )}
+
+                {!isCurrentRoomLoading && currentStudyRoom && (
+                <section
+                    className="study-current-room"
+                    aria-labelledby="study-current-room-title"
+                >
+                    <div className="study-current-room-label">
+                        <span>현재 참여 중</span>
+                        <strong>
+                            {currentStudyRoom.status === "WAITING"
+                                ? "대기 중"
+                                : "풀이 중"}
+                        </strong>
+                        {currentStudyRoom.updated && (
+                            <span className="study-current-updated">
+                                수정됨
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="study-current-room-copy">
+                        <h2 id="study-current-room-title">
+                            {currentStudyRoom.title}
+                        </h2>
+                        <p>{currentStudyRoom.description}</p>
+                    </div>
+
+                    <div className="study-detail-badges current">
+                        <span>
+                            생성 일시
+                            <strong>
+                                {formatDateTime(currentStudyRoom.createdAt)}
+                            </strong>
+                        </span>
+                        {currentStudyRoom.updated &&
+                            currentStudyRoom.updatedAt && (
+                                <span>
+                                    수정 일시
+                                    <strong>
+                                        {formatDateTime(
+                                            currentStudyRoom.updatedAt
+                                        )}
+                                    </strong>
+                                </span>
+                            )}
+                        <span>
+                            시간 제한
+                            <strong>
+                                {Math.round(currentStudyRoom.timeLimit / 60)}분
+                            </strong>
+                        </span>
+                        <span>
+                            참여 인원
+                            <strong>
+                                {currentStudyRoom.memberCount} /{" "}
+                                {currentStudyRoom.capacity}명
+                            </strong>
+                        </span>
+                    </div>
+
+                    <div className="study-current-room-detail-grid">
+                        <section className="study-detail-section">
+                            <div className="study-detail-section-heading">
+                                <div>
+                                    <span>함께 풀 기출문제</span>
+                                    <h3>{currentStudyRoom.pastPaper.title}</h3>
+                                </div>
+                            </div>
+                            <dl className="study-paper-meta">
+                                <div>
+                                    <dt>문항 수</dt>
+                                    <dd>
+                                        {
+                                            currentStudyRoom.pastPaper
+                                                .totalItemCount
+                                        }
+                                        문항
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>시험일</dt>
+                                    <dd>
+                                        {formatExamDate(
+                                            currentStudyRoom.pastPaper.examDate
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section className="study-detail-section members">
+                            <div className="study-detail-section-heading">
+                                <div>
+                                    <span>참가자</span>
+                                    <h3>
+                                        {currentStudyRoom.memberCount}명 참여 중
+                                    </h3>
+                                </div>
+                                <span className="study-member-capacity">
+                                    최대 {currentStudyRoom.capacity}명
+                                </span>
+                            </div>
+                            <ul className="study-detail-member-list">
+                                {currentStudyRoom.members.map(
+                                    (member, index) => (
+                                        <li
+                                            key={`${member.nickname}-${index}`}
+                                        >
+                                            <span className="study-detail-member-avatar">
+                                                {member.profileImageUrl ? (
+                                                    <img
+                                                        src={getProfileImageUrl(
+                                                            member.profileImageUrl
+                                                        )}
+                                                        alt=""
+                                                    />
+                                                ) : (
+                                                    member.nickname.slice(0, 1)
+                                                )}
+                                            </span>
+                                            <strong>{member.nickname}</strong>
+                                            <span
+                                                className={`study-member-role ${member.role?.toLowerCase()}`}
+                                            >
+                                                {member.role === "HOST"
+                                                    ? "방장"
+                                                    : "멤버"}
+                                            </span>
+                                        </li>
+                                    )
+                                )}
+                            </ul>
+                        </section>
+                    </div>
+                </section>
+                )}
+
                 <div className="study-filter-bar">
                     <div className="study-filter-controls">
                         <StudyFilterDropdown
@@ -790,6 +1086,13 @@ function StudyRoomPage() {
                                 <p className="study-form-error">{createError}</p>
                             )}
 
+                            {!createForm.pastPaperId && (
+                                <p className="study-submit-hint">
+                                    기출문제를 선택하면 스터디룸을 생성할 수
+                                    있어요.
+                                </p>
+                            )}
+
                             <div className="study-modal-actions">
                                 <button
                                     type="button"
@@ -841,16 +1144,203 @@ function StudyRoomPage() {
                             ×
                         </button>
 
-                        <div className="study-detail-placeholder">
-                            <span>STUDY ROOM</span>
-                            <h2 id="study-detail-title">
-                                {selectedDetailRoom?.title ||
-                                    `스터디룸 #${studyRoomId}`}
-                            </h2>
-                            <p>
-                                스터디룸 상세 정보는 다음 작업에서 연결됩니다.
-                            </p>
-                        </div>
+                        {isDetailLoading && (
+                            <div
+                                className="study-detail-loading"
+                                aria-label="스터디룸 상세 정보를 불러오는 중"
+                            >
+                                <span />
+                                <span />
+                                <span />
+                            </div>
+                        )}
+
+                        {!isDetailLoading && detailError && (
+                            <div className="study-detail-error">
+                                <strong>상세 정보를 불러오지 못했습니다.</strong>
+                                <p>{detailError}</p>
+                                <button
+                                    type="button"
+                                    onClick={loadStudyRoomDetail}
+                                >
+                                    다시 시도
+                                </button>
+                            </div>
+                        )}
+
+                        {!isDetailLoading && detailRoom && (
+                            <>
+                                <div className="study-detail-header">
+                                    <div className="study-detail-heading-row">
+                                        <span
+                                            className={`study-status ${detailRoom.status?.toLowerCase()}`}
+                                        >
+                                            {STATUS_OPTIONS.find(
+                                                (option) =>
+                                                    option.value ===
+                                                    detailRoom.status
+                                            )?.label || detailRoom.status}
+                                        </span>
+                                        {detailRoom.updated && (
+                                            <span className="study-detail-updated">
+                                                수정됨
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h2 id="study-detail-title">
+                                        {detailRoom.title}
+                                    </h2>
+                                    <p>{detailRoom.description}</p>
+                                </div>
+
+                                <div className="study-detail-badges">
+                                    <span>
+                                        생성 일시
+                                        <strong>
+                                            {formatDateTime(
+                                                detailRoom.createdAt
+                                            )}
+                                        </strong>
+                                    </span>
+                                    {detailRoom.updated &&
+                                        detailRoom.updatedAt && (
+                                            <span>
+                                                수정 일시
+                                                <strong>
+                                                    {formatDateTime(
+                                                        detailRoom.updatedAt
+                                                    )}
+                                                </strong>
+                                            </span>
+                                        )}
+                                    <span>
+                                        시간 제한
+                                        <strong>
+                                            {Math.round(
+                                                detailRoom.timeLimit / 60
+                                            )}
+                                            분
+                                        </strong>
+                                    </span>
+                                    <span>
+                                        모집 인원
+                                        <strong>
+                                            {detailRoom.memberCount} /{" "}
+                                            {detailRoom.capacity}명
+                                        </strong>
+                                    </span>
+                                </div>
+
+                                <section className="study-detail-section">
+                                    <div className="study-detail-section-heading">
+                                        <div>
+                                            <span>함께 풀 기출문제</span>
+                                            <h3>
+                                                {detailRoom.pastPaper.title}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <dl className="study-paper-meta">
+                                        <div>
+                                            <dt>문항 수</dt>
+                                            <dd>
+                                                {
+                                                    detailRoom.pastPaper
+                                                        .totalItemCount
+                                                }
+                                                문항
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt>시험일</dt>
+                                            <dd>
+                                                {formatExamDate(
+                                                    detailRoom.pastPaper
+                                                        .examDate
+                                                )}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </section>
+
+                                <section className="study-detail-section members">
+                                    <div className="study-detail-section-heading">
+                                        <div>
+                                            <span>참가자</span>
+                                            <h3>
+                                                {detailRoom.memberCount}명 참여
+                                                중
+                                            </h3>
+                                        </div>
+                                        <span className="study-member-capacity">
+                                            최대 {detailRoom.capacity}명
+                                        </span>
+                                    </div>
+                                    <ul className="study-detail-member-list">
+                                        {detailRoom.members.map(
+                                            (member, index) => (
+                                                <li
+                                                    key={`${member.nickname}-${index}`}
+                                                >
+                                                    <span className="study-detail-member-avatar">
+                                                        {member.profileImageUrl ? (
+                                                            <img
+                                                                src={getProfileImageUrl(
+                                                                    member.profileImageUrl
+                                                                )}
+                                                                alt=""
+                                                            />
+                                                        ) : (
+                                                            member.nickname.slice(
+                                                                0,
+                                                                1
+                                                            )
+                                                        )}
+                                                    </span>
+                                                    <strong>
+                                                        {member.nickname}
+                                                    </strong>
+                                                    <span
+                                                        className={`study-member-role ${member.role?.toLowerCase()}`}
+                                                    >
+                                                        {member.role === "HOST"
+                                                            ? "방장"
+                                                            : "멤버"}
+                                                    </span>
+                                                </li>
+                                            )
+                                        )}
+                                    </ul>
+                                </section>
+
+                                <div className="study-detail-actions">
+                                    <div>
+                                        <strong>
+                                            {detailRoom.capacity -
+                                                detailRoom.memberCount}
+                                            자리 남았어요
+                                        </strong>
+                                        <span>
+                                            참가 후 대기방으로 이동합니다.
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="study-join-button"
+                                        disabled={
+                                            detailRoom.status !== "WAITING" ||
+                                            detailRoom.memberCount >=
+                                                detailRoom.capacity
+                                        }
+                                    >
+                                        {detailRoom.memberCount >=
+                                        detailRoom.capacity
+                                            ? "모집 완료"
+                                            : "스터디 참가"}
+                                    </button>
+                                </div>
+                            </>
+                        )}
 
                     </section>
                 </div>
