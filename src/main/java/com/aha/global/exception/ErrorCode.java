@@ -98,8 +98,10 @@ public enum ErrorCode {
     PAST_PAPER_ATTEMPT_NOT_GRADED(409, "PAST_PAPER_007", "채점 완료 상태가 아닙니다."),
 
     //STUDY
-    STUDY_PARTICIPATION_ALREADY_EXISTS(409, "STUDY_001", "이미 스터디룸에 참가하고 있습니다.");
-
+    STUDY_PARTICIPATION_ALREADY_EXISTS(409, "STUDY_001", "이미 스터디룸에 참가하고 있습니다."),
+    STUDY_ROOM_NOT_FOUND(404,"STUDY_002","스터디룸이 존재하지 않습니다."),
+    JOINED_STUDY_ROOM_NOT_FOUND(404,"STUDY_003" ,"참가하고 있는 스터디가 없습니다." ),
+    STUDY_ROOM_ALREADY_CANCELED(409,"STUDY_004" ,"스터디룸이 취소되었습니다." );
 
     private final int status;
     private final String code;
