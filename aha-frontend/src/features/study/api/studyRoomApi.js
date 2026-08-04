@@ -69,3 +69,27 @@ export const createStudyRoom = async (request) => {
         throw normalizeError(error);
     }
 };
+
+export const getStudyRoom = async (studyRoomId) => {
+    try {
+        const response = await axiosInstance.get(
+            `/api/v1/study-rooms/${studyRoomId}`
+        );
+
+        return getApiData(response);
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
+export const getCurrentStudyRoom = async () => {
+    try {
+        const response = await axiosInstance.get(
+            "/api/v1/users/me/study-rooms/current"
+        );
+
+        return getApiData(response);
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};

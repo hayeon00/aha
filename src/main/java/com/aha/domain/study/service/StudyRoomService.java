@@ -4,6 +4,7 @@ import com.aha.domain.pastpaper.entity.PastPaper;
 import com.aha.domain.pastpaper.repository.PastPaperRepository;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
+import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomResponseDto;
 import com.aha.domain.study.entity.ActiveStudyRoomParticipation;
 import com.aha.domain.study.entity.StudyRoom;
@@ -19,6 +20,7 @@ import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.response.PageResponseDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StudyRoomService {
@@ -123,5 +126,41 @@ public class StudyRoomService {
             ).map(StudyRoomResponseDto::create);
 
         return PageResponseDto.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId) {
+
+        StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
+            .orElseThrow(()->new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+
+        studyRoom.validateNotCanceled();
+
+        return StudyRoomDetailResponseDto.from(studyRoom);
+    }
+
+    @Transactional(readOnly = true)
+    public StudyRoomDetailResponseDto getCurrentStudyRoom(Long userId) {
+
+        ActiveStudyRoomParticipation participation
+            =activeStudyRoomParticipationRepository.findByUserId(userId)
+            .orElseThrow(()->new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
+
+        Long studyRoomId = participation.getStudyRoom().getId();
+
+        StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
+            .orElseThrow(() -> {
+                log.error(
+                    "스터디룸 정합성 오류: active participation은 존재하지만 room 상세 조회 실패. userId={}, studyRoomId={}",
+                    userId,
+                    studyRoomId
+                );
+
+                return new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR
+                );
+            });
+
+        return StudyRoomDetailResponseDto.from(studyRoom);
     }
 }
