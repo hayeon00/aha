@@ -3,6 +3,8 @@ package com.aha.domain.study.entity;
 import com.aha.domain.pastpaper.entity.PastPaper;
 import com.aha.domain.study.enums.StudyRoomStatus;
 import com.aha.domain.user.entity.User;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -96,5 +98,12 @@ public class StudyRoom {
             .timeLimit(timeLimit)
             .status(StudyRoomStatus.WAITING)
             .build();
+    }
+
+    public void validateNotCanceled() {
+
+        if(status==StudyRoomStatus.CANCELED){
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_CANCELED);
+        }
     }
 }
