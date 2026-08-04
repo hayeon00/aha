@@ -1435,6 +1435,17 @@
     cursor: default;
 }
 
+.study-join-error {
+    margin: -8px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fff0ed;
+    color: #bc4831;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
 .study-detail-loading {
     min-height: 360px;
     padding-top: 18px;

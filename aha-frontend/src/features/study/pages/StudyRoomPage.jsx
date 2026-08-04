@@ -10,6 +10,7 @@ import {
     getCurrentStudyRoom,
     getStudyRoom,
     getStudyRooms,
+    joinStudyRoom,
 } from "../api/studyRoomApi.js";
 import "./StudyRoomPage.css";
 
@@ -33,6 +34,8 @@ const STUDY_ERROR_MESSAGES = {
     STUDY_001: "이미 참여 중인 활성 스터디룸이 있습니다.",
     STUDY_002: "존재하지 않는 스터디룸입니다.",
     STUDY_004: "취소된 스터디룸입니다.",
+    STUDY_005: "정원이 모두 찬 스터디룸입니다.",
+    STUDY_006: "이미 풀이가 시작된 스터디룸입니다.",
 };
 
 const initialCreateForm = {
@@ -184,6 +187,8 @@ function StudyRoomPage() {
     const [detailRoom, setDetailRoom] = useState(null);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState("");
+    const [isJoining, setIsJoining] = useState(false);
+    const [joinError, setJoinError] = useState("");
     const headerActionsTarget =
         document.getElementById("page-header-actions");
 
@@ -516,6 +521,48 @@ function StudyRoomPage() {
 
     const closeDetailModal = () => {
         navigate("/study-rooms");
+    };
+
+    const handleJoinStudyRoom = async () => {
+        if (!detailRoom || isJoining) {
+            return;
+        }
+
+        setIsJoining(true);
+        setJoinError("");
+
+        try {
+            const response = await joinStudyRoom(detailRoom.id);
+            const joinedStudyRoomId = response?.studyRoomId;
+
+            if (!joinedStudyRoomId) {
+                throw new Error(
+                    "참가한 스터디룸 정보를 확인하지 못했습니다."
+                );
+            }
+
+            navigate(`/study-rooms/${joinedStudyRoomId}/waiting`, {
+                replace: true,
+            });
+        } catch (error) {
+            console.error("스터디룸 참가 실패:", error);
+            setJoinError(
+                getErrorMessage(
+                    error,
+                    "스터디룸에 참가하지 못했습니다."
+                )
+            );
+
+            if (
+                error?.errorCode === "STUDY_004" ||
+                error?.errorCode === "STUDY_005" ||
+                error?.errorCode === "STUDY_006"
+            ) {
+                await loadStudyRoomDetail();
+            }
+        } finally {
+            setIsJoining(false);
+        }
     };
 
     return (
@@ -1327,18 +1374,34 @@ function StudyRoomPage() {
                                     <button
                                         type="button"
                                         className="study-join-button"
+                                        onClick={handleJoinStudyRoom}
                                         disabled={
-                                            detailRoom.status !== "WAITING" ||
+                                            isJoining ||
+                                            (detailRoom.status !== "WAITING" &&
+                                                detailRoom.status !==
+                                                    "FEEDBACK") ||
                                             detailRoom.memberCount >=
                                                 detailRoom.capacity
                                         }
                                     >
-                                        {detailRoom.memberCount >=
+                                        {isJoining
+                                            ? "참가 중..."
+                                            : detailRoom.memberCount >=
                                         detailRoom.capacity
                                             ? "모집 완료"
+                                            : detailRoom.status === "SOLVING"
+                                              ? "풀이 중"
                                             : "스터디 참가"}
                                     </button>
                                 </div>
+                                {joinError && (
+                                    <p
+                                        className="study-join-error"
+                                        role="alert"
+                                    >
+                                        {joinError}
+                                    </p>
+                                )}
                             </>
                         )}
 
