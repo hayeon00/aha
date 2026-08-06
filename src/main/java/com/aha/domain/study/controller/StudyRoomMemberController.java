@@ -1,6 +1,7 @@
 package com.aha.domain.study.controller;
 
 import com.aha.domain.study.dto.request.StudyRoomHostChangeRequestDto;
+import com.aha.domain.study.dto.request.StudyRoomReadyUpdateRequestDto;
 import com.aha.domain.study.service.StudyRoomMemberService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/study-rooms")
+@RequestMapping("/api/v1")
 public class StudyRoomMemberController {
 
     private final StudyRoomMemberService studyRoomMemberService;
 
     @PreAuthorize("isAuthenticated()")
-    @DeleteMapping("/{studyRoomId}/members/me")
+    @DeleteMapping("/study-rooms/{studyRoomId}/members/me")
     public ResponseEntity<ApiResponse<Void>> leaveStudyRoom(
         @PathVariable("studyRoomId") Long studyRoomId,
         @AuthenticationPrincipal CustomUserDetails userDetails
@@ -38,7 +40,7 @@ public class StudyRoomMemberController {
     }
 
     @PreAuthorize("isAuthenticated()")
-    @DeleteMapping("/{studyRoomId}/members/{studyRoomMemberId}")
+    @DeleteMapping("/study-rooms/{studyRoomId}/members/{studyRoomMemberId}")
     public ResponseEntity<ApiResponse<Void>> kickMember(
         @PathVariable("studyRoomId") Long studyRoomId,
         @PathVariable("studyRoomMemberId") Long memberId,
@@ -52,7 +54,7 @@ public class StudyRoomMemberController {
     }
 
     @PreAuthorize("isAuthenticated()")
-    @PutMapping("/{studyRoomId}/host")
+    @PutMapping("/study-rooms/{studyRoomId}/host")
     public ResponseEntity<ApiResponse<Void>> changeHost(
         @PathVariable("studyRoomId") Long studyRoomId,
         @Valid @RequestBody StudyRoomHostChangeRequestDto requestDto,
@@ -63,5 +65,19 @@ public class StudyRoomMemberController {
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
             .body(ApiResponse.success(204, "방장 변경 성공"));
+    }
+
+
+    @PreAuthorize("isAuthenticated()")
+    @PatchMapping("/study-room-members/me/ready")
+    public ResponseEntity<ApiResponse<Void>> updateReady(
+        @Valid @RequestBody StudyRoomReadyUpdateRequestDto requestDto,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+
+        studyRoomMemberService.updateReady(requestDto,userDetails.getId());
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+            .body(ApiResponse.success(204,"준비 상태 변경 성공"));
     }
 }

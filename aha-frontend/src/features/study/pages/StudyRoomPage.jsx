@@ -350,6 +350,14 @@ function StudyRoomPage() {
         currentStudyRoom?.status === "WAITING" &&
         currentStudyRoomMember?.role === "MEMBER";
 
+    const handleEnterCurrentWaitingRoom = () => {
+        if (!currentStudyRoom) {
+            return;
+        }
+
+        navigate(`/study-rooms/${currentStudyRoom.id}/waiting`);
+    };
+
     const handleLeaveStudyRoom = async () => {
         if (!canLeaveCurrentStudyRoom || isLeaving) {
             return;
@@ -606,6 +614,14 @@ function StudyRoomPage() {
         navigate("/study-rooms");
     };
 
+    const enterWaitingRoom = () => {
+        if (!detailRoom) {
+            return;
+        }
+
+        navigate(`/study-rooms/${detailRoom.id}/waiting`);
+    };
+
     const handleJoinStudyRoom = async () => {
         if (!detailRoom || isJoining) {
             return;
@@ -739,16 +755,25 @@ function StudyRoomPage() {
                                 </span>
                             )}
                         </div>
-                        {canLeaveCurrentStudyRoom && (
+                        <div className="study-current-room-actions">
                             <button
                                 type="button"
-                                className="study-current-leave-button"
-                                onClick={handleLeaveStudyRoom}
-                                disabled={isLeaving}
+                                className="study-current-enter-button"
+                                onClick={handleEnterCurrentWaitingRoom}
                             >
-                                {isLeaving ? "나가는 중..." : "나가기"}
+                                대기방 입장
                             </button>
-                        )}
+                            {canLeaveCurrentStudyRoom && (
+                                <button
+                                    type="button"
+                                    className="study-current-leave-button"
+                                    onClick={handleLeaveStudyRoom}
+                                    disabled={isLeaving}
+                                >
+                                    {isLeaving ? "나가는 중..." : "나가기"}
+                                </button>
+                            )}
+                        </div>
                     </div>
                     {leaveError && (
                         <p className="study-current-leave-error" role="alert">
@@ -1464,36 +1489,56 @@ function StudyRoomPage() {
                                 <div className="study-detail-actions">
                                     <div>
                                         <strong>
-                                            {detailRoom.capacity -
-                                                detailRoom.memberCount}
-                                            자리 남았어요
+                                            {detailRoom.members.some(
+                                                (member) => member.me
+                                            )
+                                                ? "참여 중인 스터디룸입니다."
+                                                : `${detailRoom.capacity - detailRoom.memberCount}자리 남았어요`}
                                         </strong>
                                         <span>
-                                            참가 후 대기방으로 이동합니다.
+                                            {detailRoom.members.some(
+                                                (member) => member.me
+                                            )
+                                                ? "대기방에서 준비 상태와 참가자를 확인하세요."
+                                                : "참가 후 대기방으로 이동합니다."}
                                         </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        className="study-join-button"
-                                        onClick={handleJoinStudyRoom}
-                                        disabled={
-                                            isJoining ||
-                                            (detailRoom.status !== "WAITING" &&
-                                                detailRoom.status !==
-                                                    "FEEDBACK") ||
-                                            detailRoom.memberCount >=
-                                                detailRoom.capacity
-                                        }
-                                    >
-                                        {isJoining
-                                            ? "참가 중..."
-                                            : detailRoom.memberCount >=
-                                        detailRoom.capacity
-                                            ? "모집 완료"
-                                            : detailRoom.status === "SOLVING"
-                                              ? "풀이 중"
-                                            : "스터디 참가"}
-                                    </button>
+                                    {detailRoom.members.some(
+                                        (member) => member.me
+                                    ) ? (
+                                        <button
+                                            type="button"
+                                            className="study-join-button"
+                                            onClick={enterWaitingRoom}
+                                        >
+                                            대기방 입장
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="study-join-button"
+                                            onClick={handleJoinStudyRoom}
+                                            disabled={
+                                                isJoining ||
+                                                (detailRoom.status !==
+                                                    "WAITING" &&
+                                                    detailRoom.status !==
+                                                        "FEEDBACK") ||
+                                                detailRoom.memberCount >=
+                                                    detailRoom.capacity
+                                            }
+                                        >
+                                            {isJoining
+                                                ? "참가 중..."
+                                                : detailRoom.memberCount >=
+                                                    detailRoom.capacity
+                                                  ? "모집 완료"
+                                                  : detailRoom.status ===
+                                                      "SOLVING"
+                                                    ? "풀이 중"
+                                                    : "스터디 참가"}
+                                        </button>
+                                    )}
                                 </div>
                                 {joinError && (
                                     <p

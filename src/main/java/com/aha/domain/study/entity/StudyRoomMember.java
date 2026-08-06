@@ -141,10 +141,10 @@ public class StudyRoomMember {
     public void validateForChangeHost(StudyRoomMember target) {
 
         validateNotMember();
-        validateNotDelegrateYourself(target);
+        validateNotDelegateYourself(target);
     }
 
-    private void validateNotDelegrateYourself(StudyRoomMember target) {
+    private void validateNotDelegateYourself(StudyRoomMember target) {
 
         if(id.equals(target.getId())){
 
@@ -155,5 +155,10 @@ public class StudyRoomMember {
     public void updateRole(StudyRoomMemberRole studyRoomMemberRole) {
 
         role=studyRoomMemberRole;
+    }
+
+    public void updateReady(boolean ready) {
+
+        this.isReady = ready;
     }
 }

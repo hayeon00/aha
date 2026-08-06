@@ -113,6 +113,7 @@ public enum ErrorCode {
     STUDY_ROOM_TARGET_NOT_FOUND(404, "STUDY_013", "대상자를 찾을 수 없습니다."),
     STUDY_ROOM_HOST_CANNOT_DELEGATE_SELF(403,"STUDY_014" ,"방장은 자기 자신에게 위임할 수 없습니다.");
 
+
     private final int status;
     private final String code;
     private final String message;

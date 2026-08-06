@@ -9,10 +9,11 @@ import com.aha.domain.user.entity.User;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Builder;
 
-@Builder(access = AccessLevel.PRIVATE )
+@Builder(access = AccessLevel.PRIVATE)
 public record StudyRoomDetailResponseDto(
 
     long id,
@@ -32,16 +33,20 @@ public record StudyRoomDetailResponseDto(
 
     record StudyRoomMemberResponseDto(
 
+        long memberId,
         String nickname,
         String profileImageUrl,
-        StudyRoomMemberRole role
-    ){
+        StudyRoomMemberRole role,
+        boolean ready,
+        boolean me
+    ) {
 
-        public static StudyRoomMemberResponseDto from(StudyRoomMember member) {
+        public static StudyRoomMemberResponseDto from(StudyRoomMember member, Long requesterId) {
 
             User user = member.getUser();
             return new StudyRoomMemberResponseDto(
-                user.getNickname(),user.getProfileImageUrl(),member.getRole()
+                member.getId(), user.getNickname(), user.getProfileImageUrl(), member.getRole(), member.isReady(),
+                Objects.equals(member.getUser().getId(), requesterId)
             );
         }
     }
@@ -51,12 +56,13 @@ public record StudyRoomDetailResponseDto(
         String title,
         int totalItemCount,
         LocalDate examDate
-    ){
+    ) {
 
-        public static PastPaperResponseDto from(PastPaper paper){
+        public static PastPaperResponseDto from(PastPaper paper) {
 
             return new PastPaperResponseDto(
-                createTitle(paper.getExamVersion().getExam().getName(),paper.getYear(),paper.getRoundNo()),
+                createTitle(paper.getExamVersion().getExam().getName(), paper.getYear(),
+                    paper.getRoundNo()),
                 paper.getTotalItemCount(),
                 paper.getExamDate()
             );
@@ -67,9 +73,9 @@ public record StudyRoomDetailResponseDto(
         }
     }
 
-    public static StudyRoomDetailResponseDto from(StudyRoom room){
+    public static StudyRoomDetailResponseDto from(StudyRoom room, Long requesterId) {
 
-        List<StudyRoomMember> members=room.getMembers();
+        List<StudyRoomMember> members = room.getMembers();
 
         return StudyRoomDetailResponseDto.builder()
             .id(room.getId())
@@ -82,7 +88,9 @@ public record StudyRoomDetailResponseDto(
             .updated(!room.getCreatedAt().equals(room.getUpdatedAt()))
             .updatedAt(room.getUpdatedAt())
             .timeLimit(room.getTimeLimit())
-            .members(members.stream().map(StudyRoomMemberResponseDto::from).toList())
+            .members(
+                members.stream().map(member -> StudyRoomMemberResponseDto.from(member, requesterId))
+                    .toList())
             .pastPaper(PastPaperResponseDto.from(room.getPastPaper()))
             .build();
     }
