@@ -100,21 +100,21 @@ public class StudyRoomService {
     }
 
     @Transactional(readOnly = true)
-    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId) {
+    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId,Long userId) {
 
         StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
         studyRoom.validateNotCanceled();
 
-        return StudyRoomDetailResponseDto.from(studyRoom);
+        return StudyRoomDetailResponseDto.from(studyRoom,userId);
     }
 
     @Transactional(readOnly = true)
     public StudyRoomDetailResponseDto getCurrentStudyRoom(Long userId) {
 
         ActiveStudyRoomParticipation participation
-            = activeStudyRoomParticipationRepository.findByUserId(userId)
+            = activeStudyRoomParticipationRepository.findByUserIdWithStudyRoom(userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
 
         Long studyRoomId = participation.getStudyRoom().getId();
@@ -132,7 +132,7 @@ public class StudyRoomService {
                 );
             });
 
-        return StudyRoomDetailResponseDto.from(studyRoom);
+        return StudyRoomDetailResponseDto.from(studyRoom, userId);
     }
 
     @Transactional
