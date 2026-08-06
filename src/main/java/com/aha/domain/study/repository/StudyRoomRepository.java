@@ -77,8 +77,7 @@ public interface StudyRoomRepository extends JpaRepository<StudyRoom, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     select sr from StudyRoom sr
-    join fetch sr.members
     where sr.id = :studyRoomId
 """)
-    Optional<StudyRoom> findByIdForJoin(@Param("studyRoomId") Long studyRoomId);
+    Optional<StudyRoom> findByIdForUpdate(@Param("studyRoomId") Long studyRoomId);
 }
