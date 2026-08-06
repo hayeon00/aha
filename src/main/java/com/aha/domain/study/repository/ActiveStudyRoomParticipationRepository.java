@@ -9,4 +9,6 @@ public interface ActiveStudyRoomParticipationRepository extends JpaRepository<Ac
     boolean existsByUserId(Long userId);
 
     Optional<ActiveStudyRoomParticipation> findByUserId(Long userId);
+
+    Optional<ActiveStudyRoomParticipation> findByStudyRoom_IdAndUserId(Long studyRoomId, Long userId);
 }
