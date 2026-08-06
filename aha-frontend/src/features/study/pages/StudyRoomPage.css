@@ -511,6 +511,35 @@
     gap: 16px;
 }
 
+.study-current-room-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.study-current-enter-button {
+    min-width: 92px;
+    min-height: 34px;
+    padding: 0 15px;
+    border: 1px solid #ff6a0a;
+    border-radius: 999px;
+    background: #ff6a0a;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 850;
+    cursor: pointer;
+    transition:
+        transform 0.18s ease,
+        background-color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.study-current-enter-button:hover {
+    transform: translateY(-1px);
+    background: #ee5d00;
+    box-shadow: 0 5px 13px rgba(238, 93, 0, 0.2);
+}
+
 .study-current-room-label {
     display: flex;
     align-items: center;
