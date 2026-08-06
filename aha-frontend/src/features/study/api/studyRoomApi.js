@@ -105,3 +105,13 @@ export const joinStudyRoom = async (studyRoomId) => {
         throw normalizeError(error);
     }
 };
+
+export const leaveStudyRoom = async (studyRoomId) => {
+    try {
+        await axiosInstance.delete(
+            `/api/v1/study-rooms/${studyRoomId}/members/me`
+        );
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
