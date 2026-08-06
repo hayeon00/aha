@@ -87,7 +87,8 @@ public class StudyRoomController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/study-rooms/{studyRoomId}")
     public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getStudyRoom(
-        @PathVariable(name = "studyRoomId") Long studyRoomId
+        @PathVariable(name = "studyRoomId") Long studyRoomId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok()
@@ -95,7 +96,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     200,
                     "스터디룸 상세 조회 성공",
-                    studyRoomService.getStudyRoom(studyRoomId)
+                    studyRoomService.getStudyRoom(studyRoomId, userDetails.getId())
                 )
             );
     }
@@ -104,7 +105,7 @@ public class StudyRoomController {
     @GetMapping("/users/me/study-rooms/current")
     public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getCurrentStudyRoom(
         @AuthenticationPrincipal CustomUserDetails customUserDetails
-    ){
+    ) {
 
         return ResponseEntity.ok()
             .body(
@@ -121,7 +122,7 @@ public class StudyRoomController {
     public ResponseEntity<ApiResponse<StudyRoomJoinResponseDto>> joinStudyRoom(
         @AuthenticationPrincipal CustomUserDetails customUserDetails,
         @PathVariable("studyRoomId") Long studyRoomId
-    ){
+    ) {
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
@@ -129,7 +130,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     201,
                     "스터디룸 참가 성공",
-                    studyRoomService.joinStudyRoom(customUserDetails.getId(),studyRoomId)
+                    studyRoomService.joinStudyRoom(customUserDetails.getId(), studyRoomId)
                 )
             );
     }
