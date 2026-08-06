@@ -5,12 +5,14 @@ import { getVisibleUserExams } from "../../exam/api/userExamApi.js";
 import ExamSelectDropdown from "../../exam/components/ExamSelectDropdown.jsx";
 import StudyFilterDropdown from "../components/StudyFilterDropdown.jsx";
 import { getPastPapers } from "../../pastpaper/api/pastPaperApi.js";
+import { getMyInfo } from "../../user/api/userApi.js";
 import {
     createStudyRoom,
     getCurrentStudyRoom,
     getStudyRoom,
     getStudyRooms,
     joinStudyRoom,
+    leaveStudyRoom,
 } from "../api/studyRoomApi.js";
 import "./StudyRoomPage.css";
 
@@ -31,11 +33,19 @@ const STATUS_OPTIONS = [
 ];
 
 const STUDY_ERROR_MESSAGES = {
-    STUDY_001: "이미 참여 중인 활성 스터디룸이 있습니다.",
-    STUDY_002: "존재하지 않는 스터디룸입니다.",
-    STUDY_004: "취소된 스터디룸입니다.",
-    STUDY_005: "정원이 모두 찬 스터디룸입니다.",
-    STUDY_006: "이미 풀이가 시작된 스터디룸입니다.",
+    STUDY_001: "이미 스터디룸에 참가하고 있습니다.",
+    STUDY_002: "해당 스터디룸에 이미 참가했습니다.",
+    STUDY_003: "스터디룸이 존재하지 않습니다.",
+    STUDY_004: "참가하고 있는 스터디룸이 없습니다.",
+    STUDY_005: "스터디룸이 취소되었습니다.",
+    STUDY_006: "스터디룸 정원이 모두 찼습니다.",
+    STUDY_007: "스터디룸은 풀이 중입니다.",
+    STUDY_008: "해당 스터디룸에 참여하고 있지 않습니다.",
+    STUDY_009: "방장이 아닌 멤버만 요청할 수 있습니다.",
+    STUDY_010: "스터디룸은 피드백 중입니다.",
+    STUDY_011: "방장만 요청할 수 있습니다.",
+    STUDY_012: "방장은 자기 자신을 강퇴할 수 없습니다.",
+    STUDY_013: "대상자를 찾을 수 없습니다.",
 };
 
 const initialCreateForm = {
@@ -182,8 +192,11 @@ function StudyRoomPage() {
     const [createFieldErrors, setCreateFieldErrors] = useState({});
     const [isCreating, setIsCreating] = useState(false);
     const [currentStudyRoom, setCurrentStudyRoom] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
     const [isCurrentRoomLoading, setIsCurrentRoomLoading] = useState(true);
     const [currentRoomError, setCurrentRoomError] = useState("");
+    const [isLeaving, setIsLeaving] = useState(false);
+    const [leaveError, setLeaveError] = useState("");
     const [detailRoom, setDetailRoom] = useState(null);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [detailError, setDetailError] = useState("");
@@ -280,7 +293,7 @@ function StudyRoomPage() {
             const response = await getCurrentStudyRoom();
             setCurrentStudyRoom(response);
         } catch (error) {
-            if (error?.errorCode === "STUDY_003") {
+            if (error?.errorCode === "STUDY_004") {
                 setCurrentStudyRoom(null);
                 return;
             }
@@ -303,6 +316,76 @@ function StudyRoomPage() {
             loadCurrentStudyRoom();
         });
     }, [loadCurrentStudyRoom]);
+
+    useEffect(() => {
+        let active = true;
+
+        const loadCurrentUser = async () => {
+            try {
+                const response = await getMyInfo();
+
+                if (active) {
+                    setCurrentUser(response?.data ?? response);
+                }
+            } catch (error) {
+                if (active) {
+                    console.error("로그인 사용자 조회 실패:", error);
+                    setCurrentUser(null);
+                }
+            }
+        };
+
+        loadCurrentUser();
+
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const currentStudyRoomMember = currentStudyRoom?.members?.find(
+        (member) => member.nickname === currentUser?.nickname
+    );
+
+    const canLeaveCurrentStudyRoom =
+        currentStudyRoom?.status === "WAITING" &&
+        currentStudyRoomMember?.role === "MEMBER";
+
+    const handleLeaveStudyRoom = async () => {
+        if (!canLeaveCurrentStudyRoom || isLeaving) {
+            return;
+        }
+
+        if (!window.confirm("현재 스터디룸에서 나가시겠습니까?")) {
+            return;
+        }
+
+        setIsLeaving(true);
+        setLeaveError("");
+
+        try {
+            await leaveStudyRoom(currentStudyRoom.id);
+            setCurrentStudyRoom(null);
+            await loadStudyRooms();
+        } catch (error) {
+            console.error("스터디룸 나가기 실패:", error);
+            setLeaveError(
+                getErrorMessage(
+                    error,
+                    "스터디룸에서 나가지 못했습니다."
+                )
+            );
+
+            if (
+                error?.errorCode === "STUDY_003" ||
+                error?.errorCode === "STUDY_004" ||
+                error?.errorCode === "STUDY_008"
+            ) {
+                await loadCurrentStudyRoom();
+            }
+        } finally {
+            setIsLeaving(false);
+        }
+    };
 
     const loadStudyRoomDetail = useCallback(async () => {
         if (!studyRoomId) {
@@ -554,9 +637,10 @@ function StudyRoomPage() {
             );
 
             if (
-                error?.errorCode === "STUDY_004" ||
+                error?.errorCode === "STUDY_003" ||
                 error?.errorCode === "STUDY_005" ||
-                error?.errorCode === "STUDY_006"
+                error?.errorCode === "STUDY_006" ||
+                error?.errorCode === "STUDY_007"
             ) {
                 await loadStudyRoomDetail();
             }
@@ -641,19 +725,36 @@ function StudyRoomPage() {
                     className="study-current-room"
                     aria-labelledby="study-current-room-title"
                 >
-                    <div className="study-current-room-label">
-                        <span>현재 참여 중</span>
-                        <strong>
-                            {currentStudyRoom.status === "WAITING"
-                                ? "대기 중"
-                                : "풀이 중"}
-                        </strong>
-                        {currentStudyRoom.updated && (
-                            <span className="study-current-updated">
-                                수정됨
-                            </span>
+                    <div className="study-current-room-header">
+                        <div className="study-current-room-label">
+                            <span>현재 참여 중</span>
+                            <strong>
+                                {currentStudyRoom.status === "WAITING"
+                                    ? "대기 중"
+                                    : "풀이 중"}
+                            </strong>
+                            {currentStudyRoom.updated && (
+                                <span className="study-current-updated">
+                                    수정됨
+                                </span>
+                            )}
+                        </div>
+                        {canLeaveCurrentStudyRoom && (
+                            <button
+                                type="button"
+                                className="study-current-leave-button"
+                                onClick={handleLeaveStudyRoom}
+                                disabled={isLeaving}
+                            >
+                                {isLeaving ? "나가는 중..." : "나가기"}
+                            </button>
                         )}
                     </div>
+                    {leaveError && (
+                        <p className="study-current-leave-error" role="alert">
+                            {leaveError}
+                        </p>
+                    )}
 
                     <div className="study-current-room-copy">
                         <h2 id="study-current-room-title">
