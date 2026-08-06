@@ -1,6 +1,8 @@
 package com.aha.domain.study.service;
 
 import com.aha.domain.study.dto.request.StudyRoomHostChangeRequestDto;
+import com.aha.domain.study.dto.request.StudyRoomReadyUpdateRequestDto;
+import com.aha.domain.study.entity.ActiveStudyRoomParticipation;
 import com.aha.domain.study.entity.StudyRoom;
 import com.aha.domain.study.entity.StudyRoomMember;
 import com.aha.domain.study.enums.StudyRoomMemberRole;
@@ -29,14 +31,16 @@ public class StudyRoomMemberService {
 
         studyRoom.validateForLeave();
 
-        StudyRoomMember member = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(studyRoom.getId(),userId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+        StudyRoomMember member = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
+                studyRoom.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
 
         member.validateForLeave();
 
-        if(studyRoom.isWaiting()){
+        if (studyRoom.isWaiting()) {
 
-            activeStudyRoomParticipationRepository.findByStudyRoom_IdAndUserId(studyRoom.getId(),userId)
+            activeStudyRoomParticipationRepository.findByStudyRoom_IdAndUserId(studyRoom.getId(),
+                    userId)
                 .ifPresent(
 
                     activeStudyRoomParticipationRepository::delete
@@ -54,15 +58,18 @@ public class StudyRoomMemberService {
 
         studyRoom.validateForKick();
 
-        StudyRoomMember member = studyRoomMemberRepository.findByIdAndStudyRoom_IdWithUser(memberId,studyRoomId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.STUDY_ROOM_TARGET_NOT_FOUND));
+        StudyRoomMember member = studyRoomMemberRepository.findByIdAndStudyRoom_IdWithUser(memberId,
+                studyRoomId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_TARGET_NOT_FOUND));
 
-        StudyRoomMember maybeHost = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(studyRoom.getId(),userId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+        StudyRoomMember maybeHost = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
+                studyRoom.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
 
         maybeHost.validateForKick(member);
 
-        activeStudyRoomParticipationRepository.findByStudyRoom_IdAndUserId(studyRoom.getId(),member.getUser().getId())
+        activeStudyRoomParticipationRepository.findByStudyRoom_IdAndUserId(studyRoom.getId(),
+                member.getUser().getId())
             .ifPresent(
 
                 activeStudyRoomParticipationRepository::delete
@@ -72,7 +79,8 @@ public class StudyRoomMemberService {
     }
 
     @Transactional
-    public void changeHost(Long studyRoomId, StudyRoomHostChangeRequestDto requestDto, Long userId) {
+    public void changeHost(Long studyRoomId, StudyRoomHostChangeRequestDto requestDto,
+        Long userId) {
 
         StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
@@ -81,16 +89,37 @@ public class StudyRoomMemberService {
 
         Long memberId = requestDto.studyRoomMemberId();
 
-        StudyRoomMember member = studyRoomMemberRepository.findByIdAndStudyRoom_IdWithUser(memberId,studyRoomId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.STUDY_ROOM_TARGET_NOT_FOUND));
+        StudyRoomMember member = studyRoomMemberRepository.findByIdAndStudyRoom_IdWithUser(memberId,
+                studyRoomId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_TARGET_NOT_FOUND));
 
-        StudyRoomMember maybeHost = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(studyRoom.getId(),userId)
-            .orElseThrow(()-> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+        StudyRoomMember maybeHost = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
+                studyRoom.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
 
         maybeHost.validateForChangeHost(member);
 
         member.updateRole(StudyRoomMemberRole.HOST);
 
         maybeHost.updateRole(StudyRoomMemberRole.MEMBER);
+    }
+
+    @Transactional
+    public void updateReady(StudyRoomReadyUpdateRequestDto requestDto, Long userId) {
+
+        ActiveStudyRoomParticipation participation = activeStudyRoomParticipationRepository.findByUserIdWithStudyRoom(
+                userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
+
+        StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(participation.getStudyRoom().getId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+
+        studyRoom.validateForUpdateReady();
+
+        StudyRoomMember member = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
+                studyRoom.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+
+        member.updateReady(requestDto.ready());
     }
 }
