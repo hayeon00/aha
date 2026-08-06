@@ -158,4 +158,11 @@ public class StudyRoom {
         validateNotCanceled();
         validateNotSolving();
     }
+
+    public void validateForUpdateReady() {
+
+        validateNotCanceled();
+        validateNotSolving();
+        validateNotFeedback();
+    }
 }
