@@ -138,15 +138,24 @@ public class StudyRoomService {
     @Transactional
     public StudyRoomJoinResponseDto joinStudyRoom(Long userId, Long studyRoomId) {
 
-        StudyRoom studyRoom = studyRoomRepository.findByIdForJoin(studyRoomId)
+        StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        studyRoom.validateForJoin();
-
-        if (activeStudyRoomParticipationRepository.existsByUserId(userId)) {
+        if (studyRoom.isWaiting() && activeStudyRoomParticipationRepository.existsByUserId(
+            userId)) {
 
             throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
         }
+
+        if (studyRoomMemberRepository.existsByStudyRoom_IdAndUser_Id(studyRoomId, userId)) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_JOINED);
+        }
+
+        studyRoom.validateForJoin(
+
+            studyRoomMemberRepository.countByStudyRoom_Id(studyRoomId)
+        );
 
         User user = userRepository.findById(userId)
             .orElseThrow(() ->
@@ -162,21 +171,24 @@ public class StudyRoomService {
         return StudyRoomJoinResponseDto.from(studyRoom);
     }
 
-
     private void registerStudyRoomMember(User user, StudyRoom studyRoom, StudyRoomMemberRole role) {
-        try {
 
-            activeStudyRoomParticipationRepository.saveAndFlush(
-                ActiveStudyRoomParticipation.create(user.getId(), studyRoom)
-            );
-        } catch (DataIntegrityViolationException e) {
+        if (studyRoom.isWaiting()) {
 
-            if (isActiveParticipationUniqueViolation(e)) {
+            try {
 
-                throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
+                activeStudyRoomParticipationRepository.saveAndFlush(
+                    ActiveStudyRoomParticipation.create(user.getId(), studyRoom)
+                );
+            } catch (DataIntegrityViolationException e) {
+
+                if (isActiveParticipationUniqueViolation(e)) {
+
+                    throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
+                }
+
+                throw e;
             }
-
-            throw e;
         }
 
         studyRoomMemberRepository.save(StudyRoomMember.create(user, studyRoom, role));
