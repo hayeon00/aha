@@ -115,3 +115,36 @@ export const leaveStudyRoom = async (studyRoomId) => {
         throw normalizeError(error);
     }
 };
+
+export const updateStudyRoomReady = async (ready) => {
+    try {
+        await axiosInstance.patch("/api/v1/study-room-members/me/ready", {
+            ready,
+        });
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
+export const kickStudyRoomMember = async (studyRoomId, studyRoomMemberId) => {
+    try {
+        await axiosInstance.delete(
+            `/api/v1/study-rooms/${studyRoomId}/members/${studyRoomMemberId}`
+        );
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
+export const changeStudyRoomHost = async (
+    studyRoomId,
+    studyRoomMemberId
+) => {
+    try {
+        await axiosInstance.put(`/api/v1/study-rooms/${studyRoomId}/host`, {
+            studyRoomMemberId,
+        });
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
