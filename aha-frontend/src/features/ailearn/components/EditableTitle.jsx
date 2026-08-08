@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function EditableTitle({ title, onSave }) {
+export default function EditableTitle({ title, onSave, editable = true }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(title);
     const inputRef = useRef(null);
@@ -35,6 +35,14 @@ export default function EditableTitle({ title, onSave }) {
                 }}
                 aria-label="학습노트 제목"
             />
+        );
+    }
+
+    if (!editable) {
+        return (
+            <div className="editable-note-title">
+                <strong>{title}</strong>
+            </div>
         );
     }
 

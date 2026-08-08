@@ -30,7 +30,7 @@ function MainPage() {
     }, []);
 
     const createNote = () => navigate("/learning");
-    const openNote = (note) => navigate(`/learning?view=notes&documentId=${note.documentId}&tocId=${note.tocId}`);
+    const openNote = (note) => navigate(`/learning?view=notes&noteId=${note.id}`);
 
     return (
         <div className="main-page">

@@ -8,7 +8,8 @@ export const useDocumentProcessing = ({
                                           onCompleted,
                                       } = {}) => {
     const [isUploading, setIsUploading] = useState(false);
-    const [processingId, setProcessingId] = useState(null);
+    const [learningNoteId, setLearningNoteId] = useState(null);
+    const [completedLearningNoteId, setCompletedLearningNoteId] = useState(null);
     const [processingStatus, setProcessingStatus] = useState(null);
     const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
     const [uploadErrorMessage, setUploadErrorMessage] = useState("");
@@ -20,7 +21,8 @@ export const useDocumentProcessing = ({
     const resetDocumentState = useCallback(() => {
         setHasProcessedDocuments(false);
         setUploadErrorMessage("");
-        setProcessingId(null);
+        setLearningNoteId(null);
+        setCompletedLearningNoteId(null);
         setProcessingStatus(null);
         setIsProgressModalOpen(false);
     }, []);
@@ -37,15 +39,18 @@ export const useDocumentProcessing = ({
             const response = await getUserExamDocumentState(userExamId);
             const stateData = getApiData(response);
 
-            setHasProcessedDocuments(stateData?.status === "COMPLETED");
+            setHasProcessedDocuments(false);
 
-            if (["PENDING", "PROCESSING", "FAILED", "PARTIAL_FAILED"].includes(stateData?.status)) {
-                setProcessingId(stateData.processingGroupId);
+            if (["UPLOADING", "PROCESSING", "GENERATING", "FAILED"].includes(stateData?.status)) {
+                setLearningNoteId(stateData.learningNoteId);
                 setProcessingStatus(stateData);
                 setUploadErrorMessage(stateData.errorMessage || "");
-                setIsProgressModalOpen(
-                    ["FAILED", "PARTIAL_FAILED"].includes(stateData.status)
-                );
+                setIsProgressModalOpen(stateData.status === "FAILED");
+            } else {
+                setLearningNoteId(null);
+                setProcessingStatus(null);
+                setUploadErrorMessage("");
+                setIsProgressModalOpen(false);
             }
         } catch (error) {
             console.error("문서 업로드 상태 조회 실패:", error);
@@ -68,6 +73,8 @@ export const useDocumentProcessing = ({
 
         try {
             setIsUploading(true);
+            setCompletedLearningNoteId(null);
+            setHasProcessedDocuments(false);
             setUploadErrorMessage("");
             setProcessingStatus({
                 status: "UPLOADING",
@@ -85,28 +92,51 @@ export const useDocumentProcessing = ({
             );
 
             const uploadData = getApiData(response);
-            const nextProcessingId =
-                uploadData?.processingId || uploadData?.processingGroupId;
+            const nextLearningNoteId = uploadData?.learningNoteId;
 
-            if (!nextProcessingId) {
-                throw new Error("processingId not found");
+            if (!nextLearningNoteId) {
+                throw new Error("learningNoteId not found");
             }
 
-            setProcessingId(nextProcessingId);
+            setLearningNoteId(nextLearningNoteId);
             setProcessingStatus(uploadData);
             setIsProgressModalOpen(false);
+            return {
+                success: true,
+                data: uploadData,
+                fileErrors: [],
+            };
         } catch (error) {
             console.error("문서 업로드 실패:", error);
+
+            const errorResponse = error?.response?.data;
+            if (
+                errorResponse?.code === "DOCUMENT_UPLOAD_012"
+                && Array.isArray(errorResponse.data)
+            ) {
+                setProcessingStatus(null);
+                setUploadErrorMessage("");
+                setIsProgressModalOpen(false);
+                return {
+                    success: false,
+                    data: null,
+                    fileErrors: errorResponse.data,
+                };
+            }
 
             try {
                 const recoveryResponse = await getUserExamDocumentState(selectedUserExamId);
                 const recoveredState = getApiData(recoveryResponse);
 
-                if (["PENDING", "PROCESSING"].includes(recoveredState?.status)) {
-                    setProcessingId(recoveredState.processingGroupId);
+                if (["UPLOADING", "PROCESSING", "GENERATING"].includes(recoveredState?.status)) {
+                    setLearningNoteId(recoveredState.learningNoteId);
                     setProcessingStatus(recoveredState);
                     setIsProgressModalOpen(false);
-                    return;
+                    return {
+                        success: true,
+                        data: recoveredState,
+                        fileErrors: [],
+                    };
                 }
             } catch (recoveryError) {
                 console.error("업로드 작업 복구 조회 실패:", recoveryError);
@@ -125,6 +155,11 @@ export const useDocumentProcessing = ({
                 errorMessage: uploadMessage,
             });
             setIsProgressModalOpen(true);
+            return {
+                success: false,
+                data: null,
+                fileErrors: [],
+            };
         } finally {
             setIsUploading(false);
         }
@@ -132,8 +167,8 @@ export const useDocumentProcessing = ({
 
     useEffect(() => {
         if (
-            !processingId ||
-            ["FAILED", "PARTIAL_FAILED"].includes(processingStatus?.status)
+            !learningNoteId ||
+            processingStatus?.status === "FAILED"
         ) {
             return undefined;
         }
@@ -144,7 +179,7 @@ export const useDocumentProcessing = ({
 
         const pollProcessingStatus = async () => {
             try {
-                const response = await getDocumentProcessingStatus(processingId, {
+                const response = await getDocumentProcessingStatus(learningNoteId, {
                     signal: abortController.signal,
                 });
                 const statusData = getApiData(response);
@@ -159,13 +194,12 @@ export const useDocumentProcessing = ({
 
                 if (statusData.status === "COMPLETED") {
                     setIsProgressModalOpen(false);
-                    setProcessingId(null);
+                    setCompletedLearningNoteId(statusData.learningNoteId);
+                    setLearningNoteId(null);
                     setProcessingStatus(null);
                     setUploadErrorMessage("");
                     setHasProcessedDocuments(true);
                     setCompletedProcessingKey((previousKey) => previousKey + 1);
-
-                    await fetchUserExamDocumentState(selectedUserExamId);
 
                     await onCompleted?.({
                         selectedUserExamId,
@@ -175,10 +209,7 @@ export const useDocumentProcessing = ({
                     return;
                 }
 
-                if (
-                    statusData.status === "FAILED" ||
-                    statusData.status === "PARTIAL_FAILED"
-                ) {
+                if (statusData.status === "FAILED") {
                     setIsProgressModalOpen(true);
                     setUploadErrorMessage(
                         statusData.errorMessage ||
@@ -208,7 +239,7 @@ export const useDocumentProcessing = ({
             window.clearTimeout(timeoutId);
         };
     }, [
-        processingId,
+        learningNoteId,
         selectedUserExamId,
         selectedNodeId,
         fetchUserExamDocumentState,
@@ -217,7 +248,7 @@ export const useDocumentProcessing = ({
     ]);
 
     const retryProcessing = useCallback(async () => {
-        if (!processingId || isRetrying) {
+        if (!learningNoteId || isRetrying) {
             return;
         }
 
@@ -225,7 +256,7 @@ export const useDocumentProcessing = ({
             setIsRetrying(true);
             setUploadErrorMessage("");
 
-            const response = await retryDocumentProcessing(processingId);
+            const response = await retryDocumentProcessing(learningNoteId);
             const retryData = getApiData(response);
 
             setProcessingStatus(retryData);
@@ -239,16 +270,17 @@ export const useDocumentProcessing = ({
         } finally {
             setIsRetrying(false);
         }
-    }, [processingId, isRetrying]);
+    }, [learningNoteId, isRetrying]);
 
     const closeProgressModal = useCallback(() => {
         setIsProgressModalOpen(false);
-        setProcessingId(null);
+        setLearningNoteId(null);
     }, []);
 
     return {
         isUploading,
         processingStatus,
+        completedLearningNoteId,
         isProgressModalOpen,
         uploadErrorMessage,
         hasProcessedDocuments,
