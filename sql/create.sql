@@ -1,16 +1,14 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
-
-
-DROP TABLE IF EXISTS `user_document_concept`;
+DROP TABLE IF EXISTS `learning_content_reference`;
+DROP TABLE IF EXISTS `user_learning_content`;
 DROP TABLE IF EXISTS `learning_note_content`;
-DROP TABLE IF EXISTS `learning_note`;
-DROP TABLE IF EXISTS `document_scope_mapping`;
-DROP TABLE IF EXISTS `document_chunk`;
 DROP TABLE IF EXISTS `document_processing`;
-DROP TABLE IF EXISTS `source_document`;
-DROP TABLE IF EXISTS `document_processing_group`;
+DROP TABLE IF EXISTS `document_scope_mapping`;
 DROP TABLE IF EXISTS `document_chunk_embedding`;
+DROP TABLE IF EXISTS `document_chunk`;
+DROP TABLE IF EXISTS `learning_note`;
+DROP TABLE IF EXISTS `source_document`;
 DROP TABLE IF EXISTS `exam_scope_node_embedding`;
 
 DROP TABLE IF EXISTS `oauth_authorization_code`;
@@ -300,76 +298,162 @@ CREATE TABLE `user_exam` (
 
 
 
-CREATE TABLE `document_processing_group` (
-                                             `id`                   BIGINT        NOT NULL AUTO_INCREMENT,
-                                             `user_exam_id`         BIGINT        NOT NULL,
-                                             `status`               VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
-                                             `current_step`         VARCHAR(50)   NOT NULL DEFAULT 'UPLOAD_PENDING',
-                                             `progress_rate`        INT           NOT NULL DEFAULT 0,
-                                             `total_file_count`     INT           NOT NULL DEFAULT 0,
-                                             `completed_file_count` INT           NOT NULL DEFAULT 0,
-                                             `failed_file_count`    INT           NOT NULL DEFAULT 0,
-                                             `error_message`        VARCHAR(1000)     NULL,
-                                             `started_at`           DATETIME          NULL,
-                                             `completed_at`         DATETIME          NULL,
-                                             `created_at`           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                             `updated_at`           DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                             PRIMARY KEY (`id`),
-
-                                             INDEX `idx_dpg_user_exam_id` (`user_exam_id`),
-                                             INDEX `idx_dpg_status` (`status`),
-                                             INDEX `idx_dpg_current_step` (`current_step`),
-                                             INDEX `idx_dpg_created_at` (`created_at`),
-
-                                             CONSTRAINT `fk_dpg_user_exam_id`
-                                                 FOREIGN KEY (`user_exam_id`)
-                                                     REFERENCES `user_exam` (`id`)
-                                                     ON DELETE CASCADE,
-
-                                             CONSTRAINT `chk_dpg_total_file_count`
-                                                 CHECK (`total_file_count` >= 0)
-
-
-);
 
 CREATE TABLE `source_document` (
                                    `id`                   BIGINT       NOT NULL AUTO_INCREMENT,
-                                   `processing_group_id`  BIGINT       NOT NULL,
                                    `original_file_name`   VARCHAR(255) NOT NULL,
                                    `stored_file_name`     VARCHAR(255) NOT NULL,
                                    `storage_key`          VARCHAR(500) NOT NULL,
                                    `file_extension`       VARCHAR(20)  NOT NULL,
                                    `mime_type`            VARCHAR(100) NOT NULL,
                                    `file_size`            BIGINT       NOT NULL,
-                                   `upload_status`        VARCHAR(30)  NOT NULL DEFAULT 'PENDING',
-                                   `upload_error_message` VARCHAR(1000)     NULL,
-                                   `is_active`            BOOLEAN      NOT NULL,
+                                   `is_active`            BOOLEAN      NOT NULL DEFAULT TRUE,
                                    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                   `updated_at`           DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                   `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                       ON UPDATE CURRENT_TIMESTAMP,
 
                                    PRIMARY KEY (`id`),
-
-                                   INDEX `idx_source_document_processing_group_id`
-                                       (`processing_group_id`),
-
-                                   INDEX `idx_source_document_upload_status`
-                                       (`upload_status`),
-
-                                   INDEX `idx_source_document_storage_key`
-                                       (`storage_key`),
 
                                    UNIQUE KEY `uk_source_document_storage_key`
                                        (`storage_key`),
 
-                                   CONSTRAINT `fk_source_document_processing_group_id`
-                                       FOREIGN KEY (`processing_group_id`)
-                                           REFERENCES `document_processing_group` (`id`)
-                                           ON DELETE CASCADE,
+                                   INDEX `idx_source_document_is_active`
+                                       (`is_active`),
+
+                                   CONSTRAINT `chk_source_document_file_extension`
+                                       CHECK (`file_extension` IN ('pdf', 'docx')),
 
                                    CONSTRAINT `chk_source_document_file_size`
                                        CHECK (`file_size` > 0)
 );
+
+
+CREATE TABLE `learning_note` (
+                                 `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+                                 `user_exam_id`       BIGINT       NOT NULL,
+                                 `source_document_id` BIGINT       NOT NULL,
+                                 `title`              VARCHAR(255) NOT NULL,
+                                 `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                 `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                     ON UPDATE CURRENT_TIMESTAMP,
+
+                                 PRIMARY KEY (`id`),
+
+                                 UNIQUE KEY `uk_learning_note_source_document`
+                                     (`source_document_id`),
+
+                                 INDEX `idx_learning_note_user_exam`
+                                     (`user_exam_id`),
+
+                                 CONSTRAINT `fk_learning_note_user_exam`
+                                     FOREIGN KEY (`user_exam_id`)
+                                         REFERENCES `user_exam` (`id`)
+                                         ON DELETE CASCADE,
+
+                                 CONSTRAINT `fk_learning_note_source_document`
+                                     FOREIGN KEY (`source_document_id`)
+                                         REFERENCES `source_document` (`id`)
+                                         ON DELETE CASCADE
+);
+
+CREATE TABLE `learning_note_content` (
+                                         `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+                                         `learning_note_id`   BIGINT       NOT NULL,
+                                         `exam_scope_node_id` BIGINT       NOT NULL,
+                                         `title`              VARCHAR(255) NOT NULL,
+                                         `content`            LONGTEXT     NOT NULL,
+                                         `source_type`        VARCHAR(30)  NOT NULL,
+                                         `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                             ON UPDATE CURRENT_TIMESTAMP,
+
+                                         PRIMARY KEY (`id`),
+
+                                         UNIQUE KEY `uk_learning_note_content_note_scope`
+                                             (`learning_note_id`, `exam_scope_node_id`),
+
+                                         INDEX `idx_learning_note_content_scope_node`
+                                             (`exam_scope_node_id`),
+
+                                         CONSTRAINT `fk_learning_note_content_learning_note`
+                                             FOREIGN KEY (`learning_note_id`)
+                                                 REFERENCES `learning_note` (`id`)
+                                                 ON DELETE CASCADE,
+
+                                         CONSTRAINT `fk_learning_note_content_exam_scope_node`
+                                             FOREIGN KEY (`exam_scope_node_id`)
+                                                 REFERENCES `exam_scope_node` (`id`)
+                                                 ON DELETE CASCADE,
+
+                                         CONSTRAINT `chk_learning_note_content_source_type`
+                                             CHECK (
+                                                 `source_type` IN (
+                                                                   'DOCUMENT_BASED',
+                                                                   'USER_WRITTEN'
+                                                     )
+                                                 )
+);
+
+
+CREATE TABLE `document_processing` (
+                                       `id`               BIGINT        NOT NULL AUTO_INCREMENT,
+                                       `learning_note_id` BIGINT        NOT NULL,
+                                       `status`           VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
+                                       `current_step`     VARCHAR(50)       NULL,
+                                       `error_code`       VARCHAR(50)       NULL,
+                                       `error_message`    VARCHAR(1000)     NULL,
+                                       `retry_count`      INT           NOT NULL DEFAULT 0,
+                                       `started_at`       DATETIME          NULL,
+                                       `completed_at`     DATETIME          NULL,
+                                       `created_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       `updated_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                           ON UPDATE CURRENT_TIMESTAMP,
+
+                                       PRIMARY KEY (`id`),
+
+                                       UNIQUE KEY `uk_document_processing_learning_note`
+                                           (`learning_note_id`),
+
+                                       INDEX `idx_document_processing_status`
+                                           (`status`),
+
+                                       INDEX `idx_document_processing_current_step`
+                                           (`current_step`),
+
+                                       CONSTRAINT `fk_document_processing_learning_note`
+                                           FOREIGN KEY (`learning_note_id`)
+                                               REFERENCES `learning_note` (`id`)
+                                               ON DELETE CASCADE,
+
+                                       CONSTRAINT `chk_document_processing_status`
+                                           CHECK (
+                                               `status` IN (
+                                                            'PENDING',
+                                                            'PROCESSING',
+                                                            'COMPLETED',
+                                                            'FAILED'
+                                                   )
+                                               ),
+
+                                       CONSTRAINT `chk_document_processing_current_step`
+                                           CHECK (
+                                               `current_step` IS NULL
+                                                   OR `current_step` IN (
+                                                                         'TEXT_EXTRACTING',
+                                                                         'CHUNKING',
+                                                                         'EMBEDDING',
+                                                                         'SCOPE_MAPPING',
+                                                                         'CONTENT_GENERATING',
+                                                                         'COMPLETED'
+                                                   )
+                                               ),
+
+                                       CONSTRAINT `chk_document_processing_retry_count`
+                                           CHECK (`retry_count` >= 0)
+);
+
+
 
 CREATE TABLE `document_chunk` (
                                   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -495,71 +579,21 @@ CREATE TABLE `document_scope_mapping` (
                                               CHECK (`confidence_score` >= 0 AND `confidence_score` <= 1)
 );
 
-CREATE TABLE `learning_note` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `processing_group_id` BIGINT NOT NULL,
-    `title` VARCHAR(255) NOT NULL,
-    `status` VARCHAR(30) NOT NULL,
-    `error_message` VARCHAR(1000) NULL,
-    `completed_at` DATETIME NULL,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_learning_note_processing_group` (`processing_group_id`),
-    CONSTRAINT `fk_learning_note_processing_group`
-        FOREIGN KEY (`processing_group_id`) REFERENCES `document_processing_group` (`id`)
-);
 
-CREATE TABLE `learning_note_content` (
-    `id` BIGINT NOT NULL AUTO_INCREMENT,
-    `learning_note_id` BIGINT NOT NULL,
-    `exam_scope_node_id` BIGINT NOT NULL,
-    `title` VARCHAR(255) NOT NULL,
-    `content` LONGTEXT NOT NULL,
-    `source_type` VARCHAR(30) NOT NULL,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_learning_note_content_note_scope`
-        (`learning_note_id`, `exam_scope_node_id`),
-    CONSTRAINT `fk_learning_note_content_note`
-        FOREIGN KEY (`learning_note_id`) REFERENCES `learning_note` (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_learning_note_content_scope`
-        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`)
-);
-
-
-CREATE TABLE `user_document_concept` (
-                                         `id`          BIGINT       NOT NULL AUTO_INCREMENT,
-                                         `user_id`     BIGINT       NOT NULL,
-                                         `document_id` BIGINT       NOT NULL,
-                                         `toc_id`      BIGINT       NOT NULL,
-                                         `source_type` VARCHAR(30)  NOT NULL,
-                                         `title`       VARCHAR(255) NOT NULL,
-                                         `content`     LONGTEXT     NOT NULL,
-                                         `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                         `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                         PRIMARY KEY (`id`),
-                                         UNIQUE KEY `uk_user_document_concept_tenant_document_toc` (`user_id`, `document_id`, `toc_id`),
-                                         INDEX `idx_udc_document_source` (`document_id`, `source_type`),
-                                         INDEX `idx_udc_user_document` (`user_id`, `document_id`),
-                                         CONSTRAINT `fk_udc_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-                                         CONSTRAINT `fk_udc_document` FOREIGN KEY (`document_id`) REFERENCES `source_document` (`id`) ON DELETE CASCADE,
-                                         CONSTRAINT `fk_udc_toc` FOREIGN KEY (`toc_id`) REFERENCES `exam_scope_node` (`id`) ON DELETE CASCADE
-);
 CREATE TABLE `refresh_tokens` (
-                                  `id`         BIGINT       NOT NULL AUTO_INCREMENT,
-                                  `user_id`    BIGINT       NOT NULL,
-                                  `token`      VARCHAR(500) NOT NULL,
-                                  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                  `updated_at` DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+                                      `id`         BIGINT       NOT NULL AUTO_INCREMENT,
+                                      `user_id`    BIGINT       NOT NULL,
+                                      `token`      VARCHAR(500) NOT NULL,
+                                      `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                      `updated_at` DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                  PRIMARY KEY (`id`),
-                                  UNIQUE KEY `uk_refresh_tokens_user_id` (`user_id`),
+                                      PRIMARY KEY (`id`),
+                                      UNIQUE KEY `uk_refresh_tokens_user_id` (`user_id`),
 
-                                  CONSTRAINT `fk_refresh_tokens_user`
-                                      FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-                                          ON DELETE CASCADE
+                                      CONSTRAINT `fk_refresh_tokens_user`
+                                          FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+                                              ON DELETE CASCADE
+
 );
 
 

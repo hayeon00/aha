@@ -10,7 +10,8 @@ import java.util.Set;
 
 public interface UserExamRepository extends JpaRepository<UserExam, Long> {
 
-    boolean existsByUser_IdAndExamVersion_Id(Long userId, Long examVersionId);
+    Optional<UserExam> findByIdAndUser_Id(Long userExamId, Long userId);
+
 
     @Query("""
         SELECT ue
@@ -33,9 +34,7 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long> {
     """)
     List<UserExam> findVisibleWithExamByUserId(Long userId);
 
-    Optional<UserExam> findByIdAndUser_Id(Long userExamId, Long userId);
 
-    List<UserExam> findAllByUser_Id(Long userId);
 
     @Query("""
         SELECT ue.examVersion.exam.id
@@ -43,5 +42,4 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long> {
         WHERE ue.user.id = :userId
     """)
     Set<Long> findExamIdsByUserId(Long userId);
-
 }
