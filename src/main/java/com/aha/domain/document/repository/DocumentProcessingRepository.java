@@ -21,6 +21,9 @@ public interface DocumentProcessingRepository extends JpaRepository<DocumentProc
         from DocumentProcessing processing
         join fetch processing.learningNote note
         join fetch note.sourceDocument
+        join fetch note.userExam userExam
+        join fetch userExam.examVersion examVersion
+        join fetch examVersion.exam
         where note.userExam.user.id = :userId
           and processing.status = com.aha.domain.document.enums.DocumentProcessingStatus.COMPLETED
         order by processing.completedAt desc, note.id desc

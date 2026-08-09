@@ -8,6 +8,9 @@ public record LearningNoteSummaryResponseDto(
         String status,
         Long documentId,
         Long tocId,
+        Long userExamId,
+        String examCode,
+        String examName,
         int sourceDocumentCount,
         LocalDateTime updatedAt
 ) {

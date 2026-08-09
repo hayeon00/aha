@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getMyInfo } from "../../features/user/api/userApi.js";
-import ExamOnboardingModal from "../../features/exam/components/ExamOnboardingModal.jsx";
 import "./MainLayout.css";
 
 const API_BASE_URL =
@@ -31,7 +30,7 @@ function MainLayout({ onLogout }) {
     const [userInfo, setUserInfo] = useState(null);
     const [isUserInfoLoading, setIsUserInfoLoading] = useState(true);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-    const [isExamOnboardingOpen, setIsExamOnboardingOpen] = useState(false);
+    const activeExamName = sessionStorage.getItem("activeExamName") || "자격증 학습";
 
     useEffect(() => {
         let isMounted = true;
@@ -46,7 +45,6 @@ function MainLayout({ onLogout }) {
                 }
 
                 setUserInfo(myInfo);
-                setIsExamOnboardingOpen(myInfo?.examOnboardingCompleted === false);
             } catch (error) {
                 if (!isMounted) {
                     return;
@@ -106,7 +104,7 @@ function MainLayout({ onLogout }) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
 
-        navigate("/login", {
+        navigate("/main", {
             replace: true,
         });
     };
@@ -147,46 +145,21 @@ function MainLayout({ onLogout }) {
     };
 
     const profileImageUrl = getProfileImageUrl();
-
-    const handleExamOnboardingComplete = () => {
-        setIsExamOnboardingOpen(false);
-        setUserInfo((current) => current
-            ? { ...current, examOnboardingCompleted: true }
-            : current);
-        navigate("/main", { replace: true });
-    };
+    const learningHomePath = `/learning-home${sessionStorage.getItem("activeUserExamId") ? `?userExamId=${sessionStorage.getItem("activeUserExamId")}` : ""}`;
 
     return (
         <div className="app-layout">
-            {/* 로그인 성공 후 /main 진입 시 서버의 examOnboardingCompleted 값이 false인 경우에만 노출됩니다. */}
-            <ExamOnboardingModal
-                open={isExamOnboardingOpen}
-                onComplete={handleExamOnboardingComplete}
-            />
             <aside className="side-menu">
-                <button
-                    type="button"
-                    className="side-logo"
-                    onClick={() => navigate("/main")}
-                    aria-label="Aha 학습 홈"
-                >
-                    <span className="side-logo-icon" aria-hidden="true">
-                        <img
-                            src="/brand/aha-mark.png"
-                            alt=""
-                            className="side-logo-mark"
-                        />
-                    </span>
-                    <span className="side-logo-wordmark">
-                        Aha
-                    </span>
-                </button>
+                <div className="sidebar-identity">
+                    <button type="button" className="sidebar-brand" onClick={() => navigate(learningHomePath)} aria-label={`${activeExamName} 학습 홈으로 이동`}><img src="/brand/aha-mark.png" alt="" /><strong>Aha</strong></button>
+                    <p className="sidebar-exam-name">{activeExamName}</p>
+                </div>
 
                 <nav className="side-nav">
                     <button
                         type="button"
-                        className={isActive("/main") ? "active" : ""}
-                        onClick={() => navigate("/main")}
+                        className={isActive("/learning-home") ? "active" : ""}
+                        onClick={() => navigate(learningHomePath)}
                     >
                         <span className="nav-icon">
                             <svg
@@ -210,7 +183,7 @@ function MainLayout({ onLogout }) {
                     <button
                         type="button"
                         className={isActive("/learning") ? "active" : ""}
-                        onClick={() => navigate("/learning")}
+                        onClick={() => navigate(`/learning${sessionStorage.getItem("activeUserExamId") ? `?userExamId=${sessionStorage.getItem("activeUserExamId")}` : ""}`)}
                     >
                         <span className="nav-icon">
                             <svg
@@ -344,58 +317,6 @@ function MainLayout({ onLogout }) {
                         <span>스터디</span>
                     </button>
 
-                    <button
-                        type="button"
-                        className={isActive("/wrong-notes") ? "active" : ""}
-                        onClick={() => navigate("/wrong-notes")}
-                    >
-                        <span className="nav-icon">
-                            <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    d="M7 4H17C18.1 4 19 4.9 19 6V20L12 17L5 20V6C5 4.9 5.9 4 7 4Z"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        </span>
-                        <span>오답노트</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        className={isActive("/mypage") ? "active" : ""}
-                        onClick={() => navigate("/mypage")}
-                    >
-                        <span className="nav-icon">
-                            <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12Z"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                />
-                                <path
-                                    d="M5 20C6.2 16.9 8.6 15.4 12 15.4C15.4 15.4 17.8 16.9 19 20"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                />
-                            </svg>
-                        </span>
-                        <span>마이페이지</span>
-                    </button>
                 </nav>
 
                 <div className="side-bottom">
@@ -447,11 +368,8 @@ function MainLayout({ onLogout }) {
                                     ? "user-profile-button active"
                                     : "user-profile-button"
                             }
-                            aria-label="프로필 메뉴 열기"
-                            aria-expanded={isProfileMenuOpen}
-                            onClick={() =>
-                                setIsProfileMenuOpen((prev) => !prev)
-                            }
+                            aria-label="서비스 메인으로 이동"
+                            onClick={() => navigate("/main")}
                         >
                             <span className="user-profile-image">
                                 {profileImageUrl ? (
@@ -490,7 +408,6 @@ function MainLayout({ onLogout }) {
                                 {getDisplayName()}님
                             </span>
 
-                            <span className="profile-menu-caret">⌄</span>
                         </button>
 
                         {isProfileMenuOpen && (

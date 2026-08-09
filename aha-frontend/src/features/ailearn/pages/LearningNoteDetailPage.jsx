@@ -120,7 +120,7 @@ export default function LearningNoteDetailPage({ learningNoteId }) {
             setDeleting(true);
             setDeleteError("");
             await deleteLearningNote(learningNoteId);
-            navigate("/main", { replace: true });
+            navigate("/learning-home", { replace: true });
         } catch (requestError) {
             setDeleteError(requestError.response?.data?.message || "학습노트를 삭제하지 못했습니다.");
             setDeleting(false);
@@ -143,7 +143,7 @@ export default function LearningNoteDetailPage({ learningNoteId }) {
                 <h2>학습노트를 불러오지 못했어요</h2>
                 <p>{error || "잠시 후 다시 시도해 주세요."}</p>
                 <div>
-                    <button type="button" className="secondary" onClick={() => navigate("/main")}>학습 홈으로</button>
+                    <button type="button" className="secondary" onClick={() => navigate("/learning-home")}>학습 홈으로</button>
                     <button type="button" className="primary" onClick={refresh}>다시 불러오기</button>
                 </div>
             </main>
