@@ -1,0 +1,85 @@
+.study-filter-dropdown {
+    position: relative;
+}
+
+.study-filter-trigger {
+    min-width: 120px;
+    min-height: 36px;
+    padding: 0 11px 0 13px;
+    border: 1px solid #f5dfcf;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fff4eb;
+    color: #6f4b35;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: border-color 0.16s ease, background 0.16s ease,
+        box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.study-filter-trigger strong {
+    color: #ad6336;
+    font: inherit;
+}
+
+.study-filter-trigger:hover,
+.study-filter-trigger.is-open {
+    border-color: #efc2a3;
+    background: #ffecde;
+    box-shadow: 0 4px 12px rgba(128, 75, 40, 0.08);
+    transform: translateY(-1px);
+}
+
+.study-filter-arrow {
+    color: #ce6d31;
+    font-size: 12px;
+    line-height: 1;
+    transition: transform 0.18s ease;
+}
+
+.study-filter-trigger.is-open .study-filter-arrow {
+    transform: rotate(180deg);
+}
+
+.study-filter-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 50;
+    width: 100%;
+    min-width: 120px;
+    padding: 6px;
+    border: 1px solid #ffe8db;
+    border-radius: 12px;
+    background-color: #fff;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.study-filter-menu button {
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    display: block;
+    background: transparent;
+    color: #66574e;
+    font-size: 14px;
+    font-weight: 450;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.14s ease, color 0.14s ease;
+}
+
+.study-filter-menu button:hover {
+    background-color: #fff7f2;
+    color: #ff6b00;
+}
+
+.study-filter-menu button.is-selected {
+    color: #ff6b00;
+    font-weight: 600;
+}

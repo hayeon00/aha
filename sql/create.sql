@@ -40,259 +40,272 @@ DROP TABLE IF EXISTS `problem_choice`;
 DROP TABLE IF EXISTS `past_paper`;
 DROP TABLE IF EXISTS `problem`;
 
+DROP TABLE IF EXISTS `active_study_room_participation`;
+DROP TABLE IF EXISTS `study_room_member`;
+DROP TABLE IF EXISTS `study_room`;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 
-CREATE TABLE `users` (
-                         `id`                BIGINT       NOT NULL AUTO_INCREMENT,
-                         `email`             VARCHAR(255) NOT NULL,
-                         `password`          VARCHAR(255)     NULL,
-                         `name`              VARCHAR(50)  NOT NULL,
-                         `nickname`          VARCHAR(50)  NOT NULL,
-                         `role`              VARCHAR(20)  NOT NULL DEFAULT 'USER',
-                         `status`            VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-                         `last_login_at`     DATETIME         NULL,
-                         `is_email_verified` BOOLEAN      NOT NULL DEFAULT FALSE,
-                         `profile_image_url` VARCHAR(500)     NULL,
-                         `exam_onboarding_completed` BOOLEAN NOT NULL DEFAULT FALSE,
-                         `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                         `updated_at`        DATETIME         NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `users`
+(
+    `id`                        BIGINT       NOT NULL AUTO_INCREMENT,
+    `email`                     VARCHAR(255) NOT NULL,
+    `password`                  VARCHAR(255) NULL,
+    `name`                      VARCHAR(50)  NOT NULL,
+    `nickname`                  VARCHAR(50)  NOT NULL,
+    `role`                      VARCHAR(20)  NOT NULL DEFAULT 'USER',
+    `status`                    VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    `last_login_at`             DATETIME     NULL,
+    `is_email_verified`         BOOLEAN      NOT NULL DEFAULT FALSE,
+    `profile_image_url`         VARCHAR(500) NULL,
+    `exam_onboarding_completed` BOOLEAN      NOT NULL DEFAULT FALSE,
+    `created_at`                DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`                DATETIME     NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                         PRIMARY KEY (`id`),
-                         UNIQUE KEY `uk_user_email` (`email`),
-                         UNIQUE KEY `uk_user_nickname` (`nickname`),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_email` (`email`),
+    UNIQUE KEY `uk_user_nickname` (`nickname`),
 
-                         CONSTRAINT `chk_user_role`
-                             CHECK (`role` IN ('USER', 'ADMIN')),
-                         CONSTRAINT `chk_user_status`
-                             CHECK (`status` IN ('ACTIVE', 'INACTIVE', 'WITHDRAWN', 'SUSPENDED'))
+    CONSTRAINT `chk_user_role`
+        CHECK (`role` IN ('USER', 'ADMIN')),
+    CONSTRAINT `chk_user_status`
+        CHECK (`status` IN ('ACTIVE', 'INACTIVE', 'WITHDRAWN', 'SUSPENDED'))
 );
 
 
-CREATE TABLE `social_accounts` (
-                                   `id`                BIGINT       NOT NULL AUTO_INCREMENT,
-                                   `user_id`           BIGINT       NOT NULL,
-                                   `provider`          VARCHAR(20)  NOT NULL,
-                                   `provider_id`       VARCHAR(255) NOT NULL,
-                                   `provider_email`    VARCHAR(100)     NULL,
-                                   `provider_name`     VARCHAR(100)     NULL,
-                                   `profile_image_url` VARCHAR(500)     NULL,
-                                   `last_login_at`     DATETIME         NULL,
-                                   `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                   `updated_at`        DATETIME         NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `social_accounts`
+(
+    `id`                BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`           BIGINT       NOT NULL,
+    `provider`          VARCHAR(20)  NOT NULL,
+    `provider_id`       VARCHAR(255) NOT NULL,
+    `provider_email`    VARCHAR(100) NULL,
+    `provider_name`     VARCHAR(100) NULL,
+    `profile_image_url` VARCHAR(500) NULL,
+    `last_login_at`     DATETIME     NULL,
+    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`        DATETIME     NULL     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                   PRIMARY KEY (`id`),
+    PRIMARY KEY (`id`),
 
-                                   UNIQUE KEY `uk_social_account_provider_id`
-                                       (`provider`, `provider_id`),
-                                   UNIQUE KEY `uk_social_account_user_provider`
-                                       (`user_id`, `provider`),
+    UNIQUE KEY `uk_social_account_provider_id`
+        (`provider`, `provider_id`),
+    UNIQUE KEY `uk_social_account_user_provider`
+        (`user_id`, `provider`),
 
-                                   CONSTRAINT `fk_social_account_user`
-                                       FOREIGN KEY (`user_id`)
-                                           REFERENCES `users` (`id`)
-                                           ON DELETE CASCADE,
+    CONSTRAINT `fk_social_account_user`
+        FOREIGN KEY (`user_id`)
+            REFERENCES `users` (`id`)
+            ON DELETE CASCADE,
 
-                                   CONSTRAINT `chk_social_account_provider`
-                                       CHECK (`provider` IN ('KAKAO', 'GOOGLE'))
+    CONSTRAINT `chk_social_account_provider`
+        CHECK (`provider` IN ('KAKAO', 'GOOGLE'))
 );
 
 
-CREATE TABLE `oauth_authorization_code` (
-                                            `id`              BIGINT      NOT NULL AUTO_INCREMENT,
-                                            `code_hash`       VARCHAR(64) NOT NULL,
-                                            `session_id_hash` VARCHAR(64) NOT NULL,
-                                            `user_id`         BIGINT      NOT NULL,
-                                            `expires_at`      DATETIME(6) NOT NULL,
-                                            `used_at`         DATETIME(6)     NULL,
-                                            `created_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+CREATE TABLE `oauth_authorization_code`
+(
+    `id`              BIGINT      NOT NULL AUTO_INCREMENT,
+    `code_hash`       VARCHAR(64) NOT NULL,
+    `session_id_hash` VARCHAR(64) NOT NULL,
+    `user_id`         BIGINT      NOT NULL,
+    `expires_at`      DATETIME(6) NOT NULL,
+    `used_at`         DATETIME(6) NULL,
+    `created_at`      DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
-                                            PRIMARY KEY (`id`),
-                                            UNIQUE KEY `uk_oauth_authorization_code_hash` (`code_hash`),
-                                            INDEX `idx_oauth_authorization_code_user_id` (`user_id`),
-                                            INDEX `idx_oauth_authorization_code_expires_at` (`expires_at`),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_oauth_authorization_code_hash` (`code_hash`),
+    INDEX `idx_oauth_authorization_code_user_id` (`user_id`),
+    INDEX `idx_oauth_authorization_code_expires_at` (`expires_at`),
 
-                                            CONSTRAINT `fk_oauth_authorization_code_user`
-                                                FOREIGN KEY (`user_id`)
-                                                    REFERENCES `users` (`id`)
-                                                    ON DELETE CASCADE
+    CONSTRAINT `fk_oauth_authorization_code_user`
+        FOREIGN KEY (`user_id`)
+            REFERENCES `users` (`id`)
+            ON DELETE CASCADE
 );
 
 
-CREATE TABLE `exam` (
-                        `id`         BIGINT       NOT NULL AUTO_INCREMENT,
-                        `code`       VARCHAR(50)  NOT NULL,
-                        `name`       VARCHAR(100) NOT NULL,
-                        `status`     VARCHAR(30)  NOT NULL DEFAULT 'PREPARING',
-                        `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        `updated_at` DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `exam`
+(
+    `id`         BIGINT       NOT NULL AUTO_INCREMENT,
+    `code`       VARCHAR(50)  NOT NULL,
+    `name`       VARCHAR(100) NOT NULL,
+    `status`     VARCHAR(30)  NOT NULL DEFAULT 'PREPARING',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                        PRIMARY KEY (`id`),
-                        UNIQUE KEY `uk_exam_code` (`code`)
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_exam_code` (`code`)
 );
 
 
 
-CREATE TABLE `exam_version` (
-                                `id`                       BIGINT       NOT NULL AUTO_INCREMENT,
-                                `exam_id`                  BIGINT       NOT NULL,
-                                `version_no`               INT          NOT NULL,
-                                `version_name`             VARCHAR(100) NOT NULL,
-                                `default_question_count`   INT          NOT NULL,
-                                `duration_type`            VARCHAR(50)  NOT NULL,
-                                `default_duration_seconds` INT              NULL,
-                                `total_score`              INT          NOT NULL,
-                                `passing_rule_type`        VARCHAR(50)  NOT NULL,
-                                `passing_score`            INT          NOT NULL,
-                                `has_subject_fail_rule`    BOOLEAN      NOT NULL DEFAULT FALSE,
-                                `subject_fail_threshold`   INT              NULL,
-                                `status`                   VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-                                `created_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                `updated_at`               DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `exam_version`
+(
+    `id`                       BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_id`                  BIGINT       NOT NULL,
+    `version_no`               INT          NOT NULL,
+    `version_name`             VARCHAR(100) NOT NULL,
+    `default_question_count`   INT          NOT NULL,
+    `duration_type`            VARCHAR(50)  NOT NULL,
+    `default_duration_seconds` INT          NULL,
+    `total_score`              INT          NOT NULL,
+    `passing_rule_type`        VARCHAR(50)  NOT NULL,
+    `passing_score`            INT          NOT NULL,
+    `has_subject_fail_rule`    BOOLEAN      NOT NULL DEFAULT FALSE,
+    `subject_fail_threshold`   INT          NULL,
+    `status`                   VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    `created_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`               DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                PRIMARY KEY (`id`),
-                                UNIQUE KEY `uk_exam_id_version_no` (`exam_id`, `version_no`),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_exam_id_version_no` (`exam_id`, `version_no`),
 
-                                CONSTRAINT `fk_exam_version_exam_id`
-                                    FOREIGN KEY (`exam_id`) REFERENCES `exam` (`id`)
-                                        ON DELETE CASCADE
+    CONSTRAINT `fk_exam_version_exam_id`
+        FOREIGN KEY (`exam_id`) REFERENCES `exam` (`id`)
+            ON DELETE CASCADE
 );
 
 
-CREATE TABLE `exam_part` (
-                             `id`                           BIGINT       NOT NULL AUTO_INCREMENT,
-                             `exam_version_id`              BIGINT       NOT NULL,
-                             `code`                         VARCHAR(50)  NOT NULL,
-                             `name`                         VARCHAR(100) NOT NULL,
-                             `default_question_count`       INT          NOT NULL,
-                             `default_duration_seconds`     INT              NULL,
-                             `total_score`                  INT          NOT NULL,
-                             `is_subject_fail_target`       BOOLEAN      NOT NULL DEFAULT FALSE,
-                             `subject_fail_threshold_score` INT              NULL,
-                             `is_active`                    BOOLEAN      NOT NULL DEFAULT FALSE,
-                             `display_order`                INT          NOT NULL,
-                             `created_at`                   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                             `updated_at`                   DATETIME         NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `exam_part`
+(
+    `id`                           BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_version_id`              BIGINT       NOT NULL,
+    `code`                         VARCHAR(50)  NOT NULL,
+    `name`                         VARCHAR(100) NOT NULL,
+    `default_question_count`       INT          NOT NULL,
+    `default_duration_seconds`     INT          NULL,
+    `total_score`                  INT          NOT NULL,
+    `is_subject_fail_target`       BOOLEAN      NOT NULL DEFAULT FALSE,
+    `subject_fail_threshold_score` INT          NULL,
+    `is_active`                    BOOLEAN      NOT NULL DEFAULT FALSE,
+    `display_order`                INT          NOT NULL,
+    `created_at`                   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`                   DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                             PRIMARY KEY (`id`),
-                             UNIQUE KEY `uk_exam_version_id_code` (`exam_version_id`, `code`),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_exam_version_id_code` (`exam_version_id`, `code`),
 
-                             CONSTRAINT `fk_exam_part_exam_version_id`
-                                 FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
-                                     ON DELETE CASCADE
+    CONSTRAINT `fk_exam_part_exam_version_id`
+        FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
+            ON DELETE CASCADE
 );
 
-CREATE TABLE `exam_scope_node` (
-                                   `id` BIGINT NOT NULL AUTO_INCREMENT,
-                                   `exam_version_id` BIGINT NOT NULL,
-                                   `exam_part_id` BIGINT NOT NULL,
-                                   `parent_id` BIGINT NULL,
-                                   `code` VARCHAR(100) NOT NULL,
-                                   `node_type` VARCHAR(30) NOT NULL,
-                                   `depth` INT NOT NULL,
-                                   `title` VARCHAR(200) NOT NULL,
-                                   `description` TEXT NULL,
-                                   `keywords_json` JSON NULL,
-                                   `is_leaf` BOOLEAN NOT NULL DEFAULT FALSE,
-                                   `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
-                                   `display_order` INT NOT NULL DEFAULT 0,
-                                   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                   `updated_at` DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `exam_scope_node`
+(
+    `id`              BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_version_id` BIGINT       NOT NULL,
+    `exam_part_id`    BIGINT       NOT NULL,
+    `parent_id`       BIGINT       NULL,
+    `code`            VARCHAR(100) NOT NULL,
+    `node_type`       VARCHAR(30)  NOT NULL,
+    `depth`           INT          NOT NULL,
+    `title`           VARCHAR(200) NOT NULL,
+    `description`     TEXT         NULL,
+    `keywords_json`   JSON         NULL,
+    `is_leaf`         BOOLEAN      NOT NULL DEFAULT FALSE,
+    `is_active`       BOOLEAN      NOT NULL DEFAULT TRUE,
+    `display_order`   INT          NOT NULL DEFAULT 0,
+    `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                                   PRIMARY KEY (`id`),
+    PRIMARY KEY (`id`),
 
-                                   UNIQUE KEY `uk_exam_scope_node_version_code`
-                                       (`exam_version_id`, `code`),
-                                   UNIQUE KEY `uk_exam_scope_node_parent_order`
-                                       (`exam_version_id`, `parent_id`, `display_order`),
-                                   UNIQUE KEY `uk_exam_scope_node_parent_title`
-                                       (`exam_version_id`, `parent_id`, `title`),
-                                   INDEX `idx_scope_node_exam_version`
-                                       (`exam_version_id`),
-                                   INDEX `idx_scope_node_exam_part`
-                                       (`exam_part_id`),
-                                   INDEX `idx_scope_node_parent`
-                                       (`parent_id`),
-                                   INDEX `idx_scope_node_depth`
-                                       (`exam_version_id`, `depth`),
-                                   INDEX `idx_scope_node_type`
-                                       (`node_type`),
-                                   INDEX `idx_scope_node_active`
-                                       (`is_active`),
+    UNIQUE KEY `uk_exam_scope_node_version_code`
+        (`exam_version_id`, `code`),
+    UNIQUE KEY `uk_exam_scope_node_parent_order`
+        (`exam_version_id`, `parent_id`, `display_order`),
+    UNIQUE KEY `uk_exam_scope_node_parent_title`
+        (`exam_version_id`, `parent_id`, `title`),
+    INDEX `idx_scope_node_exam_version`
+        (`exam_version_id`),
+    INDEX `idx_scope_node_exam_part`
+        (`exam_part_id`),
+    INDEX `idx_scope_node_parent`
+        (`parent_id`),
+    INDEX `idx_scope_node_depth`
+        (`exam_version_id`, `depth`),
+    INDEX `idx_scope_node_type`
+        (`node_type`),
+    INDEX `idx_scope_node_active`
+        (`is_active`),
 
-                                   CONSTRAINT `fk_scope_node_exam_version`
-                                       FOREIGN KEY (`exam_version_id`)
-                                           REFERENCES `exam_version` (`id`)
-                                           ON DELETE CASCADE,
-                                   CONSTRAINT `fk_scope_node_exam_part`
-                                       FOREIGN KEY (`exam_part_id`)
-                                           REFERENCES `exam_part` (`id`)
-                                           ON DELETE CASCADE,
-                                   CONSTRAINT `fk_scope_node_parent`
-                                       FOREIGN KEY (`parent_id`)
-                                           REFERENCES `exam_scope_node` (`id`)
-                                           ON DELETE SET NULL,
-                                   CONSTRAINT `chk_scope_node_depth`
-                                       CHECK (`depth` >= 0),
-                                   CONSTRAINT `chk_scope_node_display_order`
-                                       CHECK (`display_order` >= 0)
+    CONSTRAINT `fk_scope_node_exam_version`
+        FOREIGN KEY (`exam_version_id`)
+            REFERENCES `exam_version` (`id`)
+            ON DELETE CASCADE,
+    CONSTRAINT `fk_scope_node_exam_part`
+        FOREIGN KEY (`exam_part_id`)
+            REFERENCES `exam_part` (`id`)
+            ON DELETE CASCADE,
+    CONSTRAINT `fk_scope_node_parent`
+        FOREIGN KEY (`parent_id`)
+            REFERENCES `exam_scope_node` (`id`)
+            ON DELETE SET NULL,
+    CONSTRAINT `chk_scope_node_depth`
+        CHECK (`depth` >= 0),
+    CONSTRAINT `chk_scope_node_display_order`
+        CHECK (`display_order` >= 0)
 );
 
-CREATE TABLE `exam_scope_node_embedding` (
-                                             `id` BIGINT NOT NULL AUTO_INCREMENT,
-                                             `exam_scope_node_id` BIGINT NOT NULL,
-                                             `embedding_model` VARCHAR(100) NOT NULL,
-                                             `embedding_json` JSON NOT NULL,
-                                             `embedding_dimension` INT NOT NULL,
-                                             `embedding_text_hash` VARCHAR(64) NOT NULL,
-                                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `exam_scope_node_embedding`
+(
+    `id`                  BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_scope_node_id`  BIGINT       NOT NULL,
+    `embedding_model`     VARCHAR(100) NOT NULL,
+    `embedding_json`      JSON         NOT NULL,
+    `embedding_dimension` INT          NOT NULL,
+    `embedding_text_hash` VARCHAR(64)  NOT NULL,
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-                                             PRIMARY KEY (`id`),
+    PRIMARY KEY (`id`),
 
-                                             UNIQUE KEY `uk_scope_node_embedding_scope_model`
-                                                 (`exam_scope_node_id`, `embedding_model`),
+    UNIQUE KEY `uk_scope_node_embedding_scope_model`
+        (`exam_scope_node_id`, `embedding_model`),
 
-                                             INDEX `idx_scope_node_embedding_scope`
-                                                 (`exam_scope_node_id`),
-                                             INDEX `idx_scope_node_embedding_model`
-                                                 (`embedding_model`),
-                                             INDEX `idx_scope_node_embedding_text_hash`
-                                                 (`embedding_text_hash`),
+    INDEX `idx_scope_node_embedding_scope`
+        (`exam_scope_node_id`),
+    INDEX `idx_scope_node_embedding_model`
+        (`embedding_model`),
+    INDEX `idx_scope_node_embedding_text_hash`
+        (`embedding_text_hash`),
 
-                                             CONSTRAINT `fk_scope_node_embedding_scope_node`
-                                                 FOREIGN KEY (`exam_scope_node_id`)
-                                                     REFERENCES `exam_scope_node` (`id`)
-                                                     ON DELETE CASCADE,
+    CONSTRAINT `fk_scope_node_embedding_scope_node`
+        FOREIGN KEY (`exam_scope_node_id`)
+            REFERENCES `exam_scope_node` (`id`)
+            ON DELETE CASCADE,
 
-                                             CONSTRAINT `chk_scope_node_embedding_dimension`
-                                                 CHECK (`embedding_dimension` > 0)
+    CONSTRAINT `chk_scope_node_embedding_dimension`
+        CHECK (`embedding_dimension` > 0)
 );
 
 
-CREATE TABLE `user_exam` (
-                             `id`              BIGINT   NOT NULL AUTO_INCREMENT,
-                             `user_id`         BIGINT   NOT NULL,
-                             `exam_version_id` BIGINT   NOT NULL,
-                             `is_hidden`       BOOLEAN  NOT NULL DEFAULT FALSE,
-                             `last_studied_at` DATETIME     NULL,
-                             `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                             `updated_at`      DATETIME     NULL ON UPDATE CURRENT_TIMESTAMP,
+CREATE TABLE `user_exam`
+(
+    `id`              BIGINT   NOT NULL AUTO_INCREMENT,
+    `user_id`         BIGINT   NOT NULL,
+    `exam_version_id` BIGINT   NOT NULL,
+    `is_hidden`       BOOLEAN  NOT NULL DEFAULT FALSE,
+    `last_studied_at` DATETIME NULL,
+    `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
 
-                             PRIMARY KEY (`id`),
-                             UNIQUE KEY `uk_user_exam_user_exam_version` (`user_id`, `exam_version_id`),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_exam_user_exam_version` (`user_id`, `exam_version_id`),
 
-                             INDEX `idx_user_exam_user_id` (`user_id`),
-                             INDEX `idx_user_exam_exam_version_id` (`exam_version_id`),
-                             INDEX `idx_user_exam_user_hidden` (`user_id`, `is_hidden`),
+    INDEX `idx_user_exam_user_id` (`user_id`),
+    INDEX `idx_user_exam_exam_version_id` (`exam_version_id`),
+    INDEX `idx_user_exam_user_hidden` (`user_id`, `is_hidden`),
 
-                             CONSTRAINT `fk_user_exam_user_id`
-                                 FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-                                     ON DELETE CASCADE,
+    CONSTRAINT `fk_user_exam_user_id`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+            ON DELETE CASCADE,
 
-                             CONSTRAINT `fk_user_exam_exam_version_id`
-                                 FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
-                                     ON DELETE CASCADE
+    CONSTRAINT `fk_user_exam_exam_version_id`
+        FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`)
+            ON DELETE CASCADE
 );
 
 
@@ -674,15 +687,15 @@ CREATE TABLE `past_paper_item`
 
 CREATE TABLE `past_paper_attempt`
 (
-    `id`             BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `user_id`        BIGINT       NOT NULL,
-    `past_paper_id`  BIGINT       NOT NULL,
-    `status`         VARCHAR(30)  NOT NULL DEFAULT 'SOLVING',
-    `user_score`     INT          NULL     DEFAULT NULL,
-    `passed`      TINYINT(1)   NULL     DEFAULT NULL,
-    `elapsed_time`   INT                   DEFAULT NULL,
-    `started_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `id`            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`       BIGINT      NOT NULL,
+    `past_paper_id` BIGINT      NOT NULL,
+    `status`        VARCHAR(30) NOT NULL DEFAULT 'SOLVING',
+    `user_score`    INT         NULL     DEFAULT NULL,
+    `passed`        TINYINT(1)  NULL     DEFAULT NULL,
+    `elapsed_time`  INT                  DEFAULT NULL,
+    `started_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_past_paper_attempt_user_id`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT `fk_past_paper_attempt_past_paper_id`
@@ -709,9 +722,9 @@ CREATE TABLE `user_answer`
     `id`                    BIGINT AUTO_INCREMENT PRIMARY KEY,
     `past_paper_attempt_id` BIGINT       NOT NULL,
     `problem_id`            BIGINT       NOT NULL,
-    `user_answer`            VARCHAR(500) NULL,
-    `correct`            TINYINT(1)   NULL DEFAULT NULL,
-    `marked_for_review`            TINYINT(1)   NOT NULL DEFAULT FALSE,
+    `user_answer`           VARCHAR(500) NULL,
+    `correct`               TINYINT(1)   NULL     DEFAULT NULL,
+    `marked_for_review`     TINYINT(1)   NOT NULL DEFAULT FALSE,
     `created_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_user_answer_attempt_problem` (`past_paper_attempt_id`, `problem_id`),
@@ -739,3 +752,70 @@ CREATE TABLE `problem_choice`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
+
+
+CREATE TABLE `study_room`
+(
+    `id`            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `past_paper_id` BIGINT       NOT NULL,
+    `created_by`    BIGINT       NOT NULL,
+    `title`         VARCHAR(100) NOT NULL,
+    `description`   VARCHAR(500) NOT NULL,
+    `capacity`      INT          NOT NULL,
+    `time_limit`    INT          NOT NULL,
+    `status`        VARCHAR(30)  NOT NULL DEFAULT 'WAITING',
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_study_room_past_paper_id`
+        FOREIGN KEY (`past_paper_id`) REFERENCES `past_paper` (`id`),
+    CONSTRAINT `fk_study_room_created_by`
+        FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+    CONSTRAINT `chk_study_room_capacity`
+        CHECK (`capacity` BETWEEN 2 AND 5),
+    CONSTRAINT `chk_study_room_status`
+        CHECK (`status` IN ('WAITING', 'SOLVING', 'FEEDBACK', 'CANCELED')),
+    CONSTRAINT `chk_study_room_time_limit`
+        CHECK (`time_limit` > 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `study_room_member`
+(
+    `id`                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`               BIGINT      NOT NULL,
+    `study_room_id`         BIGINT      NOT NULL,
+    `past_paper_attempt_id` BIGINT      NULL,
+    `role`                  VARCHAR(30) NOT NULL,
+    `is_ready`              BOOLEAN     NOT NULL DEFAULT FALSE,
+    `joined_at`             DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`            DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_study_room_member_room_user` (`study_room_id`, `user_id`),
+    UNIQUE KEY `uk_study_room_member_past_paper_attempt` (`past_paper_attempt_id`),
+    CONSTRAINT `fk_study_room_member_user_id`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+    CONSTRAINT `fk_study_room_member_study_room_id`
+        FOREIGN KEY (`study_room_id`) REFERENCES `study_room` (`id`),
+    CONSTRAINT `fk_study_room_member_past_paper_attempt_id`
+        FOREIGN KEY (`past_paper_attempt_id`) REFERENCES `past_paper_attempt` (`id`),
+    CONSTRAINT `chk_study_room_member_role`
+        CHECK (`role` IN ('HOST', 'MEMBER'))
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `active_study_room_participation`
+(
+    `id`            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`       BIGINT   NOT NULL,
+    `study_room_id` BIGINT   NOT NULL,
+    `created_at`    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_active_study_room_participation_user_id` (`user_id`),
+    CONSTRAINT `fk_active_study_room_participation_user_id`
+        FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+    CONSTRAINT `fk_active_study_room_participation_study_room_id`
+        FOREIGN KEY (`study_room_id`) REFERENCES `study_room` (`id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+

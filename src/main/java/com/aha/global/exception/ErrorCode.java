@@ -41,10 +41,10 @@ public enum ErrorCode {
 
 
     //EXAM
-    EXAM_VERSION_NOT_FOUND(404,"EXAM_VERSION_002","시험 버전을 찾을 수 없습니다."),
-    EXAM_VERSION_NOT_ACTIVE(409,"EXAM_VERSION_001","시험 버전을 찾을 수 없습니다."),
-    EXAM_NOT_ACTIVE(409,"EXAM_001","해당 시험을 찾을 수 없습니다" ),
-    EXAM_SCOPE_NODE_NOT_FOUND(409,"EXAM_SCOPE_NODE_001" ,"시험 목차를 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_FOUND(404, "EXAM_VERSION_002", "시험 버전을 찾을 수 없습니다."),
+    EXAM_VERSION_NOT_ACTIVE(409, "EXAM_VERSION_001", "시험 버전을 찾을 수 없습니다."),
+    EXAM_NOT_ACTIVE(409, "EXAM_001", "해당 시험을 찾을 수 없습니다"),
+    EXAM_SCOPE_NODE_NOT_FOUND(409, "EXAM_SCOPE_NODE_001", "시험 목차를 찾을 수 없습니다."),
 
 
 
@@ -89,21 +89,33 @@ public enum ErrorCode {
 
 
     //PROBLEM
-    PROBLEM_NOT_FOUND(404,"PROBLEM_001","문제를 찾을 수 없습니다." ),
-    PROBLEM_NOT_IN_PAST_PAPER(409,"PROBLEM_002" ,"문제가 풀고 있는 복원 기출에 포함되지 않았습니다." ),
+    PROBLEM_NOT_FOUND(404, "PROBLEM_001", "문제를 찾을 수 없습니다."),
+    PROBLEM_NOT_IN_PAST_PAPER(409, "PROBLEM_002", "문제가 풀고 있는 복원 기출에 포함되지 않았습니다."),
 
     //PAST_PAPER
-    PAST_PAPER_NOT_FOUND(404,"PAST_PAPER_001" ,"복원 기출을 찾을 수 없습니다."),
-    PAST_PAPER_NOT_PUBLISHED(409,"PAST_PAPER_002" ,"복원 기출이 노출 가능 상태가 아닙니다." ),
-    PAST_PAPER_ATTEMPT_NOT_FOUND(404 ,"PAST_PAPER_003" , "복원 기출 풀이가 없습니다." ),
-    PAST_PAPER_ATTEMPT_NOT_YOURS(403,"PAST_PAPER_004" , "풀이 소유자가 아닙니다."),
-    PAST_PAPER_ATTEMPT_NOT_SOLVING(409,"PAST_PAPER_005" , "풀이 중 상태가 아닙니다."),
-    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409,"PAST_PAPER_006" ,"복원 기출 풀이 시간이 만료되었습니다." ),
-    PAST_PAPER_ATTEMPT_NOT_GRADED(409,"PAST_PAPER_007" ,"채점 완료 상태가 아닙니다." );
+    PAST_PAPER_NOT_FOUND(404, "PAST_PAPER_001", "복원 기출을 찾을 수 없습니다."),
+    PAST_PAPER_NOT_PUBLISHED(409, "PAST_PAPER_002", "복원 기출이 노출 가능 상태가 아닙니다."),
+    PAST_PAPER_ATTEMPT_NOT_FOUND(404, "PAST_PAPER_003", "복원 기출 풀이가 없습니다."),
+    PAST_PAPER_ATTEMPT_NOT_YOURS(403, "PAST_PAPER_004", "풀이 소유자가 아닙니다."),
+    PAST_PAPER_ATTEMPT_NOT_SOLVING(409, "PAST_PAPER_005", "풀이 중 상태가 아닙니다."),
+    PAST_PAPER_ATTEMPT_TIME_EXPIRED(409, "PAST_PAPER_006", "복원 기출 풀이 시간이 만료되었습니다."),
+    PAST_PAPER_ATTEMPT_NOT_GRADED(409, "PAST_PAPER_007", "채점 완료 상태가 아닙니다."),
 
-
-
-
+    //STUDY
+    STUDY_PARTICIPATION_ALREADY_EXISTS(409, "STUDY_001", "이미 스터디룸에 참가하고 있습니다."),
+    STUDY_ROOM_ALREADY_JOINED(409,"STUDY_002","스터디룸에 이미 참가했습니다."),
+    STUDY_ROOM_NOT_FOUND(404,"STUDY_003","스터디룸이 존재하지 않습니다."),
+    JOINED_STUDY_ROOM_NOT_FOUND(404,"STUDY_004" ,"참가하고 있는 스터디가 없습니다." ),
+    STUDY_ROOM_ALREADY_CANCELED(409,"STUDY_005" ,"스터디룸이 취소되었습니다." ),
+    STUDY_ROOM_ALREADY_FULL(409,"STUDY_006" ,"스터디룸 정원이 전부 찼습니다." ),
+    STUDY_ROOM_ALREADY_SOLVING(409,"STUDY_007" ,"스터디룸은 풀이 중 상태입니다." ),
+    REQUESTER_NOT_STUDY_ROOM_MEMBER(403, "STUDY_008", "해당 스터디룸에 참여하고 있지 않습니다."),
+    STUDY_ROOM_MEMBER_ROLE_MUST_BE_MEMBER(403,"STUDY_009" ,"방장이 아닌 멤버여야 합니다" ),
+    STUDY_ROOM_ALREADY_FEEDBACK(409,"STUDY_010","스터디룸은 피드백 중입니다." ),
+    STUDY_ROOM_MEMBER_ROLE_MUST_BE_HOST(403,"STUDY_011" ,"방장이어야 합니다."),
+    STUDY_ROOM_HOST_CANNOT_KICK_SELF(403, "STUDY_012", "방장은 자기 자신을 강퇴할 수 없습니다."),
+    STUDY_ROOM_TARGET_NOT_FOUND(404, "STUDY_013", "대상자를 찾을 수 없습니다."),
+    STUDY_ROOM_HOST_CANNOT_DELEGATE_SELF(403,"STUDY_014" ,"방장은 자기 자신에게 위임할 수 없습니다.");
 
 
     private final int status;

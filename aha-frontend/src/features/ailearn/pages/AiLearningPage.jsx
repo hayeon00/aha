@@ -33,6 +33,7 @@ function AiLearningPage() {
         userExams,
         selectedUserExamId,
         selectedUserExam,
+        selectedExamVersionId,
         isExamLoading,
         examMessage,
         changeUserExam,
