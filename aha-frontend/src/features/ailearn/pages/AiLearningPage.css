@@ -445,3 +445,206 @@
     .canvas-action-row .studio-submit { width: 100%; }
     .canvas-action-row > span { margin: 0 auto; }
 }
+
+/* Modern AI upload hero */
+.studio-page { padding: 58px 32px 84px; background: #f8fafc; }
+.studio-shell { width: min(768px, 100%); }
+.studio-conversation > .studio-hero { padding: 8px 2px 30px; text-align: center; }
+.studio-conversation > .studio-hero .studio-greeting {
+    margin: 0 0 8px;
+    color: #f97316;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -.012em;
+}
+.studio-conversation > .studio-hero h2 {
+    max-width: none;
+    margin: 0;
+    color: #0f172a;
+    font-size: 28px;
+    font-weight: 750;
+    line-height: 1.35;
+    letter-spacing: -.04em;
+}
+.studio-conversation > .studio-hero .studio-hero-description {
+    max-width: 660px;
+    margin: 11px auto 0;
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.65;
+}
+.studio-ai-canvas {
+    padding: 24px;
+    border: 1px solid rgba(226,232,240,.9);
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 24px 64px rgba(15,23,42,.09),0 3px 10px rgba(15,23,42,.035);
+    backdrop-filter: none;
+}
+.canvas-context-bar { gap: 12px; padding: 0 0 20px; }
+.canvas-exam-pill,
+.canvas-title-pill { height: 46px; }
+.canvas-exam-pill {
+    flex: 0 1 48%;
+    padding: 0 12px 0 14px;
+    border-color: #e2e8f0;
+    border-radius: 999px;
+    background: #f8fafc;
+}
+.canvas-title-pill {
+    flex: 1 1 52%;
+    padding: 0 14px;
+    border-color: #e2e8f0;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15,23,42,.025);
+}
+.canvas-exam-pill select,
+.canvas-title-pill input { font-size: 14px; }
+.canvas-exam-pill select { max-width: none; flex: 1; }
+.studio-ai-canvas .studio-dropzone {
+    min-height: 300px;
+    padding: 40px 28px;
+    border: 2px dashed #fed7aa;
+    border-radius: 20px;
+    background: linear-gradient(145deg,#f8fafc 20%,rgba(255,247,237,.5));
+    box-shadow: none;
+}
+.studio-ai-canvas .studio-dropzone:hover,
+.studio-ai-canvas .studio-dropzone:focus-visible,
+.studio-ai-canvas .studio-dropzone.dragging {
+    border-color: #fb923c;
+    background: linear-gradient(145deg,#fff,#fff7ed);
+    box-shadow: 0 14px 36px rgba(249,115,22,.1),0 0 0 4px rgba(249,115,22,.055);
+    transform: translateY(-2px);
+}
+.studio-ai-canvas .dropzone-icon {
+    width: 68px;
+    height: 68px;
+    border: 1px solid #ffedd5;
+    border-radius: 50%;
+    color: #f97316;
+    background: #fff7ed;
+    box-shadow: 0 9px 24px rgba(249,115,22,.12);
+}
+.studio-ai-canvas .dropzone-icon > svg { width: 29px; height: 29px; }
+.studio-ai-canvas .dropzone-icon i {
+    width: 25px;
+    height: 25px;
+    top: -3px;
+    right: -5px;
+    border: 3px solid #fff;
+    color: #f97316;
+    background: #ffedd5;
+    box-shadow: none;
+}
+.studio-ai-canvas .dropzone-icon i > svg { width: 12px; height: 12px; }
+.studio-ai-canvas .studio-dropzone h3 {
+    max-width: 510px;
+    margin: 21px 0 7px;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.55;
+}
+.studio-ai-canvas .studio-dropzone p { color: #64748b; font-size: 13px; }
+.dropzone-supports { display: flex; gap: 7px; margin-top: 18px; }
+.dropzone-supports span {
+    display: inline-flex;
+    height: 24px;
+    align-items: center;
+    padding: 0 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    color: #64748b;
+    background: rgba(255,255,255,.82);
+    font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size: 10px;
+    font-weight: 700;
+}
+.studio-ai-canvas .selected-file { margin: 88px auto; }
+
+@media (max-width: 720px) {
+    .studio-page { padding: 34px 14px 54px; }
+    .studio-conversation > .studio-hero { padding: 4px 4px 24px; text-align: left; }
+    .studio-conversation > .studio-hero h2 { font-size: 25px; }
+    .studio-conversation > .studio-hero .studio-hero-description { margin-left: 0; font-size: 14px; }
+    .studio-ai-canvas { padding: 14px; border-radius: 22px; }
+    .canvas-context-bar { gap: 10px; }
+    .canvas-exam-pill,.canvas-title-pill { height: 48px; }
+    .studio-ai-canvas .studio-dropzone { min-height: 270px; padding: 34px 18px; }
+}
+
+/* Loading modal */
+.loading-modal-backdrop {
+    position: fixed;
+    z-index: 1000;
+    display: grid;
+    inset: 0;
+    padding: 24px;
+    place-items: center;
+    background: rgba(0,0,0,.4);
+    backdrop-filter: blur(4px);
+    animation: modal-backdrop-in .24s ease both;
+}
+.loading-modal-backdrop.completed { pointer-events: none; animation: modal-backdrop-out .65s ease both; }
+.loading-modal {
+    width: min(430px, 100%);
+    padding: 34px 32px 30px;
+    border: 1px solid rgba(255,255,255,.72);
+    border-radius: 22px;
+    color: #172033;
+    background: rgba(255,255,255,.97);
+    box-shadow: 0 32px 90px rgba(0,0,0,.24), 0 8px 30px rgba(15,23,42,.12);
+    text-align: center;
+    animation: loading-modal-in .34s cubic-bezier(.2,.8,.2,1) both;
+}
+.loading-sparkle {
+    position: relative;
+    display: grid;
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 21px;
+    place-items: center;
+    border-radius: 19px;
+    color: #ff6b00;
+    background: linear-gradient(145deg,#fff8f2,#ffe7d5);
+    box-shadow: 0 12px 30px rgba(255,107,0,.15);
+}
+.loading-sparkle > svg { position: relative; z-index: 2; width: 27px; height: 27px; animation: loading-sparkle-pulse 1.35s ease-in-out infinite; }
+.loading-sparkle > span { position: absolute; inset: -7px; border: 1px solid rgba(255,107,0,.2); border-radius: 23px; animation: loading-sparkle-ring 1.7s ease-out infinite; }
+.loading-sparkle.failed { color: #dc4b41; background: #fff1ef; box-shadow: none; }
+.loading-sparkle.failed > svg { animation: none; }
+.loading-modal h2 { margin: 0; font-size: 18px; font-weight: 680; line-height: 1.45; letter-spacing: -.025em; }
+.loading-progress-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 26px; color: #94a3b8; font-size: 11px; }
+.loading-progress-meta b { color: #f26100; font-size: 13px; }
+.loading-progress-track { height: 6px; margin-top: 9px; overflow: hidden; border-radius: 999px; background: #f0f2f5; }
+.loading-progress-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#ff9a55,#ff6200); box-shadow: 0 0 12px rgba(255,107,0,.32); transition: width .55s ease; }
+.loading-status { margin: 19px 0 0; color: #64748b; font-size: 13px; line-height: 1.6; }
+.loading-caption { margin: 22px -4px 0; padding-top: 18px; border-top: 1px solid #edf0f3; color: #94a3b8; font-size: 12px; }
+.loading-reset { width: 100%; height: 46px; margin-top: 24px; border-radius: 12px; color: #fff; background: #ff6b00; font-size: 14px; font-weight: 750; transition: transform .18s ease, box-shadow .18s ease; }
+.loading-reset:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(255,107,0,.22); }
+@keyframes modal-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-backdrop-out { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes loading-modal-in { from { opacity: 0; transform: translateY(12px) scale(.975); } to { opacity: 1; transform: none; } }
+@keyframes loading-sparkle-pulse { 0%,100% { transform: scale(.9) rotate(-4deg); opacity: .8; } 50% { transform: scale(1.12) rotate(4deg); opacity: 1; } }
+@keyframes loading-sparkle-ring { from { opacity: .75; transform: scale(.8); } to { opacity: 0; transform: scale(1.22); } }
+
+@media (max-width: 520px) {
+    .loading-modal-backdrop { padding: 16px; }
+    .loading-modal { padding: 30px 22px 25px; border-radius: 19px; }
+}
+
+/* Shared document workspace tokens */
+.studio-conversation > .studio-hero h2 { color: #0f172a; font-weight: 750; }
+.studio-ai-canvas {
+    border: 1px solid #f1f5f9;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 20px 30px -8px rgba(203,213,225,.5),0 8px 16px -10px rgba(15,23,42,.12);
+}
+.studio-ai-canvas .studio-dropzone { border: 2px dashed #fdba74; }
+.studio-ai-canvas .studio-dropzone:hover,
+.studio-ai-canvas .studio-dropzone:focus-visible,
+.studio-ai-canvas .studio-dropzone.dragging { border-color: #fb923c; }
