@@ -6,11 +6,11 @@ import {
     useNavigate,
 } from "react-router-dom";
 
-import LoginPage from "../features/auth/pages/LoginPage.jsx";
 import OAuthCallbackPage from "../features/auth/pages/OAuthCallbackPage.jsx";
 import SignupPage from "../features/auth/pages/SignupPage.jsx";
 import AiLearningPage from "../features/ailearn/pages/AiLearningPage.jsx";
 import MainPage from "../features/home/pages/MainPage.jsx";
+import LearningHomePage from "../features/home/pages/LearningHomePage.jsx";
 import MyPage from "../features/user/pages/MyPage.jsx";
 import PastPaperListPage from "../features/pastpaper/pages/PastPaperListPage.jsx";
 import PastPaperAttemptListPage from "../features/pastpaper/pages/PastPaperAttemptListPage.jsx";
@@ -36,25 +36,21 @@ function App() {
     const handleLoginSuccess = useCallback(
         (accessToken) => {
             login(accessToken);
-
-            navigate("/main", {
-                replace: true,
-            });
         },
-        [login, navigate],
+        [login],
     );
 
     const handleLogout = async () => {
         try {
             await logout();
 
-            navigate("/login", {
+            navigate("/main", {
                 replace: true,
             });
         } catch (error) {
             console.error("로그아웃 실패:", error);
 
-            navigate("/login", {
+            navigate("/main", {
                 replace: true,
             });
         }
@@ -80,37 +76,11 @@ function App() {
             <Route
                 path="/"
                 element={
-                    <Navigate
-                        to={
-                            isLoggedIn
-                                ? "/main"
-                                : "/login"
-                        }
-                        replace
-                    />
+                    <Navigate to="/main" replace />
                 }
             />
 
-            <Route
-                path="/login"
-                element={
-                    isLoggedIn ? (
-                        <Navigate
-                            to="/main"
-                            replace
-                        />
-                    ) : (
-                        <LoginPage
-                            onLoginSuccess={
-                                handleLoginSuccess
-                            }
-                            onMoveSignup={() =>
-                                navigate("/signup")
-                            }
-                        />
-                    )
-                }
-            />
+            <Route path="/login" element={<Navigate to="/main" replace />} />
 
             <Route
                 path="/oauth/callback"
@@ -134,33 +104,20 @@ function App() {
                     ) : (
                         <SignupPage
                             onMoveLogin={() =>
-                                navigate("/login")
+                                navigate("/main")
                             }
                         />
                     )
                 }
             />
 
-            <Route
-                element={
-                    isLoggedIn ? (
-                        <MainLayout
-                            onLogout={
-                                handleLogout
-                            }
-                        />
-                    ) : (
-                        <Navigate
-                            to="/login"
-                            replace
-                        />
-                    )
-                }
-            >
-                <Route
-                    path="/main"
-                    element={<MainPage />}
-                />
+            <Route path="/main" element={<MainPage isLoggedIn={isLoggedIn} onLoginSuccess={handleLoginSuccess} onLogout={handleLogout} />} />
+
+            <Route path="/mypage" element={isLoggedIn ? <MyPage /> : <Navigate to="/main" replace />} />
+
+            <Route element={isLoggedIn ? <MainLayout onLogout={handleLogout} /> : <Navigate to="/main" replace />}>
+
+                <Route path="/learning-home" element={<LearningHomePage />} />
 
                 <Route
                     path="/learning"
@@ -205,23 +162,12 @@ function App() {
                     path="/past-papers/:pastPaperId/attempts/:attemptId/explanation"
                     element={<PastPaperExplanationPage />}
                 />
-                <Route
-                    path="/mypage"
-                    element={<MyPage />}
-                />
             </Route>
 
             <Route
                 path="*"
                 element={
-                    <Navigate
-                        to={
-                            isLoggedIn
-                                ? "/main"
-                                : "/login"
-                        }
-                        replace
-                    />
+                    <Navigate to="/main" replace />
                 }
             />
         </Routes>
