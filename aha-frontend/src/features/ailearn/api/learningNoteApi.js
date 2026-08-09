@@ -6,6 +6,12 @@ export const getCompletedLearningNotes = () =>
 export const getLearningNoteDetail = (learningNoteId) =>
     axiosInstance.get(`/api/v1/learning-notes/${learningNoteId}`);
 
+export const deleteLearningNote = (learningNoteId) =>
+    axiosInstance.delete(`/api/v1/learning-notes/${learningNoteId}`);
+
+export const generateLearningNoteTopic = (learningNoteId, tocId) =>
+    axiosInstance.post(`/api/v1/learning-notes/${learningNoteId}/contents/${tocId}/generate`);
+
 export const updateLearningNoteTitle = (learningNoteId, title) =>
     axiosInstance.patch(
         `/api/v1/learning-notes/${learningNoteId}/title`,

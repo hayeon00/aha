@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useLearningNoteCreation } from "../hooks/useLearningNoteCreation.js";
+import LearningNoteDetailPage from "./LearningNoteDetailPage.jsx";
 
 import "./AiLearningPage.css";
 
@@ -19,6 +20,8 @@ const PROCESS_STEPS = [
 
 function AiLearningPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedNoteId = Number(searchParams.get("noteId"));
     const { userInfo } = useOutletContext() ?? {};
     const fileInputRef = useRef(null);
     const [title, setTitle] = useState("");
@@ -65,7 +68,6 @@ function AiLearningPage() {
         return Math.min(92, 22 + activeStepIndex * 17);
     }, [activeStepIndex, processing]);
 
-    const currentStep = PROCESS_STEPS[activeStepIndex] ?? PROCESS_STEPS.at(-1);
     const isWorking = Boolean(processing)
         && !["COMPLETED", "FAILED"].includes(processing.status);
     const isCompleted = processing?.status === "COMPLETED";
@@ -73,7 +75,23 @@ function AiLearningPage() {
     const canSubmit = Boolean(selectedUserExamId && noteTitle.trim() && file)
         && !submitting
         && !isWorking;
-    const displayName = userInfo?.nickname || userInfo?.name || "사용자";
+    const displayName = sanitizeDisplayName(
+        userInfo?.nickname || userInfo?.name || "사용자",
+    );
+
+    useEffect(() => {
+        if (!isCompleted || !learningNoteId) return undefined;
+
+        const timerId = window.setTimeout(() => {
+            navigate(`/learning?view=notes&noteId=${learningNoteId}`, { replace: true });
+        }, 650);
+
+        return () => window.clearTimeout(timerId);
+    }, [isCompleted, learningNoteId, navigate]);
+
+    if (Number.isInteger(requestedNoteId) && requestedNoteId > 0) {
+        return <LearningNoteDetailPage learningNoteId={requestedNoteId} />;
+    }
 
     const selectFile = (candidate) => {
         if (!candidate) return;
@@ -127,32 +145,14 @@ function AiLearningPage() {
             <section className="studio-shell">
                 {userExams.length === 0 ? (
                     <EmptyExamState onMove={() => navigate("/mypage")} message={examMessage} />
-                ) : isCompleted ? (
-                    <CompletionView
-                        title={noteTitle}
-                        file={file}
-                        learningNoteId={learningNoteId}
-                        onHome={() => navigate("/main")}
-                        onCreateAnother={startAgain}
-                    />
                 ) : (
                     <section className="studio-conversation">
                         <header className="studio-hero">
-                            <h2>안녕하세요 {displayName}님! 오늘 어떤 시험을 완벽 대비해 드릴까요?</h2>
-                            <p>교안이나 요약 자료를 올려주시면 시험 출제 기준에 맞춰 핵심만 정리해 드립니다.</p>
+                            <p className="studio-greeting">안녕하세요, {displayName}님!</p>
+                            <h2>오늘 어떤 교안을 완벽하게 요약해 드릴까요?</h2>
+                            <p className="studio-hero-description">교안 파일을 올리시면 시험 출제 기준에 맞춰 핵심 목차와 학습 노트를 생성해 드립니다.</p>
                         </header>
                         <section className="studio-panel studio-ai-canvas">
-                            {processing ? (
-                                <ProcessingPanel
-                                    processing={processing}
-                                    progress={progress}
-                                    activeStepIndex={activeStepIndex}
-                                    currentStep={currentStep}
-                                    error={error}
-                                    failed={isFailed}
-                                    onReset={startAgain}
-                                />
-                            ) : (
                             <form className="studio-form" onSubmit={handleSubmit}>
                             <fieldset disabled={isWorking || submitting}>
                                 <div className="canvas-context-bar">
@@ -165,14 +165,14 @@ function AiLearningPage() {
                                         >
                                             {userExams.map((exam) => (
                                                 <option key={exam.userExamId} value={exam.userExamId}>
-                                                    {exam.examName}{exam.versionName ? ` · ${exam.versionName}` : ""}
+                                                    {exam.examName}{exam.versionName ? ` - ${exam.versionName}` : ""}
                                                 </option>
                                             ))}
                                         </select>
                                         <ChevronIcon />
                                     </div>
                                     <label className="canvas-title-pill">
-                                        <span aria-hidden="true">🏷️</span>
+                                        <span aria-hidden="true">📝</span>
                                         <input
                                             value={title}
                                             maxLength={255}
@@ -203,9 +203,12 @@ function AiLearningPage() {
                                             role="button"
                                             tabIndex={0}
                                         >
-                                            <span className="dropzone-icon"><SparkleIcon /></span>
-                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "여기에 교안(PDF/DOCX)을 끌어놓거나 클릭하여 선택하세요"}</h3>
-                                            <p>최대 20MB까지 안전하게 업로드할 수 있어요</p>
+                                            <span className="dropzone-icon"><DocumentIcon /><i><SparkleIcon /></i></span>
+                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "교안 파일(PDF, DOCX)을 드래그하거나 클릭하여 업로드하세요"}</h3>
+                                            <p>최대 20MB까지 안전하게 분석해 드려요</p>
+                                            <div className="dropzone-supports" aria-label="지원 파일 형식">
+                                                <span>PDF</span><span>DOCX</span>
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="selected-file">
@@ -238,61 +241,49 @@ function AiLearningPage() {
                                 </div>
                             )}
                             </form>
-                            )}
                         </section>
                     </section>
                 )}
             </section>
+            {processing && (
+                <LoadingModal
+                    progress={progress}
+                    completed={isCompleted}
+                    failed={isFailed}
+                    error={error}
+                    onReset={startAgain}
+                />
+            )}
         </main>
     );
 }
 
-function ProcessingPanel({ processing, progress, activeStepIndex, currentStep, error, failed, onReset }) {
+function LoadingModal({ progress, completed, failed, error, onReset }) {
     return (
-        <div className={`processing-panel ${failed ? "failed" : ""}`}>
-            <div className="processing-top">
-                <span className="processing-pulse">{failed ? <AlertIcon /> : <SparkleIcon />}</span>
-                <div><span>{failed ? "처리 중 문제가 발생했어요" : "AI가 노트를 만들고 있어요"}</span><h2>{failed ? "문서를 다시 확인해 주세요" : currentStep?.label}</h2></div>
-            </div>
-            <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
-            <div className="progress-meta"><span>{failed ? "처리 중단" : currentStep?.description}</span><b>{progress}%</b></div>
-            <ol className="processing-steps">
-                {PROCESS_STEPS.map((step, index) => {
-                    const done = processing.status === "COMPLETED" || index < activeStepIndex;
-                    const active = !failed && index === activeStepIndex;
-                    const failedHere = failed && index === activeStepIndex;
-                    return (
-                        <li key={step.key} className={`${done ? "done" : ""} ${active ? "active" : ""} ${failedHere ? "error" : ""}`}>
-                            <span>{done ? <CheckIcon /> : index + 1}</span>
-                            <div><b>{step.label}</b><small>{active ? step.description : done ? "완료" : "대기 중"}</small></div>
-                        </li>
-                    );
-                })}
-            </ol>
-            {error && <p className="processing-error"><AlertIcon />{error}</p>}
-            {failed && <button type="button" className="processing-reset" onClick={onReset}>다른 파일로 다시 만들기</button>}
-            {!failed && <p className="processing-notice">페이지를 닫지 않아도 진행 상태가 자동으로 업데이트됩니다.</p>}
+        <div className={`loading-modal-backdrop ${completed ? "completed" : ""}`} role="presentation">
+            <section className="loading-modal" role="dialog" aria-modal="true" aria-labelledby="loading-modal-title">
+                <div className={`loading-sparkle ${failed ? "failed" : ""}`}>
+                    {failed ? <AlertIcon /> : <SparkleIcon />}
+                    {!failed && <span />}
+                </div>
+                <h2 id="loading-modal-title">
+                    {failed ? "학습노트 생성에 실패했어요" : "AI가 맞춤 학습노트를 생성하고 있어요"}
+                </h2>
+                {!failed ? (
+                    <>
+                        <div className="loading-progress-meta"><span>노트 생성 진행률</span><b>{progress}%</b></div>
+                        <div className="loading-progress-track"><span style={{ width: `${progress}%` }} /></div>
+                        <p className="loading-status">시험 출제 목차와 교안 핵심 개념을 분석 중입니다...</p>
+                        <p className="loading-caption">잠시만 기다려주시면 나만의 노트를 펼쳐드려요 ✨</p>
+                    </>
+                ) : (
+                    <>
+                        <p className="loading-status">{error || "문서를 처리하지 못했습니다. 파일을 확인한 뒤 다시 시도해 주세요."}</p>
+                        <button type="button" className="loading-reset" onClick={onReset}>파일 다시 선택하기</button>
+                    </>
+                )}
+            </section>
         </div>
-    );
-}
-
-function CompletionView({ title, file, learningNoteId, onHome, onCreateAnother }) {
-    return (
-        <section className="completion-card">
-            <div className="completion-icon"><CheckIcon /><span>✦</span></div>
-            <span className="side-kicker">CREATION COMPLETE</span>
-            <h2>학습노트가 준비됐어요</h2>
-            <p>업로드한 문서 분석을 마쳤습니다. 완성된 노트는 학습 홈에서 이어서 확인할 수 있어요.</p>
-            <div className="completion-note">
-                <span className="selected-file-icon">{getExtension(file?.name)}</span>
-                <div><b>{title}</b><small>{file?.name} · 노트 #{learningNoteId}</small></div>
-                <CheckIcon />
-            </div>
-            <div className="completion-actions">
-                <button type="button" className="secondary" onClick={onCreateAnother}>새 노트 만들기</button>
-                <button type="button" className="primary" onClick={onHome}>학습 홈으로 이동<ArrowIcon /></button>
-            </div>
-        </section>
     );
 }
 
@@ -309,7 +300,6 @@ function EmptyExamState({ onMove, message }) {
 const Icon = ({ children, size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">{children}</svg>;
 const SparkleIcon = () => <Icon size={17}><path d="M12 2.8c.8 4.4 2.8 6.5 7.2 7.2-4.4.8-6.5 2.8-7.2 7.2-.8-4.4-2.8-6.5-7.2-7.2 4.4-.8 6.5-2.8 7.2-7.2Z" fill="currentColor" /><path d="M19 16.5c.3 1.7 1.1 2.5 2.8 2.8-1.7.3-2.5 1.1-2.8 2.8-.3-1.7-1.1-2.5-2.8-2.8 1.7-.3 2.5-1.1 2.8-2.8Z" fill="currentColor" /></Icon>;
 const DocumentIcon = () => <Icon size={34}><path d="M6 3.5h8l4 4V21H6V3.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M14 3.5v4h4M9 12h6M9 16h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
-const CheckIcon = () => <Icon size={16}><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const CloseIcon = () => <Icon size={18}><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
 const ArrowIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const AlertIcon = () => <Icon size={18}><path d="M12 3 2.8 20h18.4L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M12 9v5m0 3v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
@@ -319,6 +309,10 @@ const ChevronIcon = () => <Icon size={17}><path d="m7 9 5 5 5-5" stroke="current
 function formatFileSize(bytes = 0) {
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+function sanitizeDisplayName(value) {
+    return String(value).trim().replace(/_[a-z0-9]{8,}$/i, "") || "사용자";
 }
 
 function getExtension(name = "") {

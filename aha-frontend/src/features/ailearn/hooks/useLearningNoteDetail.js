@@ -8,7 +8,7 @@ export function useLearningNoteDetail(learningNoteId) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const loadDetail = useCallback(async () => {
+    const loadDetail = useCallback(async ({ silent = false } = {}) => {
         if (!learningNoteId) {
             setDetail(null);
             setError("");
@@ -16,7 +16,7 @@ export function useLearningNoteDetail(learningNoteId) {
         }
 
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             setError("");
             const response = await getLearningNoteDetail(learningNoteId);
             setDetail(getApiData(response));
@@ -27,7 +27,7 @@ export function useLearningNoteDetail(learningNoteId) {
                 || "학습노트를 불러오지 못했습니다.",
             );
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [learningNoteId]);
 
