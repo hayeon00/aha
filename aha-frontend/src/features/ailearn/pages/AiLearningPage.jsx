@@ -22,6 +22,11 @@ function AiLearningPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const requestedNoteId = Number(searchParams.get("noteId"));
+    const requestedUserExamId = Number(searchParams.get("userExamId"));
+
+    useEffect(() => {
+        if (requestedUserExamId) sessionStorage.setItem("activeUserExamId", String(requestedUserExamId));
+    }, [requestedUserExamId]);
     const { userInfo } = useOutletContext() ?? {};
     const fileInputRef = useRef(null);
     const [title, setTitle] = useState("");
@@ -33,11 +38,13 @@ function AiLearningPage() {
         userExams,
         selectedUserExamId,
         selectedUserExam,
-        selectedExamVersionId,
         isExamLoading,
         examMessage,
-        changeUserExam,
-    } = useUserExams();
+    } = useUserExams({
+        initialUserExamId: Number.isInteger(requestedUserExamId) && requestedUserExamId > 0
+            ? requestedUserExamId
+            : undefined,
+    });
 
     const {
         submitting,
@@ -150,38 +157,26 @@ function AiLearningPage() {
                     <section className="studio-conversation">
                         <header className="studio-hero">
                             <p className="studio-greeting">안녕하세요, {displayName}님!</p>
-                            <h2>오늘 어떤 교안을 완벽하게 요약해 드릴까요?</h2>
-                            <p className="studio-hero-description">교안 파일을 올리시면 시험 출제 기준에 맞춰 핵심 목차와 학습 노트를 생성해 드립니다.</p>
+                            <h2>오늘 어떤 자료를 완벽하게 요약해 드릴까요?</h2>
+                            <p className="studio-hero-description">학습 자료를 올리시면 시험 출제 기준에 맞춰 핵심 목차와 학습 노트를 생성해 드립니다.</p>
                         </header>
                         <section className="studio-panel studio-ai-canvas">
                             <form className="studio-form" onSubmit={handleSubmit}>
                             <fieldset disabled={isWorking || submitting}>
                                 <div className="canvas-context-bar">
-                                    <div className="canvas-exam-pill">
-                                        <span aria-hidden="true">🎯</span>
-                                        <select
-                                            value={selectedUserExamId ?? ""}
-                                            onChange={(event) => changeUserExam(Number(event.target.value))}
-                                            aria-label="준비 중인 시험 변경"
-                                        >
-                                            {userExams.map((exam) => (
-                                                <option key={exam.userExamId} value={exam.userExamId}>
-                                                    {exam.examName}{exam.versionName ? ` - ${exam.versionName}` : ""}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronIcon />
+                                    <div className="studio-title-field">
+                                        <div className="studio-title-label"><strong>학습 노트 제목</strong><span>AI가 생성할 노트의 이름을 입력해 주세요</span></div>
+                                        <label className="canvas-title-pill">
+                                            <span className="title-field-icon" aria-hidden="true">Aa</span>
+                                            <input
+                                                value={title}
+                                                maxLength={255}
+                                                onChange={(event) => setTitle(event.target.value)}
+                                                placeholder={selectedUserExam ? `예: ${selectedUserExam.examName} 핵심 요약` : "학습 노트 제목을 입력하세요"}
+                                                aria-label="학습 노트 제목"
+                                            />
+                                        </label>
                                     </div>
-                                    <label className="canvas-title-pill">
-                                        <span aria-hidden="true">📝</span>
-                                        <input
-                                            value={title}
-                                            maxLength={255}
-                                            onChange={(event) => setTitle(event.target.value)}
-                                            placeholder={selectedUserExam ? `${selectedUserExam.examName} 핵심 요약` : "노트 제목"}
-                                            aria-label="노트 제목"
-                                        />
-                                    </label>
                                 </div>
                                 <div className="studio-field studio-upload-field">
                                     {!file ? (
@@ -205,7 +200,7 @@ function AiLearningPage() {
                                             tabIndex={0}
                                         >
                                             <span className="dropzone-icon"><DocumentIcon /><i><SparkleIcon /></i></span>
-                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "교안 파일(PDF, DOCX)을 드래그하거나 클릭하여 업로드하세요"}</h3>
+                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "학습 자료(PDF, DOCX)를 드래그하거나 클릭하여 업로드하세요"}</h3>
                                             <p>최대 20MB까지 안전하게 분석해 드려요</p>
                                             <div className="dropzone-supports" aria-label="지원 파일 형식">
                                                 <span>PDF</span><span>DOCX</span>
@@ -274,7 +269,7 @@ function LoadingModal({ progress, completed, failed, error, onReset }) {
                     <>
                         <div className="loading-progress-meta"><span>노트 생성 진행률</span><b>{progress}%</b></div>
                         <div className="loading-progress-track"><span style={{ width: `${progress}%` }} /></div>
-                        <p className="loading-status">시험 출제 목차와 교안 핵심 개념을 분석 중입니다...</p>
+                        <p className="loading-status">시험 출제 목차와 학습 자료의 핵심 개념을 분석 중입니다...</p>
                         <p className="loading-caption">잠시만 기다려주시면 나만의 노트를 펼쳐드려요 ✨</p>
                     </>
                 ) : (
@@ -305,8 +300,6 @@ const CloseIcon = () => <Icon size={18}><path d="m7 7 10 10M17 7 7 17" stroke="c
 const ArrowIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const AlertIcon = () => <Icon size={18}><path d="M12 3 2.8 20h18.4L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M12 9v5m0 3v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
 const ShieldIcon = () => <Icon size={15}><path d="M12 3 5 6v5c0 4.5 2.8 7.8 7 10 4.2-2.2 7-5.5 7-10V6l-7-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
-const ChevronIcon = () => <Icon size={17}><path d="m7 9 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-
 function formatFileSize(bytes = 0) {
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;

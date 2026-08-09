@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVisibleUserExams } from "../api/userExamApi.js";
 import { getApiData } from "../../ailearn/utils/apiResponseUtils.js";
 
-export const useUserExams = ({ onEmpty, onChange } = {}) => {
+export const useUserExams = ({ onEmpty, onChange, initialUserExamId } = {}) => {
     const [userExams, setUserExams] = useState([]);
     const [selectedUserExamId, setSelectedUserExamId] = useState(null);
     const [isExamLoading, setIsExamLoading] = useState(true);
@@ -28,7 +28,10 @@ export const useUserExams = ({ onEmpty, onChange } = {}) => {
                 : [];
 
             setUserExams(nextUserExams);
-            setSelectedUserExamId(nextUserExams[0]?.userExamId ?? null);
+            const requestedExam = nextUserExams.find(
+                (userExam) => userExam.userExamId === initialUserExamId,
+            );
+            setSelectedUserExamId(requestedExam?.userExamId ?? nextUserExams[0]?.userExamId ?? null);
 
             if (nextUserExams.length === 0) {
                 onEmpty?.();
@@ -43,7 +46,7 @@ export const useUserExams = ({ onEmpty, onChange } = {}) => {
         } finally {
             setIsExamLoading(false);
         }
-    }, [onEmpty]);
+    }, [initialUserExamId, onEmpty]);
 
     useEffect(() => {
         queueMicrotask(() => {
