@@ -12,6 +12,8 @@ import java.util.Set;
 
 public interface DocumentScopeMappingRepository extends JpaRepository<DocumentScopeMapping, Long> {
 
+    void deleteAllByDocumentChunk_SourceDocument_Id(Long sourceDocumentId);
+
     @Query("""
         select distinct mapping.examScopeNode.id
         from DocumentScopeMapping mapping

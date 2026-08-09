@@ -1,7 +1,11 @@
 package com.aha.domain.learningnote.controller;
 
 import com.aha.domain.learningnote.dto.response.LearningNoteCreateResponseDto;
+import com.aha.domain.learningnote.dto.response.LearningNoteDetailResponseDto;
+import com.aha.domain.learningnote.dto.response.LearningNoteSummaryResponseDto;
 import com.aha.domain.learningnote.service.LearningNoteCreateService;
+import com.aha.domain.learningnote.service.LearningNoteDeletionService;
+import com.aha.domain.learningnote.service.LearningNoteService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +16,81 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/learning-notes")
 public class LearningNoteController {
 
     private final LearningNoteCreateService learningNoteCreateService;
+    private final LearningNoteDeletionService learningNoteDeletionService;
+    private final LearningNoteService learningNoteService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<LearningNoteSummaryResponseDto>>> getCompletedNotes(
+            @AuthenticationPrincipal CustomUserDetails user
+    ) {
+
+        List<LearningNoteSummaryResponseDto> response =
+                learningNoteService.getCompletedNotes(user.getId());
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "완료된 학습노트 조회 성공",
+                response
+
+        ));
+    }
+
+    @GetMapping("/{learningNoteId}")
+    public ResponseEntity<ApiResponse<LearningNoteDetailResponseDto>> getCompletedNote(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long learningNoteId
+    ) {
+
+        LearningNoteDetailResponseDto response =
+                learningNoteService.getCompletedNote(
+                        user.getId(),
+                        learningNoteId
+                );
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "학습노트 상세 조회 성공",
+                response
+
+        ));
+    }
+
+    @DeleteMapping("/{learningNoteId}")
+    public ResponseEntity<ApiResponse<Void>> deleteCompletedNote(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long learningNoteId
+    ) {
+        learningNoteDeletionService.deleteCompletedNote(user.getId(), learningNoteId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "학습노트 삭제 성공",
+                null
+        ));
+    }
+
+    @PostMapping("/{learningNoteId}/contents/{tocId}/generate")
+    public ResponseEntity<ApiResponse<Void>> generateTopicContent(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long learningNoteId,
+            @PathVariable Long tocId
+    ) {
+        learningNoteService.generateTopicContent(user.getId(), learningNoteId, tocId);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "목차 개념 설명 생성 성공",
+                null
+        ));
+    }
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<LearningNoteCreateResponseDto>> uploadDocument(
@@ -44,10 +117,4 @@ public class LearningNoteController {
                         )
                 );
     }
-
-
-
-
-
-
 }
