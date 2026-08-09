@@ -49,11 +49,29 @@ export default function ConceptContentView({
 function sanitizeConceptContent(rawContent) {
     if (typeof rawContent !== "string") return "";
 
-    return rawContent
+    const sanitized = rawContent
         .replace(/\r\n?/g, "\n")
+        .replace(/\\\*\\\*/g, "**")
+        .replace(/\*\*[ \t]+([^*\n]+?)[ \t]+\*\*/g, "**$1**")
         .replace(/^\s*(?:#{1,6}\s*)?(?:\*\*)?제목(?:\*\*)?\s*:\s*[^\n]*(?:\n|$)/i, "")
         .replace(/^\s*(?:#{1,6}\s*)?(?:\*\*)?내용(?:\*\*)?\s*:\s*(?:\n|$)/i, "")
         .trim();
+
+    return emphasizeTechnicalTerms(sanitized);
+}
+
+function emphasizeTechnicalTerms(content) {
+    const protectedMarkdown = /(```[\s\S]*?```|`[^`\n]+`)/g;
+    const technicalTerms = /(기본\s*키\s*\(PK\)|외래\s*키\s*\(FK\)|NOT\s+NULL|UNIQUE|MIN\s*\/\s*MAX|\b(?:PK|FK|COUNT|SUM|AVG|MIN|MAX)\b)/gi;
+
+    return content
+        .split(protectedMarkdown)
+        .map((segment, index) => (
+            index % 2 === 1
+                ? segment
+                : segment.replace(technicalTerms, (term) => `\`${term}\``)
+        ))
+        .join("");
 }
 
 function EmptyIllustration() {
