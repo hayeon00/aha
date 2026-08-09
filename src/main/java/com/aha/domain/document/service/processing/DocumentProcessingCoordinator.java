@@ -8,6 +8,7 @@ import com.aha.domain.document.service.processing.extraction.DocumentExtractionP
 import com.aha.domain.document.service.processing.extraction.model.ExtractedDocumentContext;
 import com.aha.domain.document.service.processing.mapping.DocumentScopeMappingService;
 import com.aha.domain.document.service.processing.model.DocumentProcessingContext;
+import com.aha.domain.learningnote.service.generation.LearningNoteContentGenerationService;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class DocumentProcessingCoordinator {
     private final DocumentChunkRepository documentChunkRepository;
     private final DocumentEmbeddingService embeddingService;
     private final DocumentScopeMappingService scopeMappingService;
+    private final LearningNoteContentGenerationService contentGenerationService;
     private final DocumentProcessingStatusService processingStatusService;
 
     public void process(DocumentProcessingContext context) {
@@ -66,6 +68,12 @@ public class DocumentProcessingCoordinator {
                 DocumentProcessingStep.SCOPE_MAPPING
         );
         scopeMappingService.mapDocuments(context.learningNoteId());
+
+        processingStatusService.changeStep(
+                context.processingId(),
+                DocumentProcessingStep.CONTENT_GENERATING
+        );
+        contentGenerationService.generate(context.learningNoteId());
 
         log.info(
                 "문서 처리 파이프라인 완료. processingId={}, learningNoteId={}, chunkCount={}",
