@@ -96,7 +96,7 @@ export default function OAuthCallbackPage({
 
                 alert(message);
 
-                navigate("/login", {
+                navigate("/main", {
                     replace: true,
                 });
 
@@ -112,7 +112,7 @@ export default function OAuthCallbackPage({
                     "유효하지 않은 소셜 로그인 요청입니다.",
                 );
 
-                navigate("/login", {
+                navigate("/main", {
                     replace: true,
                 });
 
@@ -137,6 +137,7 @@ export default function OAuthCallbackPage({
                 }
 
                 onLoginSuccess(accessToken);
+                navigate("/main", { replace: true });
             } catch (error) {
                 if (cancelled) {
                     return;
@@ -151,7 +152,7 @@ export default function OAuthCallbackPage({
                     "소셜 로그인 처리에 실패했습니다.",
                 );
 
-                navigate("/login", {
+                navigate("/main", {
                     replace: true,
                 });
             }
