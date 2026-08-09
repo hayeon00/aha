@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import { useLearningNoteCreation } from "../hooks/useLearningNoteCreation.js";
@@ -19,6 +19,7 @@ const PROCESS_STEPS = [
 
 function AiLearningPage() {
     const navigate = useNavigate();
+    const { userInfo } = useOutletContext() ?? {};
     const fileInputRef = useRef(null);
     const [title, setTitle] = useState("");
     const [file, setFile] = useState(null);
@@ -72,6 +73,7 @@ function AiLearningPage() {
     const canSubmit = Boolean(selectedUserExamId && noteTitle.trim() && file)
         && !submitting
         && !isWorking;
+    const displayName = userInfo?.nickname || userInfo?.name || "사용자";
 
     const selectFile = (candidate) => {
         if (!candidate) return;
@@ -134,16 +136,12 @@ function AiLearningPage() {
                         onCreateAnother={startAgain}
                     />
                 ) : (
-                    <section className="studio-panel">
+                    <section className="studio-conversation">
                         <header className="studio-hero">
-                            <div className="studio-title-icon"><NoteIcon /></div>
-                            <div>
-                                <h1>새 학습노트 생성</h1>
-                                <p>제목과 시험을 선택하고 학습 자료를 추가해 주세요.</p>
-                            </div>
+                            <h2>안녕하세요 {displayName}님! 오늘 어떤 시험을 완벽 대비해 드릴까요?</h2>
+                            <p>교안이나 요약 자료를 올려주시면 시험 출제 기준에 맞춰 핵심만 정리해 드립니다.</p>
                         </header>
-                        <div className="studio-layout">
-                            <section className="studio-focus-card">
+                        <section className="studio-panel studio-ai-canvas">
                             {processing ? (
                                 <ProcessingPanel
                                     processing={processing}
@@ -157,31 +155,13 @@ function AiLearningPage() {
                             ) : (
                             <form className="studio-form" onSubmit={handleSubmit}>
                             <fieldset disabled={isWorking || submitting}>
-                                <div className="studio-field">
-                                    <label htmlFor="note-title"><span>1</span> 노트 제목</label>
-                                    <div className="title-input-wrap">
-                                        <input
-                                            id="note-title"
-                                            value={title}
-                                            maxLength={255}
-                                            onChange={(event) => setTitle(event.target.value)}
-                                            placeholder={`${selectedUserExam?.examName || "시험명"} 학습노트로 자동 생성`}
-                                        />
-                                        <small>{title.length}/255</small>
-                                    </div>
-                                </div>
-
-                                <div className="studio-field">
-                                    <label><span>2</span> 학습 시험</label>
-                                    <div className="exam-select-wrap">
-                                        <span className="exam-select-icon"><BookIcon /></span>
+                                <div className="canvas-context-bar">
+                                    <div className="canvas-exam-pill">
+                                        <span aria-hidden="true">🎯</span>
                                         <select
                                             value={selectedUserExamId ?? ""}
-                                            onChange={(event) => {
-                                                const nextId = Number(event.target.value);
-                                                changeUserExam(nextId);
-                                            }}
-                                            aria-label="학습 시험 선택"
+                                            onChange={(event) => changeUserExam(Number(event.target.value))}
+                                            aria-label="준비 중인 시험 변경"
                                         >
                                             {userExams.map((exam) => (
                                                 <option key={exam.userExamId} value={exam.userExamId}>
@@ -191,13 +171,18 @@ function AiLearningPage() {
                                         </select>
                                         <ChevronIcon />
                                     </div>
+                                    <label className="canvas-title-pill">
+                                        <span aria-hidden="true">🏷️</span>
+                                        <input
+                                            value={title}
+                                            maxLength={255}
+                                            onChange={(event) => setTitle(event.target.value)}
+                                            placeholder={selectedUserExam ? `${selectedUserExam.examName} 핵심 요약` : "노트 제목"}
+                                            aria-label="노트 제목"
+                                        />
+                                    </label>
                                 </div>
-
-                                <div className="studio-field">
-                                    <div className="studio-label-row">
-                                        <label htmlFor="note-file"><span>3</span> 학습 자료</label>
-                                        <span>PDF · DOCX / 최대 20MB</span>
-                                    </div>
+                                <div className="studio-field studio-upload-field">
                                     {!file ? (
                                         <div
                                             className={`studio-dropzone ${dragging ? "dragging" : ""}`}
@@ -218,9 +203,9 @@ function AiLearningPage() {
                                             role="button"
                                             tabIndex={0}
                                         >
-                                            <span className="dropzone-icon"><DocumentIcon /><i><SparkleIcon /></i></span>
-                                            <h3>{dragging ? "여기에 놓아주세요" : "파일을 끌어다 놓거나 선택하세요"}</h3>
-                                            <p>PDF 또는 DOCX · <b>파일 찾아보기</b></p>
+                                            <span className="dropzone-icon"><SparkleIcon /></span>
+                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "여기에 교안(PDF/DOCX)을 끌어놓거나 클릭하여 선택하세요"}</h3>
+                                            <p>최대 20MB까지 안전하게 업로드할 수 있어요</p>
                                         </div>
                                     ) : (
                                         <div className="selected-file">
@@ -244,47 +229,21 @@ function AiLearningPage() {
                                 </div>
                             </fieldset>
 
-                            <button className="studio-submit" type="submit" disabled={!canSubmit}>
-                                {submitting ? <><span className="button-spinner" />업로드 중...</> : <><SparkleIcon />AI 학습노트 만들기<ArrowIcon /></>}
-                            </button>
-                            <p className="studio-security"><ShieldIcon />업로드한 문서는 학습노트 생성에만 사용됩니다.</p>
+                            {file && (
+                                <div className="canvas-action-row">
+                                    <span><ShieldIcon />문서는 노트 생성에만 사용돼요</span>
+                                    <button className="studio-submit" type="submit" disabled={!canSubmit}>
+                                        {submitting ? <><span className="button-spinner" />생성 중...</> : <><SparkleIcon />AI 학습노트 생성<ArrowIcon /></>}
+                                    </button>
+                                </div>
+                            )}
                             </form>
                             )}
-                            </section>
-                            <NotePreview examName={selectedUserExam?.examName} />
-                        </div>
+                        </section>
                     </section>
                 )}
             </section>
         </main>
-    );
-}
-
-function NotePreview({ examName }) {
-    return (
-        <aside className="preview-panel">
-            <div className="preview-heading">
-                <span><SparkleIcon /> 완성될 노트 예시</span>
-                <p>AI가 자료를 읽고 이런 형태로 정리해요.</p>
-            </div>
-            <div className="note-mockup">
-                <div className="mockup-topline"><span /><span /><span /></div>
-                <span className="mockup-badge">🏷️ {examName || "SQLD 2026"}</span>
-                <p className="mockup-subject">1과목 · 데이터 모델링의 이해</p>
-                <h2><span>01</span> 데이터 모델링 개념정리</h2>
-                <div className="mockup-highlight"><SparkleIcon /><b>AI 핵심 요약</b></div>
-                <div className="mockup-summary">
-                    <i /><i /><i />
-                    <p>데이터 모델링은 현실 세계의 데이터를 구조화하여 정보 시스템으로 표현하는 과정입니다.</p>
-                </div>
-                <div className="mockup-chart" aria-hidden="true">
-                    <span style={{ height: "45%" }} /><span style={{ height: "72%" }} />
-                    <span style={{ height: "58%" }} /><span style={{ height: "88%" }} />
-                </div>
-                <div className="mockup-tags"><span>엔터티</span><span>속성</span><span>관계</span></div>
-            </div>
-            <p className="preview-caption"><span>문서 업로드</span><ArrowIcon /><b>맞춤 학습노트 완성</b></p>
-        </aside>
     );
 }
 
@@ -350,13 +309,11 @@ function EmptyExamState({ onMove, message }) {
 const Icon = ({ children, size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">{children}</svg>;
 const SparkleIcon = () => <Icon size={17}><path d="M12 2.8c.8 4.4 2.8 6.5 7.2 7.2-4.4.8-6.5 2.8-7.2 7.2-.8-4.4-2.8-6.5-7.2-7.2 4.4-.8 6.5-2.8 7.2-7.2Z" fill="currentColor" /><path d="M19 16.5c.3 1.7 1.1 2.5 2.8 2.8-1.7.3-2.5 1.1-2.8 2.8-.3-1.7-1.1-2.5-2.8-2.8 1.7-.3 2.5-1.1 2.8-2.8Z" fill="currentColor" /></Icon>;
 const DocumentIcon = () => <Icon size={34}><path d="M6 3.5h8l4 4V21H6V3.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M14 3.5v4h4M9 12h6M9 16h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
-const NoteIcon = () => <Icon size={20}><path d="M6 4h12v16H6V4Zm3 5h6M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const CheckIcon = () => <Icon size={16}><path d="m5 12 4 4 10-10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const CloseIcon = () => <Icon size={18}><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
 const ArrowIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 const AlertIcon = () => <Icon size={18}><path d="M12 3 2.8 20h18.4L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M12 9v5m0 3v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
 const ShieldIcon = () => <Icon size={15}><path d="M12 3 5 6v5c0 4.5 2.8 7.8 7 10 4.2-2.2 7-5.5 7-10V6l-7-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
-const BookIcon = () => <Icon size={19}><path d="M5 4.5h9a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3V4.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><path d="M8 17h9M9 8h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
 const ChevronIcon = () => <Icon size={17}><path d="m7 9 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
 
 function formatFileSize(bytes = 0) {
