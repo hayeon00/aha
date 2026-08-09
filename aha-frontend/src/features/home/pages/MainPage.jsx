@@ -154,17 +154,17 @@ function MainPage({ isLoggedIn, onLoginSuccess, onLogout }) {
             <main className="discovery-page">
             <section className="discovery-hero">
                 <div className="hero-copy">
-                    <span className="hero-kicker"><SparkleIcon /> AI CERTIFICATE LEARNING</span>
-                    <h1>합격까지 필요한 공부,<br /><em>Aha 하나로</em> 시작하세요.</h1>
-                    <p>교안을 올리면 시험 목차에 맞춘 학습노트로 바꿔드려요.<br />복잡한 정리는 AI에게 맡기고, 이해와 암기에만 집중하세요.</p>
+                    <span className="hero-kicker"><SparkleIcon /> SMART CERTIFICATE LEARNING</span>
+                    <h1>합격을 향한 공부,<br /><em>Aha에서 더 선명하게.</em></h1>
+                    <p>자격증 선택부터 개념 학습, 문제 풀이와 스터디까지.<br />합격에 필요한 모든 학습 흐름을 하나의 공간에서 이어가세요.</p>
                     <div className="hero-actions">
                         <button type="button" className="hero-primary" onClick={() => examSectionRef.current?.scrollIntoView({ behavior: "smooth" })}>지원 자격증 둘러보기 <ArrowIcon /></button>
                         {notes.length > 0 && <button type="button" className="hero-secondary" onClick={() => document.querySelector("#my-notes")?.scrollIntoView({ behavior: "smooth" })}>내 학습노트 보기</button>}
                     </div>
                     <div className="hero-proof">
-                        <span><CheckIcon /> 시험 목차 기반 정리</span>
-                        <span><CheckIcon /> PDF·DOCX 지원</span>
-                        <span><CheckIcon /> 단원별 핵심 설명</span>
+                        <span><CheckIcon /> 맞춤 학습 공간</span>
+                        <span><CheckIcon /> AI 학습 도구</span>
+                        <span><CheckIcon /> 문제 풀이와 스터디</span>
                     </div>
                 </div>
                 <HeroPreview />
@@ -204,7 +204,7 @@ function MainPage({ isLoggedIn, onLoginSuccess, onLogout }) {
             <section className="how-it-works">
                 <div className="section-heading"><div><span>HOW IT WORKS</span><h2>문서 한 장이 학습노트가 되는 과정</h2></div></div>
                 <div className="process-grid">
-                    <article><b>01</b><FileIcon /><h3>교안 업로드</h3><p>PDF 또는 DOCX 학습 자료를 간편하게 올려주세요.</p></article>
+                    <article><b>01</b><FileIcon /><h3>자료 업로드</h3><p>PDF 또는 DOCX 학습 자료를 간편하게 올려주세요.</p></article>
                     <article><b>02</b><ScopeIcon /><h3>시험 목차 분석</h3><p>AI가 교안과 시험 출제 목차를 연결해 핵심을 찾습니다.</p></article>
                     <article><b>03</b><NoteIcon /><h3>맞춤 노트 완성</h3><p>단원별 개념 설명이 담긴 나만의 합격 노트를 확인하세요.</p></article>
                 </div>
@@ -229,7 +229,7 @@ function MainPage({ isLoggedIn, onLoginSuccess, onLogout }) {
 }
 
 function HeroPreview() {
-    return <div className="hero-visual" aria-hidden="true"><div className="preview-glow" /><div className="preview-window"><div className="preview-bar"><i /><i /><i /><span>AI 학습노트</span></div><div className="preview-layout"><aside><strong>SQLD</strong><span className="on">01 데이터 모델링</span><span>02 SQL 기본</span><span>03 SQL 활용</span></aside><main><small>AI CORE SUMMARY</small><h3>정규화의 개념과 핵심 원리</h3><div className="preview-callout">데이터 중복을 줄이고 무결성을 높이기 위해 테이블을 구조적으로 분해하는 과정입니다.</div><i className="line wide" /><i className="line" /><i className="line short" /><div className="preview-chips"><b>PK</b><b>FK</b><b>3NF</b></div></main></div></div><span className="float-chip chip-one">✦ 시험 목차 자동 연결</span><span className="float-chip chip-two">✓ 핵심 개념 정리 완료</span></div>;
+    return <div className="hero-visual" aria-hidden="true"><div className="preview-glow" /><div className="preview-window platform-preview"><div className="preview-bar"><i /><i /><i /><span>Aha Learning Workspace</span></div><div className="platform-dashboard"><header><div><small>MY LEARNING</small><h3>오늘의 학습</h3></div><b>SQLD</b></header><section className="journey-card"><div><span>합격 여정</span><strong>68%</strong></div><p>이번 주 목표까지 조금만 더 힘내세요</p><i><b /></i></section><div className="feature-preview-grid"><article><span>✦</span><small>AI 학습노트</small><strong>핵심 노트 6개</strong><i>이어서 학습 →</i></article><article><span>✓</span><small>기출 문제</small><strong>오늘 20문제</strong><i>문제 풀기 →</i></article><article><span>◎</span><small>함께 학습</small><strong>스터디 3회</strong><i>일정 보기 →</i></article><article><span>↗</span><small>학습 리포트</small><strong>이번 주 +12%</strong><i>리포트 보기 →</i></article></div></div></div><span className="float-chip chip-one">✦ 오늘의 학습 루틴</span><span className="float-chip chip-two">✓ 주간 목표 달성 중</span></div>;
 }
 
 const Icon = ({ children }) => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">{children}</svg>;
