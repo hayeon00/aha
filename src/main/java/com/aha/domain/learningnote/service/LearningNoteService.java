@@ -49,6 +49,9 @@ public class LearningNoteService {
                             processing.getStatus().name(),
                             note.getSourceDocument().getId(),
                             null,
+                            note.getUserExam().getId(),
+                            note.getUserExam().getExamVersion().getExam().getCode(),
+                            note.getUserExam().getExamVersion().getExam().getName(),
                             1,
                             note.getUpdatedAt()
                     );
