@@ -1,69 +1,32 @@
 import axiosInstance from "../../../common/api/axiosInstance.js";
 
-export const uploadLearningDocuments = async (
-    userExamId,
-    files
-) => {
+export const createLearningNote = async ({ userExamId, title, file }) => {
     if (!userExamId) {
         throw new Error("userExamId가 필요합니다.");
     }
-
-    if (!Array.isArray(files) || files.length === 0) {
-        throw new Error("업로드할 파일이 없습니다.");
+    if (!title?.trim()) {
+        throw new Error("학습노트 제목이 필요합니다.");
+    }
+    if (!file) {
+        throw new Error("업로드할 파일이 필요합니다.");
     }
 
     const formData = new FormData();
+    formData.append("userExamId", String(userExamId));
+    formData.append("title", title.trim());
+    formData.append("file", file);
 
-    files.forEach((file) => {
-        formData.append("files", file);
-    });
-
-    const response = await axiosInstance.post(
-        "/api/v1/document/upload",
+    return axiosInstance.post(
+        "/api/v1/learning-notes/documents",
         formData,
         {
-            params: {
-                userExamId,
-            },
             timeout: 120000,
         }
     );
-
-    return response.data;
 };
 
-export const deleteLearningDocument = (documentId) => {
-    if (!documentId) {
-        throw new Error("documentId가 필요합니다.");
-    }
-
-    return axiosInstance.delete(`/api/v1/document/${documentId}`);
-};
-
-export const getDocumentProcessingStatus = (
-    processingGroupId,
-    config = {}
-) => {
-    return axiosInstance.get(
-        `/api/v1/ai-learning/document-processings/${processingGroupId}`,
+export const getDocumentProcessingStatus = (processingId, config = {}) =>
+    axiosInstance.get(
+        `/api/v1/document-processings/${processingId}`,
         config
     );
-};
-
-export const getUserExamDocumentState = (
-    userExamId
-) => {
-    return axiosInstance.get(
-        `/api/v1/ai-learning/document-processings/user-exams/${userExamId}/latest`
-    );
-};
-
-export const retryDocumentProcessing = (processingGroupId) => {
-    if (!processingGroupId) {
-        throw new Error("processingGroupId가 필요합니다.");
-    }
-
-    return axiosInstance.post(
-        `/api/v1/ai-learning/document-processings/${processingGroupId}/retry`
-    );
-};

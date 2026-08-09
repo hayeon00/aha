@@ -9,6 +9,7 @@ public enum ErrorCode {
     INVALID_INPUT_VALUE(400, "COMMON_001", "잘못된 입력값입니다."),
     ENTITY_NOT_FOUND(404, "COMMON_002", "대상을 찾을 수 없습니다."),
     INVALID_REQUEST_FORMAT(400, "COMMON_003", "잘못된 요청 형식입니다."),
+    UNSUPPORTED_MEDIA_TYPE(415, "COMMON_004", "지원하지 않는 요청 형식입니다."),
     INTERNAL_SERVER_ERROR(500, "COMMON_999", "서버 내부 오류입니다."),
 
 
@@ -31,6 +32,7 @@ public enum ErrorCode {
     SOCIAL_EMAIL_REQUIRED(401, "AUTH_016", "소셜 계정의 인증된 이메일 정보가 필요합니다."),
 
 
+
     // USER
     USER_NOT_FOUND(404, "USER_001", "사용자를 찾을 수 없습니다."),
     PROFILE_IMAGE_UPLOAD_FAILED(500, "USER_002", "프로필 이미지 업로드에 실패했습니다."),
@@ -45,29 +47,29 @@ public enum ErrorCode {
     EXAM_SCOPE_NODE_NOT_FOUND(409, "EXAM_SCOPE_NODE_001", "시험 목차를 찾을 수 없습니다."),
 
 
+
     // USER_EXAM
     USER_EXAM_NOT_FOUND(404, "USER_EXAM_001", "존재하지 않는 내 시험입니다."),
 
-    // DOCUMENT UPLOAD
+    DOCUMENT_UPLOAD_FAILED(400, "DOCUMENT_UPLOAD_FAILED_001","파일 업로드에 실패했습니다."),
+
+    // DOCUMENT FILE VALIDATION
     DOCUMENT_FILE_COUNT_EXCEEDED(400, "DOCUMENT_UPLOAD_001", "업로드 가능한 문서 파일 개수를 초과했습니다."),
     DOCUMENT_FILE_REQUIRED(400, "DOCUMENT_UPLOAD_002", "업로드할 문서 파일이 필요합니다."),
-    DOCUMENT_FILE_EMPTY(400, "DOCUMENT_UPLOAD_003", "빈 문서 파일은 업로드할 수 없습니다."),
-    DOCUMENT_FILE_SIZE_EXCEEDED(400, "DOCUMENT_UPLOAD_004", "업로드 가능한 문서 파일 크기를 초과했습니다."),
-    DOCUMENT_TOTAL_FILE_SIZE_EXCEEDED(400, "DOCUMENT_UPLOAD_005", "업로드 가능한 전체 문서 파일 크기를 초과했습니다."),
-    INVALID_DOCUMENT_FILE_NAME(400, "DOCUMENT_UPLOAD_06", "문서 파일명이 올바르지 않습니다."),
-    INVALID_DOCUMENT_FILE_EXTENSION(400, "DOCUMENT_UPLOAD_07", "문서 파일의 확장자가 올바르지 않습니다."),
-    INVALID_DOCUMENT_MIME_TYPE(400, "DOCUMENT_UPLOAD_08", "문서의 MIME 타입이 올바르지 않습니다."),
+    DOCUMENT_FILE_EMPTY(422, "DOCUMENT_UPLOAD_003", "빈 문서 파일은 업로드할 수 없습니다."),
+    DOCUMENT_FILE_SIZE_EXCEEDED(413, "DOCUMENT_UPLOAD_004", "업로드 가능한 문서 파일 크기를 초과했습니다."),
+    DOCUMENT_TOTAL_FILE_SIZE_EXCEEDED(413, "DOCUMENT_UPLOAD_005", "업로드 가능한 전체 문서 파일 크기를 초과했습니다."),
+    DOCUMENT_FILE_NAME_INVALID(422, "DOCUMENT_UPLOAD_006", "문서 파일명이 올바르지 않습니다."),
+    DOCUMENT_FILE_EXTENSION_INVALID(422, "DOCUMENT_UPLOAD_007", "PDF 또는 DOCX 파일만 업로드할 수 있습니다."),
+    DOCUMENT_FILE_MIME_TYPE_INVALID(422, "DOCUMENT_UPLOAD_008", "파일 확장자와 실제 문서 형식이 일치하지 않습니다."),
+    DOCUMENT_STORAGE_FAILED(500, "DOCUMENT_UPLOAD_009", "문서 파일을 저장하지 못했습니다."),
+    DOCUMENT_FILE_UNREADABLE(422, "DOCUMENT_UPLOAD_010", "손상되었거나 읽을 수 없는 문서 파일입니다."),
+    DOCUMENT_REQUEST_SIZE_EXCEEDED(413, "DOCUMENT_UPLOAD_011", "업로드 요청의 전체 크기를 초과했습니다."),
+    DOCUMENT_FILE_VALIDATION_FAILED(422, "DOCUMENT_UPLOAD_012", "업로드할 수 없는 파일이 있습니다."),
 
 
-    DOCUMENT_UPLOAD_FAILED(500, "DOCUMENT_UPLOAD_001", "문서 업로드에 실패했습니다."),
-    INVALID_DOCUMENT_FILE(400, "DOCUMENT_UPLOAD_002", "지원하지 않는 문서 파일입니다."),
-
-    LEARNING_CONTENT_NOT_FOUND(404, "LEARNING_CONTENT_001", "개념설명을 찾을 수 없습니다."),
-
-    INVALID_EXAM_SCOPE_NODE_TYPE(400, "EXAM_SCOPE_002", "개념설명을 생성할 수 없는 시험 목차 유형입니다."),
-
-
-    DOCUMENT_PROCESSING_GROUP_NOT_FOUND(404, "DOCUMENT_003", "문서 처리 그룹을 찾을 수 없습니다."),
+    // DOCUMENT PROCESSING
+    DOCUMENT_PROCESSING_FAILED(500, "DOCUMENT_002", "문서 처리에 실패했습니다."),
     DOCUMENT_TEXT_EXTRACTION_FAILED(500, "DOCUMENT_004", "문서 텍스트 추출에 실패했습니다."),
     DOCUMENT_TEXT_EMPTY(422, "DOCUMENT_005", "문서에서 추출할 수 있는 텍스트가 없습니다."),
     DOCUMENT_PROCESSING_NOT_FOUND(404, "DOCUMENT_006", "처리할 문서 정보를 찾을 수 없습니다."),
@@ -77,11 +79,13 @@ public enum ErrorCode {
     AI_RESPONSE_PARSE_FAILED(500, "DOCUMENT_010", "AI 응답을 처리하는 중 오류가 발생했습니다."),
     DOCUMENT_SCOPE_MAPPING_NOT_FOUND(404, "DOCUMENT_011", "개념 설명 생성에 사용할 목차 매핑 결과를 찾을 수 없습니다."),
     LEARNING_CONTENT_GENERATION_FAILED(500, "DOCUMENT_012", "목차별 개념 설명 생성에 실패했습니다."),
-    USER_LEARNING_CONTENT_SAVE_FAILED(500, "DOCUMENT_013", "생성된 개념 설명을 저장하지 못했습니다."),
-    USER_LEARNING_CONTENT_NOT_FOUND(404, "DOCUMENT_014", "해당 목차에 생성된 개념 설명이 없습니다."),
+
 
     SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),
-    INVALID_LEARNING_CONTENT_TARGET(400, "DOCUMENT_019", "개념 설명은 활성화된 최하위 학습 목차에만 생성할 수 있습니다."),
+    LEARNING_NOTE_NOT_FOUND(404, "LEARNING_NOTE_001", "학습노트를 찾을 수 없습니다."),
+    LEARNING_NOTE_CONTENT_NOT_FOUND(404, "LEARNING_NOTE_002", "학습노트의 개념 설명을 찾을 수 없습니다."),
+    LEARNING_NOTE_NOT_EDITABLE(409, "LEARNING_NOTE_003", "완료된 학습노트만 수정할 수 있습니다."),
+
 
 
     //PROBLEM

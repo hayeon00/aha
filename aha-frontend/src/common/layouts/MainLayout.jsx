@@ -526,7 +526,7 @@ function MainLayout({ onLogout }) {
                 </header>
 
                 <main className="layout-content">
-                    <Outlet />
+                    <Outlet context={{ userInfo }} />
                 </main>
             </div>
         </div>

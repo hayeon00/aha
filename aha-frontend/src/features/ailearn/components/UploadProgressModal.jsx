@@ -13,9 +13,7 @@ function UploadProgressModal({
         return null;
     }
 
-    const isFailed =
-        status?.status === "FAILED" ||
-        status?.status === "PARTIAL_FAILED";
+    const isFailed = status?.status === "FAILED";
 
     const statusText =
         currentStatusText ||

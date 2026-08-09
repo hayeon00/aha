@@ -1,48 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 
-import ConceptContentView from "../components/ConceptContentView.jsx";
-import ConceptEditor from "../components/ConceptEditor.jsx";
-import UnmappedTopicEmptyState from "../components/UnmappedTopicEmptyState.jsx";
-import NoteHeader from "../components/NoteHeader.jsx";
-import UploadProgressModal from "../components/UploadProgressModal.jsx";
-import { useDocumentProcessing } from "../hooks/useDocumentProcessing.js";
-import { useDocumentConceptDashboard } from "../hooks/useDocumentConceptDashboard.js";
-import { deleteLearningDocument } from "../api/learningDocumentApi.js";
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
-import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
-import ExamSelectDropdown from "../../exam/components/ExamSelectDropdown.jsx";
-import {
-    getLearningNotes,
-    removeLearningNoteByDocumentId,
-    saveLearningNote,
-} from "../utils/learningNoteStorage.js";
+import { useLearningNoteCreation } from "../hooks/useLearningNoteCreation.js";
+import LearningNoteDetailPage from "./LearningNoteDetailPage.jsx";
 
 import "./AiLearningPage.css";
 
-const ACCEPTED_EXTENSIONS = [".pdf", ".docx"];
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const ACCEPTED_EXTENSIONS = ["pdf", "docx"];
+
+const PROCESS_STEPS = [
+    { key: "TEXT_EXTRACTING", label: "내용 읽기", description: "문서의 텍스트와 구조를 읽고 있어요." },
+    { key: "CHUNKING", label: "내용 정리", description: "학습하기 좋은 단위로 내용을 정리하고 있어요." },
+    { key: "EMBEDDING", label: "핵심 분석", description: "문서의 의미와 핵심 내용을 분석하고 있어요." },
+    { key: "SCOPE_MAPPING", label: "목차 연결", description: "시험 목차와 문서 내용을 연결하고 있어요." },
+    { key: "CONTENT_GENERATING", label: "노트 완성", description: "학습할 개념 설명을 완성하고 있어요." },
+];
 
 function AiLearningPage() {
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
+    const requestedNoteId = Number(searchParams.get("noteId"));
+    const { userInfo } = useOutletContext() ?? {};
     const fileInputRef = useRef(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [localFiles, setLocalFiles] = useState([]);
-    const [hiddenDocumentIds, setHiddenDocumentIds] = useState([]);
-    const [fileMessage, setFileMessage] = useState("");
-    const [isEditMode, setIsEditMode] = useState(false);
-    const [draftNote, setDraftNote] = useState("");
-    const [aiPrompt, setAiPrompt] = useState("");
-    const [saveFeedback, setSaveFeedback] = useState("");
-    const [noteOverrides, setNoteOverrides] = useState(() => Object.fromEntries(
-        getLearningNotes().flatMap((note) => {
-            if (note.topicContents) return Object.entries(note.topicContents);
-            return note.tocId ? [[note.tocId, note.content]] : [];
-        }),
-    ));
-    const [noteTitlesByDocument, setNoteTitlesByDocument] = useState(() => Object.fromEntries(
-        getLearningNotes().map((note) => [note.documentId, note.title]),
-    ));
+    const [title, setTitle] = useState("");
+    const [file, setFile] = useState(null);
+    const [dragging, setDragging] = useState(false);
+    const [validationMessage, setValidationMessage] = useState("");
 
     const {
         userExams,
@@ -55,746 +40,284 @@ function AiLearningPage() {
     } = useUserExams();
 
     const {
-        scopeNodes,
-        expandedNodeIds,
-        selectedNodeId,
-        isScopeLoading,
-        scopeMessage,
-        toggleNode,
-        selectNodeById,
-        resetScopeNodes,
-    } = useExamScopeNodes({ examVersionId: selectedExamVersionId });
+        submitting,
+        processing,
+        learningNoteId,
+        error,
+        submit,
+        reset,
+    } = useLearningNoteCreation();
 
-    const {
-        isUploading,
-        processingStatus,
-        isProgressModalOpen,
-        uploadErrorMessage,
-        hasProcessedDocuments,
-        completedProcessingKey,
-        isRetrying,
-        uploadDocuments,
-        retryProcessing,
-        closeProgressModal,
-        resetDocumentState,
-    } = useDocumentProcessing({ selectedUserExamId, selectedNodeId });
+    const noteTitle = title.trim() || (
+        selectedUserExam ? `${selectedUserExam.examName} 학습노트` : ""
+    );
 
-    const documentRoom = useDocumentConceptDashboard({
-        userExamId: selectedUserExamId,
-        enabled: Boolean(selectedUserExamId) && hasProcessedDocuments,
-    });
+    const activeStepIndex = useMemo(() => {
+        if (processing?.status === "COMPLETED") return PROCESS_STEPS.length;
+        return Math.max(
+            0,
+            PROCESS_STEPS.findIndex((step) => step.key === processing?.currentStep),
+        );
+    }, [processing]);
 
-    useEffect(() => {
-        if (completedProcessingKey > 0) {
-            queueMicrotask(() => {
-                documentRoom.refresh();
-                setLocalFiles([]);
-            });
-        }
-        // documentRoom.refresh is intentionally excluded because the hook returns
-        // a new object on every render.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [completedProcessingKey]);
+    const progress = useMemo(() => {
+        if (!processing) return 0;
+        if (processing.status === "UPLOADING") return 8;
+        if (processing.status === "PENDING") return 14;
+        if (processing.status === "COMPLETED") return 100;
+        if (processing.status === "FAILED") return Math.max(12, activeStepIndex * 20);
+        return Math.min(92, 22 + activeStepIndex * 17);
+    }, [activeStepIndex, processing]);
 
-    const uploadedDocuments = useMemo(() => {
-        const serverDocuments = documentRoom.documents
-            .filter((document) => !hiddenDocumentIds.includes(document.documentId))
-            .map((document) => ({
-                id: `server-${document.documentId}`,
-                documentId: document.documentId,
-                name: document.fileName,
-                status: "업로드 완료",
-                meta: "AI 분석 완료",
-                local: false,
-            }));
-
-        return [...localFiles, ...serverDocuments];
-    }, [documentRoom.documents, hiddenDocumentIds, localFiles]);
-
-    const completedDocuments = uploadedDocuments.filter((document) => !document.local);
-    const canStartLearning = completedDocuments.length > 0
-        && !isUploading
-        && !documentRoom.loading
-        && !documentRoom.batchGenerating;
-    const isStudyMode = searchParams.get("view") === "notes";
-    const dashboardChapters = useMemo(() => [
-        ...(documentRoom.dashboard?.mapped ?? []).map((chapter) => ({ ...chapter, mapped: true })),
-        ...(documentRoom.dashboard?.unmapped ?? []).map((chapter) => ({ ...chapter, mapped: false })),
-    ], [documentRoom.dashboard]);
-    const selectedChapter = dashboardChapters.find(
-        (chapter) => Number(chapter.tocId) === Number(selectedNodeId),
-    ) ?? null;
-    const mappedChapters = dashboardChapters.filter((chapter) => chapter.mapped);
-    const mappedTocIds = new Set(mappedChapters.map((chapter) => Number(chapter.tocId)));
-    const knownTocIds = new Set(dashboardChapters.map((chapter) => Number(chapter.tocId)));
-    const selectedChapterWithOverride = selectedChapter
-        ? {
-            ...selectedChapter,
-            content: noteOverrides[selectedChapter.tocId] ?? selectedChapter.content,
-        }
-        : null;
-    const noteTitle = noteTitlesByDocument[documentRoom.documentId]
-        ?? `${selectedUserExam?.examCode ?? "나의"} 개념 학습`;
+    const isWorking = Boolean(processing)
+        && !["COMPLETED", "FAILED"].includes(processing.status);
+    const isCompleted = processing?.status === "COMPLETED";
+    const isFailed = processing?.status === "FAILED";
+    const canSubmit = Boolean(selectedUserExamId && noteTitle.trim() && file)
+        && !submitting
+        && !isWorking;
+    const displayName = sanitizeDisplayName(
+        userInfo?.nickname || userInfo?.name || "사용자",
+    );
 
     useEffect(() => {
-        const requestedDocumentId = Number(searchParams.get("documentId"));
-        if (
-            isStudyMode
-            && requestedDocumentId
-            && documentRoom.documentId !== requestedDocumentId
-            && documentRoom.documents.some((document) => document.documentId === requestedDocumentId)
-        ) {
-            documentRoom.selectDocument(requestedDocumentId);
+        if (!isCompleted || !learningNoteId) return undefined;
+
+        const timerId = window.setTimeout(() => {
+            navigate(`/learning?view=notes&noteId=${learningNoteId}`, { replace: true });
+        }, 650);
+
+        return () => window.clearTimeout(timerId);
+    }, [isCompleted, learningNoteId, navigate]);
+
+    if (Number.isInteger(requestedNoteId) && requestedNoteId > 0) {
+        return <LearningNoteDetailPage learningNoteId={requestedNoteId} />;
+    }
+
+    const selectFile = (candidate) => {
+        if (!candidate) return;
+
+        const extension = candidate.name.split(".").pop()?.toLowerCase();
+        if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+            setValidationMessage("PDF 또는 DOCX 파일만 업로드할 수 있습니다.");
+            return;
         }
-    }, [documentRoom, isStudyMode, searchParams]);
-
-    useEffect(() => {
-        const requestedTocId = Number(searchParams.get("tocId"));
-        if (
-            isStudyMode
-            && requestedTocId
-            && selectedNodeId !== requestedTocId
-            && dashboardChapters.some((chapter) => Number(chapter.tocId) === requestedTocId)
-        ) {
-            selectNodeById(requestedTocId);
+        if (candidate.size <= 0) {
+            setValidationMessage("내용이 없는 파일은 업로드할 수 없습니다.");
+            return;
         }
-    }, [dashboardChapters, isStudyMode, searchParams, selectNodeById, selectedNodeId]);
-
-    const message = examMessage || scopeMessage || fileMessage;
-
-    const handleUserExamChange = (userExamId) => {
-        changeUserExam(userExamId);
-        resetScopeNodes();
-        resetDocumentState();
-        setLocalFiles([]);
-        setHiddenDocumentIds([]);
-        setFileMessage("");
-    };
-
-    const handleFiles = async (fileList) => {
-        const files = Array.from(fileList || []);
-        if (!files.length || isUploading) return;
-
-        const invalidFiles = files.filter((file) => {
-            const name = file.name.toLowerCase();
-            return !ACCEPTED_EXTENSIONS.some((extension) => name.endsWith(extension));
-        });
-
-        if (invalidFiles.length) {
-            setFileMessage("PDF 또는 DOCX 파일만 업로드할 수 있습니다.");
+        if (candidate.size > MAX_FILE_SIZE) {
+            setValidationMessage("파일 크기는 최대 20MB까지 가능합니다.");
             return;
         }
 
-        setFileMessage("");
-        setLocalFiles((current) => [
-            ...files.map((file, index) => ({
-                id: `local-${file.name}-${file.lastModified}-${index}`,
-                name: file.name,
-                status: "업로드 중",
-                meta: formatFileSize(file.size),
-                local: true,
-            })),
-            ...current,
-        ]);
-        await uploadDocuments(files);
+        setFile(candidate);
+        setValidationMessage("");
     };
 
-    const handleFileChange = async (event) => {
-        const files = Array.from(event.target.files || []);
-        event.target.value = "";
-        await handleFiles(files);
-    };
-
-    const handleDrop = async (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsDragging(false);
-        await handleFiles(event.dataTransfer.files);
-    };
-
-    const handleRemoveDocument = async (document) => {
-        if (document.local) {
-            setLocalFiles((current) => current.filter((file) => file.id !== document.id));
-            return;
-        }
-
-        try {
-            setFileMessage("");
-            await deleteLearningDocument(document.documentId);
-            removeLearningNoteByDocumentId(document.documentId);
-            setHiddenDocumentIds((current) => [...current, document.documentId]);
-            await documentRoom.refresh();
-        } catch (error) {
-            setFileMessage(
-                error.response?.data?.message || "문서를 삭제하지 못했습니다.",
-            );
-        }
-    };
-
-    const handleStartLearning = async () => {
-        if (!canStartLearning) return;
-        const firstDocumentId = completedDocuments[0].documentId;
-        if (firstDocumentId && documentRoom.documentId !== firstDocumentId) {
-            documentRoom.selectDocument(firstDocumentId);
-        }
-        const hasCompleteNote = documentRoom.documentId === firstDocumentId
-            && mappedChapters.length > 0
-            && mappedChapters.every((chapter) => chapter.content);
-        if (!hasCompleteNote) {
-            const created = await documentRoom.generateAll(firstDocumentId);
-            if (!created) return;
-        }
-        setSearchParams({ view: "notes", documentId: String(firstDocumentId) });
-    };
-
-    const handleChapterSelect = (chapter) => {
-        selectNodeById(chapter.tocId);
-        setIsEditMode(false);
-        setAiPrompt("");
-        setSaveFeedback("");
-        setDraftNote(noteOverrides[chapter.tocId] ?? chapter.content ?? "");
-    };
-
-    const handleEditToggle = () => {
-        if (!selectedChapterWithOverride) return;
-        setDraftNote(selectedChapterWithOverride.content ?? "");
-        setIsEditMode((current) => !current);
-    };
-
-    const handleEditComplete = async () => {
-        if (!selectedChapterWithOverride) return;
-        if (!selectedChapterWithOverride.mapped) {
-            const saved = await documentRoom.saveOne(
-                selectedChapterWithOverride.tocId,
-                draftNote,
-            );
-            if (!saved) return;
-        }
-        setNoteOverrides((current) => ({
-            ...current,
-            [selectedChapterWithOverride.tocId]: draftNote,
-        }));
-        saveLearningNote({
-            documentId: documentRoom.documentId,
-            tocId: selectedChapterWithOverride.tocId,
+        if (!canSubmit) return;
+        await submit({
+            userExamId: selectedUserExamId,
             title: noteTitle,
-            content: draftNote,
-        });
-        setIsEditMode(false);
-    };
-
-    const handleTitleSave = async (title) => {
-        if (!selectedChapterWithOverride) return;
-        setNoteTitlesByDocument((current) => ({
-            ...current,
-            [documentRoom.documentId]: title,
-        }));
-        saveLearningNote({
-            documentId: documentRoom.documentId,
-            tocId: selectedChapterWithOverride.tocId,
-            title,
-            content: selectedChapterWithOverride.content ?? "",
+            file,
         });
     };
 
-    const handleAiGenerate = async (prompt = aiPrompt) => {
-        if (!selectedChapterWithOverride || selectedChapterWithOverride.mapped || !prompt.trim()) return;
-        setSaveFeedback("");
-        const generated = await documentRoom.generateOne(
-            selectedChapterWithOverride.tocId,
-            prompt.trim(),
-        );
-        if (generated?.content) {
-            setNoteOverrides((current) => ({
-                ...current,
-                [selectedChapterWithOverride.tocId]: generated.content,
-            }));
-            setDraftNote(generated.content);
-            setIsEditMode(true);
-        }
-    };
-
-    const handleEmptySummarySave = (content) => {
-        if (!selectedChapterWithOverride) return;
-        setNoteOverrides((current) => ({
-            ...current,
-            [selectedChapterWithOverride.tocId]: content,
-        }));
-        saveLearningNote({
-            documentId: documentRoom.documentId,
-            tocId: selectedChapterWithOverride.tocId,
-            title: noteTitle,
-            content,
-        });
-    };
-
-    const handleSaveConcept = async () => {
-        if (!selectedChapterWithOverride) return;
-        const content = isEditMode
-            ? draftNote
-            : selectedChapterWithOverride.content ?? "";
-        const saved = await documentRoom.saveOne(
-            selectedChapterWithOverride.tocId,
-            content,
-        );
-        if (!saved) return;
-        setNoteOverrides((current) => ({
-            ...current,
-            [selectedChapterWithOverride.tocId]: content,
-        }));
-        saveLearningNote({
-            documentId: documentRoom.documentId,
-            tocId: selectedChapterWithOverride.tocId,
-            title: noteTitle,
-            content,
-        });
-        setIsEditMode(false);
-        setSaveFeedback("저장됨");
-    };
-
-    const handleStudyTreeSelect = (node) => {
-        if (node.children?.length) {
-            toggleNode(node.id);
-            return;
-        }
-
-        const chapter = dashboardChapters.find(
-            (item) => Number(item.tocId) === Number(node.id),
-        ) ?? {
-            tocId: node.id,
-            tocTitle: node.title,
-            content: "",
-            mapped: false,
-        };
-        handleChapterSelect(chapter);
+    const startAgain = () => {
+        reset();
+        setFile(null);
+        setValidationMessage("");
+        setTitle("");
     };
 
     if (isExamLoading) {
         return (
-            <main className="concept-page concept-page-loading">
-                <div className="concept-loading-card">
-                    <div className="concept-loading-spinner" />
-                    <p>학습 정보를 불러오는 중입니다...</p>
-                </div>
+            <main className="studio-page studio-loading">
+                <span className="studio-spinner" />
+                <p>노트 스튜디오를 준비하고 있어요.</p>
             </main>
         );
     }
 
     return (
-        <main className="concept-page">
-            <header className="concept-topbar">
-                <div className="concept-topbar-left">
-                    <ExamSelectDropdown
-                        exams={userExams}
-                        selectedExamId={selectedUserExamId}
-                        onChange={(exam) =>
-                            handleUserExamChange(exam.userExamId)
-                        }
-                        ariaLabel="학습 시험 선택"
-                    />
-                    <h1>개념 학습</h1>
-                </div>
-            </header>
-
-            {message && <p className="concept-message">{message}</p>}
-
-            {userExams.length === 0 ? (
-                <section className="concept-empty-state">
-                    <div className="concept-empty-card">
-                        <DocumentIcon />
-                        <h2>학습할 시험을 먼저 선택해 주세요</h2>
-                        <p>마이페이지에서 학습 시험을 활성화하면 개념 학습을 시작할 수 있습니다.</p>
-                        <button type="button" onClick={() => navigate("/mypage")}>
-                            마이페이지로 이동
-                        </button>
-                    </div>
-                </section>
-            ) : isStudyMode ? (
-                <section className="study-notes-workspace">
-                    <aside className="workspace-card study-notes-toc">
-                        <button
-                            type="button"
-                            className="study-back-button"
-                            onClick={() => setSearchParams({})}
-                        >
-                            <ArrowLeftIcon /> 문서 관리로 돌아가기
-                        </button>
-                        <div className="study-section-heading">
-                            <h2>학습 목차</h2>
-                        </div>
-                        <div className="toc-list study-tree-list">
-                            <StudyTocTree
-                                nodes={scopeNodes}
-                                expandedNodeIds={expandedNodeIds}
-                                selectedNodeId={selectedNodeId}
-                                mappedTocIds={mappedTocIds}
-                                knownTocIds={knownTocIds}
-                                onToggle={toggleNode}
-                                onSelect={handleStudyTreeSelect}
-                            />
-                        </div>
-                    </aside>
-
-                    <section className="study-notes-content">
-                        <NoteHeader
-                            title={noteTitle}
-                            onTitleSave={handleTitleSave}
-                            documents={completedDocuments}
-                            selectedDocumentId={documentRoom.documentId}
-                            onDocumentSelect={documentRoom.selectDocument}
-                            editing={isEditMode}
-                            onEdit={isEditMode ? handleEditComplete : handleEditToggle}
-                        />
-                        {selectedChapterWithOverride
-                            && !selectedChapterWithOverride.mapped
-                            && selectedChapterWithOverride.content && (
-                            <div className="ai-result-header">
-                                <span className="external-knowledge-badge">
-                                    💡 표준 개념 지식 기반 생성됨 (업로드 문서 내용 없음)
-                                </span>
-                                {!isEditMode && (
-                                    <div className="ai-result-actions">
-                                        <span>{saveFeedback}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleAiGenerate(
-                                                aiPrompt || "핵심 개념을 다른 구성과 예시로 다시 설명해줘",
-                                            )}
-                                            disabled={documentRoom.generatingIds.includes(selectedChapterWithOverride.tocId)}
+        <main className="studio-page">
+            <section className="studio-shell">
+                {userExams.length === 0 ? (
+                    <EmptyExamState onMove={() => navigate("/mypage")} message={examMessage} />
+                ) : (
+                    <section className="studio-conversation">
+                        <header className="studio-hero">
+                            <p className="studio-greeting">안녕하세요, {displayName}님!</p>
+                            <h2>오늘 어떤 교안을 완벽하게 요약해 드릴까요?</h2>
+                            <p className="studio-hero-description">교안 파일을 올리시면 시험 출제 기준에 맞춰 핵심 목차와 학습 노트를 생성해 드립니다.</p>
+                        </header>
+                        <section className="studio-panel studio-ai-canvas">
+                            <form className="studio-form" onSubmit={handleSubmit}>
+                            <fieldset disabled={isWorking || submitting}>
+                                <div className="canvas-context-bar">
+                                    <div className="canvas-exam-pill">
+                                        <span aria-hidden="true">🎯</span>
+                                        <select
+                                            value={selectedUserExamId ?? ""}
+                                            onChange={(event) => changeUserExam(Number(event.target.value))}
+                                            aria-label="준비 중인 시험 변경"
                                         >
-                                            다시 생성 🔄
-                                        </button>
-                                        <button type="button" onClick={handleEditToggle}>편집 ✏️</button>
-                                        <button
-                                            type="button"
-                                            className="save"
-                                            onClick={handleSaveConcept}
-                                            disabled={documentRoom.savingIds.includes(selectedChapterWithOverride.tocId)}
-                                        >
-                                            저장 💾
-                                        </button>
+                                            {userExams.map((exam) => (
+                                                <option key={exam.userExamId} value={exam.userExamId}>
+                                                    {exam.examName}{exam.versionName ? ` - ${exam.versionName}` : ""}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <ChevronIcon />
                                     </div>
-                                )}
-                            </div>
-                        )}
-                        {selectedChapterWithOverride
-                            && !selectedChapterWithOverride.mapped
-                            && !selectedChapterWithOverride.content
-                            && !isEditMode ? (
-                            <UnmappedTopicEmptyState
-                                topicTitle={selectedChapterWithOverride.tocTitle}
-                                onAddFiles={handleFiles}
-                                onSaveSummary={handleEmptySummarySave}
-                            />
-                        ) : isEditMode ? (
-                            <ConceptEditor
-                                value={draftNote}
-                                onChange={setDraftNote}
-                                onRegenerate={() => handleAiGenerate(
-                                    aiPrompt || "핵심 개념을 다른 구성과 예시로 다시 설명해줘",
-                                )}
-                                onCancel={handleEditToggle}
-                                onSave={selectedChapterWithOverride?.mapped
-                                    ? handleEditComplete
-                                    : handleSaveConcept}
-                                generating={documentRoom.generatingIds.includes(selectedChapterWithOverride?.tocId)}
-                                saving={documentRoom.savingIds.includes(selectedChapterWithOverride?.tocId)}
-                                isExternalKnowledge={!selectedChapterWithOverride?.mapped}
-                            />
-                        ) : (
-                            <ConceptContentView
-                                chapter={selectedChapterWithOverride}
-                                loading={documentRoom.loading}
-                                generating={documentRoom.generatingIds.includes(selectedChapter?.tocId)}
-                            />
-                        )}
-                    </section>
-                </section>
-            ) : (
-                <section className="concept-workspace">
-                    <aside className="workspace-card toc-panel">
-                        <header className="panel-section-header">
-                            <h2>시험 목차</h2>
-                        </header>
-                        <div className="toc-list">
-                            {isScopeLoading ? (
-                                <PanelLoading label="목차를 불러오는 중입니다..." />
-                            ) : scopeNodes.length === 0 ? (
-                                <div className="panel-empty">등록된 목차가 없습니다.</div>
-                            ) : (
-                                <StudyTocTree
-                                    nodes={scopeNodes}
-                                    expandedNodeIds={expandedNodeIds}
-                                    onToggle={toggleNode}
-                                />
-                            )}
-                        </div>
-                    </aside>
-
-                    <section className="workspace-card upload-panel">
-                        <header className="panel-section-header">
-                            <h2>학습 자료 업로드</h2>
-                        </header>
-                        <label
-                            htmlFor="learning-document-upload"
-                            className={`upload-dropzone ${isDragging ? "is-dragging" : ""} ${isUploading ? "is-uploading" : ""}`}
-                            onDragEnter={(event) => {
-                                event.preventDefault();
-                                setIsDragging(true);
-                            }}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDragLeave={(event) => {
-                                if (!event.currentTarget.contains(event.relatedTarget)) setIsDragging(false);
-                            }}
-                            onDrop={handleDrop}
-                            tabIndex={0}
-                            onKeyDown={(event) => {
-                                if (!isUploading && (event.key === "Enter" || event.key === " ")) {
-                                    event.preventDefault();
-                                    fileInputRef.current?.click();
-                                }
-                            }}
-                            aria-label="학습 문서 업로드"
-                            aria-disabled={isUploading}
-                        >
-                            <div className="upload-visual" aria-hidden="true"><UploadCloudIcon /></div>
-                            <h3>
-                                {isUploading
-                                    ? "문서를 안전하게 업로드하고 있어요"
-                                    : isDragging
-                                        ? "여기에 문서를 놓아주세요"
-                                        : "학습 자료 추가"}
-                            </h3>
-                            <p>
-                                {isUploading ? (
-                                    <span className="upload-accent">업로드와 분석을 진행하고 있습니다</span>
-                                ) : (
-                                    <>파일을 드롭하거나 <span className="upload-accent">클릭하여 선택</span></>
-                                )}
-                            </p>
-                            <span className="upload-hint">PDF, DOCX · 최대 10개 파일</span>
-                        </label>
-
-                        <input
-                            id="learning-document-upload"
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            multiple
-                            className="upload-file-input"
-                            onChange={handleFileChange}
-                            disabled={isUploading}
-                        />
-                    </section>
-
-                    <aside className="workspace-card documents-panel">
-                        <header className="panel-section-header documents-section-header">
-                            <h2>MY DOCUMENTS</h2>
-                            <strong>{uploadedDocuments.length}개</strong>
-                        </header>
-
-                        <div className="document-list">
-                            {documentRoom.loading && uploadedDocuments.length === 0 ? (
-                                <PanelLoading label="자료를 불러오는 중입니다..." />
-                            ) : uploadedDocuments.length === 0 ? (
-                                <div className="documents-empty">
-                                    <span><FileIcon /></span>
-                                    <strong>아직 업로드된 자료가 없어요</strong>
-                                    <p>가운데 영역에서 학습 문서를 추가해 주세요.</p>
+                                    <label className="canvas-title-pill">
+                                        <span aria-hidden="true">📝</span>
+                                        <input
+                                            value={title}
+                                            maxLength={255}
+                                            onChange={(event) => setTitle(event.target.value)}
+                                            placeholder={selectedUserExam ? `${selectedUserExam.examName} 핵심 요약` : "노트 제목"}
+                                            aria-label="노트 제목"
+                                        />
+                                    </label>
                                 </div>
-                            ) : uploadedDocuments.map((document) => (
-                                <article className="document-card" key={document.id}>
-                                    <span className={`file-type ${getFileType(document.name).toLowerCase()}`}>
-                                        {getFileType(document.name)}
-                                    </span>
-                                    <div className="document-info">
-                                        <div className="document-title-row">
-                                            <strong title={document.name}>{document.name}</strong>
-                                            {document.local && (
-                                                <i
-                                                    className="document-loading-indicator"
-                                                    role="status"
-                                                    aria-label={`${document.name} 처리 중`}
-                                                />
-                                            )}
+                                <div className="studio-field studio-upload-field">
+                                    {!file ? (
+                                        <div
+                                            className={`studio-dropzone ${dragging ? "dragging" : ""}`}
+                                            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+                                            onDragOver={(event) => event.preventDefault()}
+                                            onDragLeave={(event) => {
+                                                if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false);
+                                            }}
+                                            onDrop={(event) => {
+                                                event.preventDefault();
+                                                setDragging(false);
+                                                selectFile(event.dataTransfer.files?.[0]);
+                                            }}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            onKeyDown={(event) => {
+                                                if (["Enter", " "].includes(event.key)) fileInputRef.current?.click();
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                        >
+                                            <span className="dropzone-icon"><DocumentIcon /><i><SparkleIcon /></i></span>
+                                            <h3>{dragging ? "좋아요, 파일을 놓아주세요" : "교안 파일(PDF, DOCX)을 드래그하거나 클릭하여 업로드하세요"}</h3>
+                                            <p>최대 20MB까지 안전하게 분석해 드려요</p>
+                                            <div className="dropzone-supports" aria-label="지원 파일 형식">
+                                                <span>PDF</span><span>DOCX</span>
+                                            </div>
                                         </div>
-                                        <span>
-                                            {document.meta}
-                                            {document.status}
-                                        </span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="trash-button"
-                                        onClick={() => handleRemoveDocument(document)}
-                                        aria-label={`${document.name} 삭제`}
-                                    >
-                                        <TrashIcon />
+                                    ) : (
+                                        <div className="selected-file">
+                                            <span className="selected-file-icon">{getExtension(file.name)}</span>
+                                            <div><b>{file.name}</b><small>{formatFileSize(file.size)} · 업로드 준비 완료</small></div>
+                                            <button type="button" onClick={() => setFile(null)} aria-label="선택한 파일 제거"><CloseIcon /></button>
+                                        </div>
+                                    )}
+                                    <input
+                                        ref={fileInputRef}
+                                        id="note-file"
+                                        className="studio-file-input"
+                                        type="file"
+                                        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                        onChange={(event) => {
+                                            selectFile(event.target.files?.[0]);
+                                            event.target.value = "";
+                                        }}
+                                    />
+                                    {validationMessage && <p className="studio-validation"><AlertIcon />{validationMessage}</p>}
+                                </div>
+                            </fieldset>
+
+                            {file && (
+                                <div className="canvas-action-row">
+                                    <span><ShieldIcon />문서는 노트 생성에만 사용돼요</span>
+                                    <button className="studio-submit" type="submit" disabled={!canSubmit}>
+                                        {submitting ? <><span className="button-spinner" />생성 중...</> : <><SparkleIcon />AI 학습노트 생성<ArrowIcon /></>}
                                     </button>
-                                </article>
-                            ))}
-                        </div>
-
-                        <div className="documents-action-area">
-                            <div className="learning-start-caption">
-                                <span aria-hidden="true">💡</span>
-                                <p>업로드한 문서를 바탕으로 목차별 맞춤 설명이 생성돼요.</p>
-                            </div>
-                            <button
-                                type="button"
-                                className={`learning-start-button ${canStartLearning ? "is-active" : "is-disabled"}`}
-                                disabled={!canStartLearning}
-                                onClick={handleStartLearning}
-                            >
-                                <span className="learning-start-sparkle">✦</span>
-                                <span>
-                                    {isUploading
-                                        ? "문서 분석 중..."
-                                        : documentRoom.batchGenerating
-                                            ? "학습노트 만드는 중..."
-                                            : "학습노트 만들기"}
-                                </span>
-                                <ArrowRightIcon />
-                            </button>
-                        </div>
-                    </aside>
-                </section>
+                                </div>
+                            )}
+                            </form>
+                        </section>
+                    </section>
+                )}
+            </section>
+            {processing && (
+                <LoadingModal
+                    progress={progress}
+                    completed={isCompleted}
+                    failed={isFailed}
+                    error={error}
+                    onReset={startAgain}
+                />
             )}
-
-            <UploadProgressModal
-                open={isProgressModalOpen}
-                currentStatusText={processingStatus?.stepMessage}
-                status={processingStatus}
-                errorMessage={uploadErrorMessage}
-                onClose={closeProgressModal}
-                onRetry={retryProcessing}
-                isRetrying={isRetrying}
-            />
         </main>
     );
 }
 
-function StudyTocTree({
-    nodes,
-    expandedNodeIds,
-    selectedNodeId,
-    mappedTocIds,
-    knownTocIds,
-    onToggle,
-    onSelect,
-}) {
-    return nodes.map((node, index) => (
-        <StudyTocTreeNode
-            key={node.id}
-            node={node}
-            numberPrefix={`${index + 1}`}
-            level={1}
-            expandedNodeIds={expandedNodeIds}
-            selectedNodeId={selectedNodeId}
-            mappedTocIds={mappedTocIds}
-            knownTocIds={knownTocIds}
-            onToggle={onToggle}
-            onSelect={onSelect}
-        />
-    ));
-}
-
-function StudyTocTreeNode({
-    node,
-    numberPrefix,
-    level,
-    expandedNodeIds,
-    selectedNodeId,
-    mappedTocIds,
-    knownTocIds,
-    onToggle,
-    onSelect,
-}) {
-    const hasChildren = Boolean(node.children?.length);
-    const isExpanded = expandedNodeIds.includes(node.id);
-    const isMapped = mappedTocIds?.has(Number(node.id));
-    const isKnownUnmapped = knownTocIds?.has(Number(node.id)) && !isMapped;
-
+function LoadingModal({ progress, completed, failed, error, onReset }) {
     return (
-        <div className={`toc-node level-${level}`}>
-            <button
-                type="button"
-                className={[
-                    "toc-node-row",
-                    level === 1 ? "chapter-row" : "topic-row",
-                    Number(selectedNodeId) === Number(node.id) ? "selected" : "",
-                    isMapped ? "mapped" : "",
-                    isKnownUnmapped ? "unmapped" : "",
-                ].join(" ")}
-                onClick={() => {
-                    if (onSelect) {
-                        onSelect(node);
-                    } else if (hasChildren) {
-                        onToggle(node.id);
-                    }
-                }}
-                style={{ "--toc-depth": Math.min(level - 1, 3) }}
-                aria-expanded={hasChildren ? isExpanded : undefined}
-            >
-                {level === 1 ? (
-                    <span className="toc-chapter-number">{numberPrefix.padStart(2, "0")}</span>
-                ) : (
-                    <span className="toc-dot" />
-                )}
-                <span className="toc-node-title">
-                    {level === 1 ? node.title : `${numberPrefix}. ${node.title}`}
-                </span>
-                {hasChildren && (
-                    <span className={`toc-arrow ${isExpanded ? "open" : ""}`}>
-                        <ChevronDownIcon />
-                    </span>
-                )}
-            </button>
-            {hasChildren && isExpanded && (
-                <div className="toc-children">
-                    {node.children.map((child, index) => (
-                        <StudyTocTreeNode
-                            key={child.id}
-                            node={child}
-                            numberPrefix={`${numberPrefix}.${index + 1}`}
-                            level={level + 1}
-                            expandedNodeIds={expandedNodeIds}
-                            selectedNodeId={selectedNodeId}
-                            mappedTocIds={mappedTocIds}
-                            knownTocIds={knownTocIds}
-                            onToggle={onToggle}
-                            onSelect={onSelect}
-                        />
-                    ))}
+        <div className={`loading-modal-backdrop ${completed ? "completed" : ""}`} role="presentation">
+            <section className="loading-modal" role="dialog" aria-modal="true" aria-labelledby="loading-modal-title">
+                <div className={`loading-sparkle ${failed ? "failed" : ""}`}>
+                    {failed ? <AlertIcon /> : <SparkleIcon />}
+                    {!failed && <span />}
                 </div>
-            )}
+                <h2 id="loading-modal-title">
+                    {failed ? "학습노트 생성에 실패했어요" : "AI가 맞춤 학습노트를 생성하고 있어요"}
+                </h2>
+                {!failed ? (
+                    <>
+                        <div className="loading-progress-meta"><span>노트 생성 진행률</span><b>{progress}%</b></div>
+                        <div className="loading-progress-track"><span style={{ width: `${progress}%` }} /></div>
+                        <p className="loading-status">시험 출제 목차와 교안 핵심 개념을 분석 중입니다...</p>
+                        <p className="loading-caption">잠시만 기다려주시면 나만의 노트를 펼쳐드려요 ✨</p>
+                    </>
+                ) : (
+                    <>
+                        <p className="loading-status">{error || "문서를 처리하지 못했습니다. 파일을 확인한 뒤 다시 시도해 주세요."}</p>
+                        <button type="button" className="loading-reset" onClick={onReset}>파일 다시 선택하기</button>
+                    </>
+                )}
+            </section>
         </div>
     );
 }
 
-function PanelLoading({ label }) {
-    return <div className="panel-loading"><span className="concept-loading-spinner" />{label}</div>;
+function EmptyExamState({ onMove, message }) {
+    return (
+        <section className="studio-empty">
+            <span><DocumentIcon /></span><h2>학습 시험을 먼저 등록해 주세요</h2>
+            <p>{message || "마이페이지에서 학습할 시험을 추가하면 노트 스튜디오를 사용할 수 있습니다."}</p>
+            <button type="button" onClick={onMove}>마이페이지로 이동<ArrowIcon /></button>
+        </section>
+    );
 }
 
-function formatFileSize(bytes) {
-    if (!Number.isFinite(bytes)) return "";
-    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+const Icon = ({ children, size = 20 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">{children}</svg>;
+const SparkleIcon = () => <Icon size={17}><path d="M12 2.8c.8 4.4 2.8 6.5 7.2 7.2-4.4.8-6.5 2.8-7.2 7.2-.8-4.4-2.8-6.5-7.2-7.2 4.4-.8 6.5-2.8 7.2-7.2Z" fill="currentColor" /><path d="M19 16.5c.3 1.7 1.1 2.5 2.8 2.8-1.7.3-2.5 1.1-2.8 2.8-.3-1.7-1.1-2.5-2.8-2.8 1.7-.3 2.5-1.1 2.8-2.8Z" fill="currentColor" /></Icon>;
+const DocumentIcon = () => <Icon size={34}><path d="M6 3.5h8l4 4V21H6V3.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M14 3.5v4h4M9 12h6M9 16h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
+const CloseIcon = () => <Icon size={18}><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
+const ArrowIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
+const AlertIcon = () => <Icon size={18}><path d="M12 3 2.8 20h18.4L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M12 9v5m0 3v.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></Icon>;
+const ShieldIcon = () => <Icon size={15}><path d="M12 3 5 6v5c0 4.5 2.8 7.8 7 10 4.2-2.2 7-5.5 7-10V6l-7-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></Icon>;
+const ChevronIcon = () => <Icon size={17}><path d="m7 9 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
+
+function formatFileSize(bytes = 0) {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-function getFileType(fileName = "") {
-    return fileName.toLowerCase().endsWith(".docx") ? "DOCX" : "PDF";
+function sanitizeDisplayName(value) {
+    return String(value).trim().replace(/_[a-z0-9]{8,}$/i, "") || "사용자";
 }
 
-function Icon({ children, className, size = 20, viewBox = "0 0 24 24" }) {
-    return <svg className={className} width={size} height={size} viewBox={viewBox} fill="none" aria-hidden="true">{children}</svg>;
+function getExtension(name = "") {
+    return name.split(".").pop()?.toUpperCase() || "FILE";
 }
-
-const ChevronDownIcon = (props) => <Icon {...props} size={16}><path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const UploadCloudIcon = () => <Icon size={30}><path d="M16 16l-4-4-4 4M12 12v9M20.4 17.5A5 5 0 0 0 18 8.2 7 7 0 0 0 4.3 10.5 4.5 4.5 0 0 0 5.5 19H7" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const TrashIcon = () => <Icon size={18}><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const FileIcon = () => <Icon size={25}><path d="M6 3h8l4 4v14H6V3Zm8 0v5h4M9 13h6M9 17h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const ArrowRightIcon = () => <Icon size={18}><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const ArrowLeftIcon = () => <Icon size={17}><path d="M19 12H5m5 5-5-5 5-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" /></Icon>;
-const DocumentIcon = () => <Icon size={86}><path d="M7 2.5h7l5 5v14H7v-19Z" fill="#fff" stroke="#E8B995" strokeWidth="1.3" transform="scale(3.25) translate(-4.7 -1.2)" /><path d="M29 34h27M29 44h27M29 54h18" stroke="#C9A58B" strokeWidth="2.6" strokeLinecap="round" /></Icon>;
 
 export default AiLearningPage;

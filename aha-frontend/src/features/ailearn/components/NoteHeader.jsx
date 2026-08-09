@@ -8,10 +8,11 @@ export default function NoteHeader({
     onDocumentSelect,
     editing,
     onEdit,
+    titleEditable = true,
 }) {
     return (
         <header className="study-view-header">
-            <EditableTitle title={title} onSave={onTitleSave} />
+            <EditableTitle title={title} onSave={onTitleSave} editable={titleEditable} />
             <div className="study-view-actions">
                 <details className="related-documents">
                     <summary>📄 연관 문서 ({documents.length})</summary>
@@ -28,9 +29,11 @@ export default function NoteHeader({
                         ))}
                     </div>
                 </details>
-                <button type="button" className="note-edit-button" onClick={onEdit}>
-                    {editing ? "편집 완료" : "편집 / 설정 ⚙️"}
-                </button>
+                {onEdit && (
+                    <button type="button" className="note-edit-button" onClick={onEdit}>
+                        {editing ? "편집 완료" : "편집 / 설정 ⚙️"}
+                    </button>
+                )}
             </div>
         </header>
     );
