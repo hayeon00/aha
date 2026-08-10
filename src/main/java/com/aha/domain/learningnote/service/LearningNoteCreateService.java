@@ -2,6 +2,7 @@ package com.aha.domain.learningnote.service;
 
 import com.aha.domain.document.entity.DocumentProcessing;
 import com.aha.domain.document.entity.SourceDocument;
+import com.aha.domain.document.enums.DocumentFileExtension;
 import com.aha.domain.document.event.DocumentProcessingRequestedEvent;
 import com.aha.domain.document.repository.DocumentProcessingRepository;
 import com.aha.domain.document.repository.SourceDocumentRepository;
@@ -57,10 +58,11 @@ public class LearningNoteCreateService {
 
             SourceDocument sourceDocument = sourceDocumentRepository.save(
                     SourceDocument.create(
+                            userExam.getUser(),
                             validatedFile.originalFileName(),
                             storedFile.storedFileName(),
                             storedFile.storageKey(),
-                            validatedFile.fileExtension(),
+                            DocumentFileExtension.valueOf(validatedFile.fileExtension()),
                             validatedFile.mimeType(),
                             validatedFile.fileSize()
                     )
@@ -74,9 +76,14 @@ public class LearningNoteCreateService {
                     )
             );
 
-            DocumentProcessing documentProcessing = documentProcessingRepository.save(
-                    DocumentProcessing.createPending(learningNote)
-            );
+            DocumentProcessing documentProcessing =
+                    documentProcessingRepository.save(
+                            DocumentProcessing.createPending(
+                                    learningNote,
+                                    "rag-note-v1",
+                                    1
+                            )
+                    );
 
             eventPublisher.publishEvent(
                     new DocumentProcessingRequestedEvent(

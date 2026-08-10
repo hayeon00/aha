@@ -146,20 +146,26 @@ public class DocumentChunkService {
     ) {
         DocumentChunkContentType contentType = resolveContentType(block);
 
-        return DocumentChunk.builder()
-                .sourceDocument(sourceDocument)
-                .chunkOrder(chunkOrder)
-                .pageNo(block.pageNo())
-                .sectionTitle(block.sectionTitle())
-                .headingPath(block.headingPath())
-                .contentType(contentType)
-                .contentText(chunkText)
-                .rawText(chunkText)
-                .summary(null)
-                .keywordsJson(null)
-                .structureJson(null)
-                .tokenCount(null)
-                .build();
+        String codeLanguage = block.resolvedCodeLanguage() == null
+                ? null
+                : block.resolvedCodeLanguage().name();
+
+        return DocumentChunk.create(
+                sourceDocument,
+                chunkOrder,
+                block.pageNo(),
+                block.pageNo(),
+                block.sectionTitle(),
+                block.headingPath(),
+                contentType,
+                codeLanguage,
+                chunkText,
+                chunkText,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     private DocumentChunkContentType resolveContentType(DocumentBlock block) {

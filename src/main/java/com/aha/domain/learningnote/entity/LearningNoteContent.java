@@ -9,9 +9,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Getter
 @Entity
@@ -19,13 +22,13 @@ import java.time.LocalDateTime;
         name = "learning_note_content",
         indexes = {
                 @Index(
-                        name = "idx_learning_note_content_scope_node",
+                        name = "idx_note_content_scope",
                         columnList = "exam_scope_node_id"
                 )
         },
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_learning_note_content_note_scope",
+                        name = "uk_note_content_scope",
                         columnNames = {
                                 "learning_note_id",
                                 "exam_scope_node_id"
@@ -39,6 +42,7 @@ import java.time.LocalDateTime;
 public class LearningNoteContent {
 
     private static final int MAX_TITLE_LENGTH = 255;
+    private static final int MAX_GENERATION_VERSION_LENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,7 +53,7 @@ public class LearningNoteContent {
             name = "learning_note_id",
             nullable = false,
             foreignKey = @ForeignKey(
-                    name = "fk_learning_note_content_learning_note"
+                    name = "fk_note_content_note"
             )
     )
     private LearningNote learningNote;
@@ -59,7 +63,7 @@ public class LearningNoteContent {
             name = "exam_scope_node_id",
             nullable = false,
             foreignKey = @ForeignKey(
-                    name = "fk_learning_note_content_exam_scope_node"
+                    name = "fk_note_content_scope"
             )
     )
     private ExamScopeNode examScopeNode;
@@ -71,9 +75,19 @@ public class LearningNoteContent {
     @Column(name = "content", nullable = false, columnDefinition = "LONGTEXT")
     private String content;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(
+            name = "content_structure",
+            columnDefinition = "JSON"
+    )
+    private Map<String, Object> contentStructure;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 30)
     private LearningContentSourceType sourceType;
+
+    @Column(name = "generation_version", length = 50)
+    private String generationVersion;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -87,16 +101,29 @@ public class LearningNoteContent {
             LearningNote learningNote,
             ExamScopeNode examScopeNode,
             String title,
-            String content
+            String content,
+            Map<String, Object> contentStructure,
+            String generationVersion
     ) {
-        validateAssociations(learningNote, examScopeNode);
+        validateAssociations(
+                learningNote,
+                examScopeNode
+        );
 
         return LearningNoteContent.builder()
                 .learningNote(learningNote)
                 .examScopeNode(examScopeNode)
                 .title(normalizeTitle(title))
                 .content(normalizeContent(content))
-                .sourceType(LearningContentSourceType.DOCUMENT_BASED)
+                .contentStructure(contentStructure)
+                .sourceType(
+                        LearningContentSourceType.DOCUMENT_BASED
+                )
+                .generationVersion(
+                        normalizeOptionalGenerationVersion(
+                                generationVersion
+                        )
+                )
                 .build();
     }
 
@@ -105,14 +132,55 @@ public class LearningNoteContent {
             ExamScopeNode examScopeNode,
             String content
     ) {
-        validateAssociations(learningNote, examScopeNode);
+        validateAssociations(
+                learningNote,
+                examScopeNode
+        );
 
         return LearningNoteContent.builder()
                 .learningNote(learningNote)
                 .examScopeNode(examScopeNode)
-                .title(normalizeTitle(examScopeNode.getTitle()))
+                .title(
+                        normalizeTitle(
+                                examScopeNode.getTitle()
+                        )
+                )
+                .content(
+                        normalizeContent(content)
+                )
+                .sourceType(
+                        LearningContentSourceType.USER_WRITTEN
+                )
+                .build();
+    }
+
+    public static LearningNoteContent createMixed(
+            LearningNote learningNote,
+            ExamScopeNode examScopeNode,
+            String title,
+            String content,
+            Map<String, Object> contentStructure,
+            String generationVersion
+    ) {
+        validateAssociations(
+                learningNote,
+                examScopeNode
+        );
+
+        return LearningNoteContent.builder()
+                .learningNote(learningNote)
+                .examScopeNode(examScopeNode)
+                .title(normalizeTitle(title))
                 .content(normalizeContent(content))
-                .sourceType(LearningContentSourceType.USER_WRITTEN)
+                .contentStructure(contentStructure)
+                .sourceType(
+                        LearningContentSourceType.MIXED
+                )
+                .generationVersion(
+                        normalizeOptionalGenerationVersion(
+                                generationVersion
+                        )
+                )
                 .build();
     }
 
@@ -122,6 +190,21 @@ public class LearningNoteContent {
     ) {
         this.title = normalizeTitle(title);
         this.content = normalizeContent(content);
+    }
+
+    public void updateGeneratedContent(
+            String title,
+            String content,
+            Map<String, Object> contentStructure,
+            String generationVersion
+    ) {
+        this.title = normalizeTitle(title);
+        this.content = normalizeContent(content);
+        this.contentStructure = contentStructure;
+        this.generationVersion =
+                normalizeOptionalGenerationVersion(
+                        generationVersion
+                );
     }
 
     public void updateTitle(String title) {
@@ -176,4 +259,29 @@ public class LearningNoteContent {
 
         return content.trim();
     }
+
+    private static String normalizeOptionalGenerationVersion(
+            String generationVersion
+    ) {
+        if (generationVersion == null) {
+            return null;
+        }
+
+        String normalized =
+                generationVersion.trim();
+
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        if (normalized.length()
+                > MAX_GENERATION_VERSION_LENGTH) {
+            throw new IllegalArgumentException(
+                    "생성 버전은 50자 이하여야 합니다."
+            );
+        }
+
+        return normalized;
+    }
+
 }

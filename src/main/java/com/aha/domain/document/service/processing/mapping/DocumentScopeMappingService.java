@@ -7,6 +7,7 @@ import com.aha.domain.document.client.mapping.dto.ScopeCandidateRequest;
 import com.aha.domain.document.client.mapping.dto.ScopeMappingAiResult;
 import com.aha.domain.document.entity.DocumentChunk;
 import com.aha.domain.document.entity.DocumentScopeMapping;
+import com.aha.domain.document.enums.DocumentScopeMappingMethod;
 import com.aha.domain.document.repository.DocumentChunkRepository;
 import com.aha.domain.learningnote.entity.LearningNote;
 import com.aha.domain.learningnote.repository.LearningNoteRepository;
@@ -82,7 +83,10 @@ public class DocumentScopeMappingService {
         );
 
         documentScopeMappingPersistenceService.replaceMappings(learningNoteId, mappings);
-        updateChunkMappingStatuses(chunks, mappings, topCandidatesByChunkId);
+        updateChunkMappingStatuses(
+                chunks,
+                mappings
+        );
         documentChunkRepository.saveAll(chunks);
 
         if (mappings.isEmpty()) {
@@ -200,7 +204,7 @@ public class DocumentScopeMappingService {
                 documentChunk.getSectionTitle(),
                 documentChunk.getHeadingPath(),
                 documentChunk.getContentType() == null ? null : documentChunk.getContentType().name(),
-                documentChunk.getCodeLanguage() == null ? null : documentChunk.getCodeLanguage().name(),
+                documentChunk.getCodeLanguage() == null ? null : documentChunk.getCodeLanguage(),
                 documentChunk.getContentText()
         );
     }
@@ -309,13 +313,17 @@ public class DocumentScopeMappingService {
                     Integer::sum
             );
 
-            DocumentScopeMapping mapping = DocumentScopeMapping.builder()
-                    .documentChunk(documentChunk)
-                    .examScopeNode(examScopeNode)
-                    .confidenceScore(confidenceScore)
-                    .rankNo(rankNo)
-                    .mappingReason(normalizeMappingReason(aiResult.mappingReason()))
-                    .build();
+            DocumentScopeMapping mapping =
+                    DocumentScopeMapping.create(
+                            documentChunk,
+                            examScopeNode,
+                            rankNo,
+                            confidenceScore,
+                            DocumentScopeMappingMethod.HYBRID,
+                            normalizeMappingReason(
+                                    aiResult.mappingReason()
+                            )
+                    );
 
             mappings.add(mapping);
         }
@@ -344,30 +352,19 @@ public class DocumentScopeMappingService {
 
     private void updateChunkMappingStatuses(
             List<DocumentChunk> chunks,
-            List<DocumentScopeMapping> mappings,
-            Map<Long, List<ScopeCandidateSearchResult>> candidatesByChunkId
+            List<DocumentScopeMapping> mappings
     ) {
-        Map<Long, BigDecimal> mappedScoreByChunkId = mappings.stream()
-                .collect(Collectors.toMap(
-                        mapping -> mapping.getDocumentChunk().getId(),
-                        DocumentScopeMapping::getConfidenceScore,
-                        BigDecimal::max
-                ));
+        Set<Long> mappedChunkIds = mappings.stream()
+                .map(mapping -> mapping.getDocumentChunk().getId())
+                .collect(Collectors.toSet());
 
         for (DocumentChunk chunk : chunks) {
-            BigDecimal mappedScore = mappedScoreByChunkId.get(chunk.getId());
-            if (mappedScore != null) {
-                chunk.markAutoMapped(mappedScore);
+            if (mappedChunkIds.contains(chunk.getId())) {
+                chunk.markMapped();
                 continue;
             }
 
-            BigDecimal bestVectorScore = candidatesByChunkId
-                    .getOrDefault(chunk.getId(), List.of())
-                    .stream()
-                    .map(candidate -> BigDecimal.valueOf(candidate.similarityScore()))
-                    .max(BigDecimal::compareTo)
-                    .orElse(null);
-            chunk.markUnassigned(bestVectorScore);
+            chunk.markUnassigned();
         }
     }
 

@@ -251,26 +251,32 @@ CREATE TABLE `exam_scope_node`
 
 CREATE TABLE `exam_scope_node_embedding`
 (
-    `id`                  BIGINT       NOT NULL AUTO_INCREMENT,
-    `exam_scope_node_id`  BIGINT       NOT NULL,
-    `embedding_model`     VARCHAR(100) NOT NULL,
-    `embedding_json`      JSON         NOT NULL,
-    `embedding_dimension` INT          NOT NULL,
-    `embedding_text_hash` VARCHAR(64)  NOT NULL,
-    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `id`                   BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_scope_node_id`   BIGINT       NOT NULL,
+
+    `embedding_provider`   VARCHAR(50)  NOT NULL,
+    `embedding_model`      VARCHAR(100) NOT NULL,
+
+    `embedding_json`       JSON         NOT NULL,
+    `embedding_dimension`  INT          NOT NULL,
+
+    `embedding_text_hash`  VARCHAR(64)  NOT NULL,
+
+    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`id`),
 
-    UNIQUE KEY `uk_scope_node_embedding_scope_model`
-        (`exam_scope_node_id`, `embedding_model`),
+    UNIQUE KEY `uk_scope_node_embedding_model`
+        (
+         `exam_scope_node_id`,
+         `embedding_provider`,
+         `embedding_model`
+            ),
 
-    INDEX `idx_scope_node_embedding_scope`
-        (`exam_scope_node_id`),
     INDEX `idx_scope_node_embedding_model`
-        (`embedding_model`),
-    INDEX `idx_scope_node_embedding_text_hash`
-        (`embedding_text_hash`),
+        (`embedding_provider`, `embedding_model`),
 
     CONSTRAINT `fk_scope_node_embedding_scope_node`
         FOREIGN KEY (`exam_scope_node_id`)
@@ -312,16 +318,20 @@ CREATE TABLE `user_exam`
 
 
 
-
 CREATE TABLE `source_document` (
                                    `id`                   BIGINT       NOT NULL AUTO_INCREMENT,
+                                   `user_id`              BIGINT       NOT NULL,
+
                                    `original_file_name`   VARCHAR(255) NOT NULL,
                                    `stored_file_name`     VARCHAR(255) NOT NULL,
                                    `storage_key`          VARCHAR(500) NOT NULL,
+
                                    `file_extension`       VARCHAR(20)  NOT NULL,
                                    `mime_type`            VARCHAR(100) NOT NULL,
                                    `file_size`            BIGINT       NOT NULL,
+
                                    `is_active`            BOOLEAN      NOT NULL DEFAULT TRUE,
+
                                    `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                    `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                        ON UPDATE CURRENT_TIMESTAMP,
@@ -331,14 +341,23 @@ CREATE TABLE `source_document` (
                                    UNIQUE KEY `uk_source_document_storage_key`
                                        (`storage_key`),
 
-                                   INDEX `idx_source_document_is_active`
-                                       (`is_active`),
+                                   INDEX `idx_source_document_user`
+                                       (`user_id`),
 
-                                   CONSTRAINT `chk_source_document_file_extension`
+                                   INDEX `idx_source_document_user_active`
+                                       (`user_id`, `is_active`),
+
+                                   CONSTRAINT `fk_source_document_user`
+                                       FOREIGN KEY (`user_id`)
+                                           REFERENCES `users` (`id`)
+                                           ON DELETE CASCADE,
+
+                                   CONSTRAINT `chk_source_document_extension`
                                        CHECK (`file_extension` IN ('pdf', 'docx')),
 
                                    CONSTRAINT `chk_source_document_file_size`
                                        CHECK (`file_size` > 0)
+
 );
 
 
@@ -347,17 +366,21 @@ CREATE TABLE `learning_note` (
                                  `user_exam_id`       BIGINT       NOT NULL,
                                  `source_document_id` BIGINT       NOT NULL,
                                  `title`              VARCHAR(255) NOT NULL,
+                                 `status`             VARCHAR(30)  NOT NULL DEFAULT 'GENERATING',
                                  `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                  `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                      ON UPDATE CURRENT_TIMESTAMP,
 
                                  PRIMARY KEY (`id`),
 
-                                 UNIQUE KEY `uk_learning_note_source_document`
-                                     (`source_document_id`),
+                                 UNIQUE KEY `uk_learning_note_exam_document`
+                                     (`user_exam_id`, `source_document_id`),
 
                                  INDEX `idx_learning_note_user_exam`
                                      (`user_exam_id`),
+
+                                 INDEX `idx_learning_note_source_document`
+                                     (`source_document_id`),
 
                                  CONSTRAINT `fk_learning_note_user_exam`
                                      FOREIGN KEY (`user_exam_id`)
@@ -367,229 +390,358 @@ CREATE TABLE `learning_note` (
                                  CONSTRAINT `fk_learning_note_source_document`
                                      FOREIGN KEY (`source_document_id`)
                                          REFERENCES `source_document` (`id`)
-                                         ON DELETE CASCADE
+                                         ON DELETE CASCADE,
+
+                                 CONSTRAINT `chk_learning_note_status`
+                                     CHECK (`status` IN (
+                                                         'GENERATING',
+                                                         'READY',
+                                                         'FAILED'
+                                         ))
 );
 
 CREATE TABLE `learning_note_content` (
-                                         `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
-                                         `learning_note_id`   BIGINT       NOT NULL,
-                                         `exam_scope_node_id` BIGINT       NOT NULL,
-                                         `title`              VARCHAR(255) NOT NULL,
-                                         `content`            LONGTEXT     NOT NULL,
-                                         `source_type`        VARCHAR(30)  NOT NULL,
-                                         `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                         `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                         `id`                  BIGINT       NOT NULL AUTO_INCREMENT,
+                                         `learning_note_id`    BIGINT       NOT NULL,
+                                         `exam_scope_node_id`  BIGINT       NOT NULL,
+
+                                         `title`               VARCHAR(255) NOT NULL,
+
+                                         `content`             LONGTEXT     NOT NULL,
+
+                                         `content_structure`   JSON         NULL,
+
+                                         `source_type`         VARCHAR(30)  NOT NULL,
+
+                                         `generation_version`  VARCHAR(50)  NULL,
+
+                                         `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                              ON UPDATE CURRENT_TIMESTAMP,
 
                                          PRIMARY KEY (`id`),
 
-                                         UNIQUE KEY `uk_learning_note_content_note_scope`
+                                         UNIQUE KEY `uk_note_content_scope`
                                              (`learning_note_id`, `exam_scope_node_id`),
 
-                                         INDEX `idx_learning_note_content_scope_node`
+                                         INDEX `idx_note_content_scope`
                                              (`exam_scope_node_id`),
 
-                                         CONSTRAINT `fk_learning_note_content_learning_note`
+                                         CONSTRAINT `fk_note_content_note`
                                              FOREIGN KEY (`learning_note_id`)
                                                  REFERENCES `learning_note` (`id`)
                                                  ON DELETE CASCADE,
 
-                                         CONSTRAINT `fk_learning_note_content_exam_scope_node`
+                                         CONSTRAINT `fk_note_content_scope`
                                              FOREIGN KEY (`exam_scope_node_id`)
                                                  REFERENCES `exam_scope_node` (`id`)
                                                  ON DELETE CASCADE,
 
-                                         CONSTRAINT `chk_learning_note_content_source_type`
-                                             CHECK (
-                                                 `source_type` IN (
-                                                                   'DOCUMENT_BASED',
-                                                                   'USER_WRITTEN'
-                                                     )
-                                                 )
+                                         CONSTRAINT `chk_note_content_source_type`
+                                             CHECK (`source_type` IN (
+                                                                      'DOCUMENT_BASED',
+                                                                      'USER_WRITTEN',
+                                                                      'MIXED'
+                                                 ))
 );
 
 
 CREATE TABLE `document_processing` (
-                                       `id`               BIGINT        NOT NULL AUTO_INCREMENT,
-                                       `learning_note_id` BIGINT        NOT NULL,
-                                       `status`           VARCHAR(30)   NOT NULL DEFAULT 'PENDING',
-                                       `current_step`     VARCHAR(50)       NULL,
-                                       `error_code`       VARCHAR(50)       NULL,
-                                       `error_message`    VARCHAR(1000)     NULL,
-                                       `retry_count`      INT           NOT NULL DEFAULT 0,
-                                       `started_at`       DATETIME          NULL,
-                                       `completed_at`     DATETIME          NULL,
-                                       `created_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                       `updated_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                       `id`               BIGINT       NOT NULL AUTO_INCREMENT,
+                                       `learning_note_id` BIGINT       NOT NULL,
+
+                                       `status`           VARCHAR(30)  NOT NULL DEFAULT 'PENDING',
+                                       `current_step`     VARCHAR(50)  NULL,
+
+                                       `pipeline_version` VARCHAR(50)  NOT NULL,
+
+                                       `attempt_no`       INT          NOT NULL DEFAULT 1,
+
+                                       `error_code`       VARCHAR(100) NULL,
+                                       `error_message`    VARCHAR(2000) NULL,
+
+                                       `started_at`       DATETIME     NULL,
+                                       `completed_at`     DATETIME     NULL,
+
+                                       `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                            ON UPDATE CURRENT_TIMESTAMP,
 
                                        PRIMARY KEY (`id`),
 
-                                       UNIQUE KEY `uk_document_processing_learning_note`
+                                       UNIQUE KEY `uk_processing_note_attempt`
+                                           (`learning_note_id`, `attempt_no`),
+
+                                       INDEX `idx_processing_note`
                                            (`learning_note_id`),
 
-                                       INDEX `idx_document_processing_status`
+                                       INDEX `idx_processing_status`
                                            (`status`),
 
-                                       INDEX `idx_document_processing_current_step`
-                                           (`current_step`),
+                                       INDEX `idx_processing_status_step`
+                                           (`status`, `current_step`),
 
-                                       CONSTRAINT `fk_document_processing_learning_note`
+                                       CONSTRAINT `fk_processing_learning_note`
                                            FOREIGN KEY (`learning_note_id`)
                                                REFERENCES `learning_note` (`id`)
                                                ON DELETE CASCADE,
 
-                                       CONSTRAINT `chk_document_processing_status`
-                                           CHECK (
-                                               `status` IN (
-                                                            'PENDING',
-                                                            'PROCESSING',
-                                                            'COMPLETED',
-                                                            'FAILED'
-                                                   )
-                                               ),
+                                       CONSTRAINT `chk_processing_status`
+                                           CHECK (`status` IN (
+                                                               'PENDING',
+                                                               'PROCESSING',
+                                                               'COMPLETED',
+                                                               'FAILED',
+                                                               'CANCELLED'
+                                               )),
 
-                                       CONSTRAINT `chk_document_processing_current_step`
+                                       CONSTRAINT `chk_processing_current_step`
                                            CHECK (
                                                `current_step` IS NULL
                                                    OR `current_step` IN (
-                                                                         'TEXT_EXTRACTING',
+                                                                         'DOCUMENT_PARSING',
+                                                                         'QUALITY_CHECK',
                                                                          'CHUNKING',
                                                                          'EMBEDDING',
                                                                          'SCOPE_MAPPING',
                                                                          'CONTENT_GENERATING',
+                                                                         'FINALIZING',
                                                                          'COMPLETED'
                                                    )
                                                ),
 
-                                       CONSTRAINT `chk_document_processing_retry_count`
-                                           CHECK (`retry_count` >= 0)
+                                       CONSTRAINT `chk_processing_attempt`
+                                           CHECK (`attempt_no` >= 1)
 );
 
 
-
 CREATE TABLE `document_chunk` (
-                                  `id` BIGINT NOT NULL AUTO_INCREMENT,
-                                  `source_document_id` BIGINT NOT NULL,
-                                  `chunk_order` INT NOT NULL,
-                                  `page_no` INT NULL,
-                                  `section_title` VARCHAR(255) NULL,
-                                  `heading_path` VARCHAR(1000) NULL,
-                                  `content_type` VARCHAR(30) NOT NULL DEFAULT 'TEXT',
-                                  `code_language` VARCHAR(30) NULL,
-                                  `content_text` LONGTEXT NOT NULL,
-                                  `raw_text` LONGTEXT NULL,
-                                  `summary` TEXT NULL,
-                                  `keywords_json` JSON NULL,
-                                  `structure_json` JSON NULL,
-                                  `token_count` INT NULL,
-                                  `mapping_status` VARCHAR(30) NOT NULL DEFAULT 'UNASSIGNED',
-                                  `mapping_confidence` DECIMAL(5,4) NULL,
-                                  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  `id`                   BIGINT        NOT NULL AUTO_INCREMENT,
+                                  `source_document_id`   BIGINT        NOT NULL,
+
+                                  `chunk_order`          INT           NOT NULL,
+
+                                  `page_start`           INT           NULL,
+                                  `page_end`             INT           NULL,
+
+                                  `section_title`        VARCHAR(255)  NULL,
+                                  `heading_path`         VARCHAR(1000) NULL,
+
+                                  `content_type`         VARCHAR(30)   NOT NULL DEFAULT 'TEXT',
+                                  `code_language`        VARCHAR(30)   NULL,
+
+                                  `content_text`         LONGTEXT      NOT NULL,
+                                  `raw_text`             LONGTEXT      NULL,
+
+                                  `summary`              TEXT          NULL,
+
+                                  `keywords_json`        JSON          NULL,
+                                  `structure_json`       JSON          NULL,
+
+                                  `token_count`          INT           NULL,
+
+                                  `mapping_status`       VARCHAR(30)   NOT NULL DEFAULT 'UNASSIGNED',
+
+                                  `created_at`           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                  `updated_at`           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
                                       ON UPDATE CURRENT_TIMESTAMP,
 
                                   PRIMARY KEY (`id`),
 
-                                  UNIQUE KEY `uk_document_chunk_source_order`
+                                  UNIQUE KEY `uk_chunk_source_order`
                                       (`source_document_id`, `chunk_order`),
 
-                                  INDEX `idx_document_chunk_page_no`
-                                      (`source_document_id`, `page_no`),
-                                  INDEX `idx_document_chunk_content_type`
+                                  INDEX `idx_chunk_source_page`
+                                      (`source_document_id`, `page_start`, `page_end`),
+
+                                  INDEX `idx_chunk_content_type`
                                       (`content_type`),
-                                  INDEX `idx_document_chunk_code_language`
-                                      (`code_language`),
-                                  INDEX `idx_document_chunk_heading_path`
-                                      (`source_document_id`, `heading_path`(255)),
-                                  INDEX `idx_document_chunk_mapping_status`
+
+                                  INDEX `idx_chunk_mapping_status`
                                       (`mapping_status`),
 
-                                  CONSTRAINT `fk_document_chunk_source_document`
+                                  CONSTRAINT `fk_chunk_source_document`
                                       FOREIGN KEY (`source_document_id`)
                                           REFERENCES `source_document` (`id`)
                                           ON DELETE CASCADE,
-                                  CONSTRAINT `chk_document_chunk_order`
+
+                                  CONSTRAINT `chk_chunk_order`
                                       CHECK (`chunk_order` >= 1),
-                                  CONSTRAINT `chk_document_chunk_page_no`
-                                      CHECK (`page_no` IS NULL OR `page_no` >= 1),
-                                  CONSTRAINT `chk_document_chunk_token_count`
-                                      CHECK (`token_count` IS NULL OR `token_count` >= 0),
-                                  CONSTRAINT `chk_document_chunk_code_language`
+
+                                  CONSTRAINT `chk_chunk_page_start`
                                       CHECK (
-                                          `code_language` IS NULL
-                                              OR `content_type` IN ('CODE', 'COMMAND', 'CONFIG')
+                                          `page_start` IS NULL
+                                              OR `page_start` >= 1
+                                          ),
+
+                                  CONSTRAINT `chk_chunk_page_end`
+                                      CHECK (
+                                          `page_end` IS NULL
+                                              OR `page_start` IS NULL
+                                              OR `page_end` >= `page_start`
+                                          ),
+
+                                  CONSTRAINT `chk_chunk_token_count`
+                                      CHECK (
+                                          `token_count` IS NULL
+                                              OR `token_count` >= 0
+                                          ),
+
+                                  CONSTRAINT `chk_chunk_content_type`
+                                      CHECK (
+                                          `content_type` IN (
+                                                             'TEXT',
+                                                             'TABLE',
+                                                             'CODE',
+                                                             'FORMULA',
+                                                             'COMMAND',
+                                                             'CONFIG',
+                                                             'EXAMPLE'
+                                              )
+                                          ),
+
+                                  CONSTRAINT `chk_chunk_mapping_status`
+                                      CHECK (
+                                          `mapping_status` IN (
+                                                               'UNASSIGNED',
+                                                               'MAPPED',
+                                                               'AMBIGUOUS',
+                                                               'REJECTED'
+                                              )
                                           )
 );
 
 CREATE TABLE `document_chunk_embedding` (
-                                            `id` BIGINT NOT NULL AUTO_INCREMENT,
-                                            `document_chunk_id` BIGINT NOT NULL,
-                                            `embedding_model` VARCHAR(100) NOT NULL,
-                                            `embedding_json` JSON NOT NULL,
-                                            `embedding_dimension` INT NOT NULL,
-                                            `embedding_text_hash` VARCHAR(64) NOT NULL,
-                                            `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                            `id`                   BIGINT       NOT NULL AUTO_INCREMENT,
+                                            `document_chunk_id`    BIGINT       NOT NULL,
+
+                                            `embedding_provider`   VARCHAR(50)  NOT NULL,
+                                            `embedding_model`      VARCHAR(100) NOT NULL,
+
+                                            `embedding_json`       JSON         NOT NULL,
+                                            `embedding_dimension`  INT          NOT NULL,
+
+                                            `embedding_text_hash`  VARCHAR(64)  NOT NULL,
+
+                                            `created_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            `updated_at`           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                                ON UPDATE CURRENT_TIMESTAMP,
 
                                             PRIMARY KEY (`id`),
 
-                                            UNIQUE KEY `uk_document_chunk_embedding_chunk_model`
-                                                (`document_chunk_id`, `embedding_model`),
+                                            UNIQUE KEY `uk_chunk_embedding_model`
+                                                (`document_chunk_id`, `embedding_provider`, `embedding_model`),
 
-                                            INDEX `idx_document_chunk_embedding_chunk`
-                                                (`document_chunk_id`),
-                                            INDEX `idx_document_chunk_embedding_model`
-                                                (`embedding_model`),
-                                            INDEX `idx_document_chunk_embedding_text_hash`
-                                                (`embedding_text_hash`),
+                                            INDEX `idx_chunk_embedding_model`
+                                                (`embedding_provider`, `embedding_model`),
 
-                                            CONSTRAINT `fk_document_chunk_embedding_chunk`
+                                            CONSTRAINT `fk_chunk_embedding_chunk`
                                                 FOREIGN KEY (`document_chunk_id`)
                                                     REFERENCES `document_chunk` (`id`)
                                                     ON DELETE CASCADE,
 
-                                            CONSTRAINT `chk_document_chunk_embedding_dimension`
+                                            CONSTRAINT `chk_embedding_dimension`
                                                 CHECK (`embedding_dimension` > 0)
 );
 
 CREATE TABLE `document_scope_mapping` (
-                                          `id` BIGINT NOT NULL AUTO_INCREMENT,
-                                          `document_chunk_id` BIGINT NOT NULL,
-                                          `exam_scope_node_id` BIGINT NOT NULL,
-                                          `rank_no` INT NOT NULL,
-                                          `confidence_score` DECIMAL(5,4) NOT NULL,
-                                          `mapping_reason` TEXT NULL,
-                                          `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                          `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                          `id`                  BIGINT       NOT NULL AUTO_INCREMENT,
+                                          `document_chunk_id`   BIGINT       NOT NULL,
+                                          `exam_scope_node_id`  BIGINT       NOT NULL,
+
+                                          `rank_no`             INT          NOT NULL,
+                                          `confidence_score`    DECIMAL(5,4) NOT NULL,
+
+                                          `mapping_method`      VARCHAR(30)  NOT NULL,
+                                          `mapping_reason`      TEXT         NULL,
+
+                                          `is_selected`         BOOLEAN      NOT NULL DEFAULT FALSE,
+
+                                          `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                          `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                               ON UPDATE CURRENT_TIMESTAMP,
 
                                           PRIMARY KEY (`id`),
 
                                           UNIQUE KEY `uk_mapping_chunk_scope`
                                               (`document_chunk_id`, `exam_scope_node_id`),
+
                                           UNIQUE KEY `uk_mapping_chunk_rank`
                                               (`document_chunk_id`, `rank_no`),
 
-                                          INDEX `idx_mapping_chunk`
-                                              (`document_chunk_id`),
-                                          INDEX `idx_mapping_scope_node`
+                                          INDEX `idx_mapping_scope`
                                               (`exam_scope_node_id`),
+
+                                          INDEX `idx_mapping_scope_selected`
+                                              (`exam_scope_node_id`, `is_selected`),
+
                                           INDEX `idx_mapping_confidence`
                                               (`confidence_score`),
 
-                                          CONSTRAINT `fk_mapping_document_chunk`
+                                          CONSTRAINT `fk_mapping_chunk`
                                               FOREIGN KEY (`document_chunk_id`)
                                                   REFERENCES `document_chunk` (`id`)
                                                   ON DELETE CASCADE,
-                                          CONSTRAINT `fk_mapping_exam_scope_node`
+
+                                          CONSTRAINT `fk_mapping_scope`
                                               FOREIGN KEY (`exam_scope_node_id`)
                                                   REFERENCES `exam_scope_node` (`id`)
                                                   ON DELETE CASCADE,
-                                          CONSTRAINT `chk_mapping_rank_no`
+
+                                          CONSTRAINT `chk_mapping_rank`
                                               CHECK (`rank_no` >= 1),
-                                          CONSTRAINT `chk_mapping_confidence_score`
-                                              CHECK (`confidence_score` >= 0 AND `confidence_score` <= 1)
+
+                                          CONSTRAINT `chk_mapping_confidence`
+                                              CHECK (`confidence_score` BETWEEN 0 AND 1),
+
+                                          CONSTRAINT `chk_mapping_method`
+                                              CHECK (`mapping_method` IN (
+                                                                          'VECTOR',
+                                                                          'LLM',
+                                                                          'HYBRID',
+                                                                          'MANUAL'
+                                                  ))
+);
+
+CREATE TABLE `learning_content_reference` (
+                                              `id`                       BIGINT       NOT NULL AUTO_INCREMENT,
+                                              `learning_note_content_id` BIGINT       NOT NULL,
+                                              `document_chunk_id`        BIGINT       NOT NULL,
+
+                                              `reference_order`          INT          NOT NULL,
+                                              `relevance_score`          DECIMAL(5,4) NULL,
+
+                                              `created_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                              PRIMARY KEY (`id`),
+
+                                              UNIQUE KEY `uk_content_reference_chunk`
+                                                  (`learning_note_content_id`, `document_chunk_id`),
+
+                                              INDEX `idx_reference_content`
+                                                  (`learning_note_content_id`),
+
+                                              INDEX `idx_reference_chunk`
+                                                  (`document_chunk_id`),
+
+                                              CONSTRAINT `fk_reference_content`
+                                                  FOREIGN KEY (`learning_note_content_id`)
+                                                      REFERENCES `learning_note_content` (`id`)
+                                                      ON DELETE CASCADE,
+
+                                              CONSTRAINT `fk_reference_chunk`
+                                                  FOREIGN KEY (`document_chunk_id`)
+                                                      REFERENCES `document_chunk` (`id`)
+                                                      ON DELETE CASCADE,
+
+                                              CONSTRAINT `chk_reference_order`
+                                                  CHECK (`reference_order` >= 1),
+
+                                              CONSTRAINT `chk_reference_score`
+                                                  CHECK (
+                                                      `relevance_score` IS NULL
+                                                          OR `relevance_score` BETWEEN 0 AND 1
+                                                      )
 );
 
 

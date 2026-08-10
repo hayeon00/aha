@@ -46,7 +46,7 @@ public class DocumentBlockClassifier {
 
                 ClassifiedBlockType classifiedBlockType = classifyText(text);
 
-                if (classifiedBlockType.contentType() == DocumentChunkContentType.HEADING) {
+                if (classifiedBlockType.headingBlock()) {
                     currentSectionTitle = text;
                     currentHeadingPath = appendHeadingPath(
                             currentHeadingPath,
@@ -57,7 +57,7 @@ public class DocumentBlockClassifier {
                             block.pageNo(),
                             currentHeadingPath,
                             currentSectionTitle,
-                            DocumentChunkContentType.HEADING,
+                            DocumentChunkContentType.TEXT,
                             null,
                             text,
                             unit
@@ -183,7 +183,7 @@ public class DocumentBlockClassifier {
     private boolean isSpecialBlock(String text) {
         ClassifiedBlockType classifiedBlockType = classifyText(text);
 
-        return classifiedBlockType.contentType() == DocumentChunkContentType.HEADING
+        return classifiedBlockType.headingBlock()
                 || classifiedBlockType.contentType() == DocumentChunkContentType.TABLE
                 || classifiedBlockType.contentType() == DocumentChunkContentType.CODE
                 || classifiedBlockType.contentType() == DocumentChunkContentType.FORMULA

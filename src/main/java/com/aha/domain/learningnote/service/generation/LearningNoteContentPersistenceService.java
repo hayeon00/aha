@@ -52,13 +52,21 @@ public class LearningNoteContentPersistenceService {
             throw new BusinessException(ErrorCode.LEARNING_CONTENT_GENERATION_FAILED);
         }
 
+        String generationVersion = "concept-generation-v1";
+
         List<LearningNoteContent> contents = explanations.stream()
-                .map(explanation -> LearningNoteContent.createDocumentBased(
-                        learningNote,
-                        scopeNodesById.get(explanation.examScopeNodeId()),
-                        explanation.title(),
-                        explanation.content()
-                ))
+                .map(explanation ->
+                        LearningNoteContent.createDocumentBased(
+                                learningNote,
+                                scopeNodesById.get(
+                                        explanation.examScopeNodeId()
+                                ),
+                                explanation.title(),
+                                explanation.content(),
+                                null,
+                                generationVersion
+                        )
+                )
                 .toList();
 
         int deletedCount = learningNoteContentRepository
@@ -99,11 +107,15 @@ public class LearningNoteContentPersistenceService {
         ExamScopeNode scopeNode = examScopeNodeRepository.findById(explanation.examScopeNodeId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.LEARNING_CONTENT_GENERATION_FAILED));
 
-        learningNoteContentRepository.save(LearningNoteContent.createDocumentBased(
-                learningNote,
-                scopeNode,
-                explanation.title(),
-                explanation.content()
-        ));
+        learningNoteContentRepository.save(
+                LearningNoteContent.createDocumentBased(
+                        learningNote,
+                        scopeNode,
+                        explanation.title(),
+                        explanation.content(),
+                        null,
+                        "concept-generation-v1"
+                )
+        );
     }
 }

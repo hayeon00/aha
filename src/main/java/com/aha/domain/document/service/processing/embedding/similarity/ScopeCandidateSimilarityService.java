@@ -8,7 +8,6 @@ import com.aha.domain.document.repository.ExamScopeNodeEmbeddingRepository;
 import com.aha.domain.document.service.processing.embedding.DocumentEmbeddingService;
 import com.aha.domain.document.service.processing.embedding.EmbeddingModelProvider;
 import com.aha.domain.document.service.processing.embedding.similarity.model.ScopeCandidateSearchResult;
-import com.aha.domain.document.service.processing.embedding.util.EmbeddingJsonConverter;
 import com.aha.domain.exam.entity.ExamScopeNode;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -31,7 +30,6 @@ public class ScopeCandidateSimilarityService {
     private final DocumentEmbeddingService documentEmbeddingService;
     private final DocumentChunkEmbeddingRepository documentChunkEmbeddingRepository;
     private final ExamScopeNodeEmbeddingRepository examScopeNodeEmbeddingRepository;
-    private final EmbeddingJsonConverter embeddingJsonConverter;
     private final CosineSimilarityCalculator cosineSimilarityCalculator;
 
     @Transactional
@@ -45,51 +43,79 @@ public class ScopeCandidateSimilarityService {
         documentEmbeddingService.ensureChunkEmbeddings(chunks);
         documentEmbeddingService.ensureScopeNodeEmbeddings(scopeNodes);
 
-        String embeddingModel = embeddingModelProvider.getEmbeddingModel();
+        String embeddingProvider =
+                embeddingModelProvider.getEmbeddingProvider();
 
-        List<Long> chunkIds = extractChunkIds(chunks);
-        List<Long> scopeNodeIds = extractScopeNodeIds(scopeNodes);
+        String embeddingModel =
+                embeddingModelProvider.getEmbeddingModel();
+
+        List<Long> chunkIds =
+                extractChunkIds(chunks);
+
+        List<Long> scopeNodeIds =
+                extractScopeNodeIds(scopeNodes);
 
         Map<Long, DocumentChunkEmbedding> chunkEmbeddingMap =
-                getChunkEmbeddingMap(chunkIds, embeddingModel);
+                getChunkEmbeddingMap(
+                        chunkIds,
+                        embeddingProvider,
+                        embeddingModel
+                );
 
         Map<Long, ExamScopeNodeEmbedding> scopeEmbeddingMap =
-                getScopeEmbeddingMap(scopeNodeIds, embeddingModel);
+                getScopeEmbeddingMap(
+                        scopeNodeIds,
+                        embeddingProvider,
+                        embeddingModel
+                );
 
-        Map<Long, List<ScopeCandidateSearchResult>> results = new LinkedHashMap<>();
+        Map<Long, List<ScopeCandidateSearchResult>> results =
+                new LinkedHashMap<>();
 
         for (DocumentChunk chunk : chunks) {
             if (chunk == null || chunk.getId() == null) {
                 continue;
             }
 
-            DocumentChunkEmbedding chunkEmbedding = chunkEmbeddingMap.get(chunk.getId());
+            DocumentChunkEmbedding chunkEmbedding =
+                    chunkEmbeddingMap.get(
+                            chunk.getId()
+                    );
 
             if (chunkEmbedding == null) {
                 log.warn(
                         "문서 청크 임베딩이 없어 후보 추출에서 제외합니다. documentChunkId={}",
                         chunk.getId()
                 );
+
                 continue;
             }
 
-            List<ScopeCandidateSearchResult> topCandidates = findTopCandidatesForSingleChunk(
-                    chunk,
-                    chunkEmbedding,
-                    scopeNodes,
-                    scopeEmbeddingMap,
-                    topN
-            );
+            List<ScopeCandidateSearchResult> topCandidates =
+                    findTopCandidatesForSingleChunk(
+                            chunk,
+                            chunkEmbedding,
+                            scopeNodes,
+                            scopeEmbeddingMap,
+                            topN
+                    );
 
-            results.put(chunk.getId(), topCandidates);
+            results.put(
+                    chunk.getId(),
+                    topCandidates
+            );
         }
 
         log.info(
-                "청크별 목차 후보 TopN 추출 완료. chunkCount={}, scopeNodeCount={}, resultChunkCount={}, topN={}, embeddingModel={}",
+                "청크별 목차 후보 TopN 추출 완료. "
+                        + "chunkCount={}, scopeNodeCount={}, "
+                        + "resultChunkCount={}, topN={}, "
+                        + "embeddingProvider={}, embeddingModel={}",
                 chunks.size(),
                 scopeNodes.size(),
                 results.size(),
                 topN,
+                embeddingProvider,
                 embeddingModel
         );
 
@@ -103,47 +129,71 @@ public class ScopeCandidateSimilarityService {
             Map<Long, ExamScopeNodeEmbedding> scopeEmbeddingMap,
             int topN
     ) {
-        List<Double> chunkVector = embeddingJsonConverter.fromJson(chunkEmbedding.getEmbeddingJson());
+        List<Double> chunkVector =
+                chunkEmbedding.getEmbeddingJson();
 
-        List<ScopeCandidateScore> candidateScores = new ArrayList<>();
+        List<ScopeCandidateScore> candidateScores =
+                new ArrayList<>();
 
         for (ExamScopeNode scopeNode : scopeNodes) {
-            if (scopeNode == null || scopeNode.getId() == null) {
+            if (scopeNode == null
+                    || scopeNode.getId() == null) {
                 continue;
             }
 
-            ExamScopeNodeEmbedding scopeEmbedding = scopeEmbeddingMap.get(scopeNode.getId());
+            ExamScopeNodeEmbedding scopeEmbedding =
+                    scopeEmbeddingMap.get(
+                            scopeNode.getId()
+                    );
 
             if (scopeEmbedding == null) {
                 continue;
             }
 
-            List<Double> scopeVector = embeddingJsonConverter.fromJson(scopeEmbedding.getEmbeddingJson());
+            List<Double> scopeVector =
+                    scopeEmbedding.getEmbeddingJson();
 
-            double similarityScore = cosineSimilarityCalculator.calculate(chunkVector, scopeVector);
+            double similarityScore =
+                    cosineSimilarityCalculator.calculate(
+                            chunkVector,
+                            scopeVector
+                    );
 
-            candidateScores.add(new ScopeCandidateScore(
-                    scopeNode,
-                    similarityScore
-            ));
+            candidateScores.add(
+                    new ScopeCandidateScore(
+                            scopeNode,
+                            similarityScore
+                    )
+            );
         }
 
-        List<ScopeCandidateScore> topScores = candidateScores.stream()
-                .sorted(Comparator.comparingDouble(ScopeCandidateScore::similarityScore).reversed())
-                .limit(topN)
-                .toList();
+        List<ScopeCandidateScore> topScores =
+                candidateScores.stream()
+                        .sorted(
+                                Comparator
+                                        .comparingDouble(
+                                                ScopeCandidateScore::similarityScore
+                                        )
+                                        .reversed()
+                        )
+                        .limit(topN)
+                        .toList();
 
-        List<ScopeCandidateSearchResult> results = new ArrayList<>();
+        List<ScopeCandidateSearchResult> results =
+                new ArrayList<>();
 
         for (int i = 0; i < topScores.size(); i++) {
-            ScopeCandidateScore score = topScores.get(i);
+            ScopeCandidateScore score =
+                    topScores.get(i);
 
-            results.add(new ScopeCandidateSearchResult(
-                    chunk.getId(),
-                    score.examScopeNode(),
-                    score.similarityScore(),
-                    i + 1
-            ));
+            results.add(
+                    new ScopeCandidateSearchResult(
+                            chunk.getId(),
+                            score.examScopeNode(),
+                            score.similarityScore(),
+                            i + 1
+                    )
+            );
         }
 
         return results;
@@ -151,23 +201,37 @@ public class ScopeCandidateSimilarityService {
 
     private Map<Long, DocumentChunkEmbedding> getChunkEmbeddingMap(
             List<Long> chunkIds,
+            String embeddingProvider,
             String embeddingModel
     ) {
         if (chunkIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
+            );
         }
 
         Map<Long, DocumentChunkEmbedding> embeddingMap =
                 documentChunkEmbeddingRepository
-                        .findAllByDocumentChunk_IdInAndEmbeddingModel(chunkIds, embeddingModel)
+                        .findAllByDocumentChunk_IdInAndEmbeddingProviderAndEmbeddingModel(
+                                chunkIds,
+                                embeddingProvider,
+                                embeddingModel
+                        )
                         .stream()
-                        .collect(Collectors.toMap(
-                                embedding -> embedding.getDocumentChunk().getId(),
-                                Function.identity()
-                        ));
+                        .collect(
+                                Collectors.toMap(
+                                        embedding ->
+                                                embedding
+                                                        .getDocumentChunk()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
         if (embeddingMap.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
+            );
         }
 
         return embeddingMap;
@@ -175,29 +239,45 @@ public class ScopeCandidateSimilarityService {
 
     private Map<Long, ExamScopeNodeEmbedding> getScopeEmbeddingMap(
             List<Long> scopeNodeIds,
+            String embeddingProvider,
             String embeddingModel
     ) {
         if (scopeNodeIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
 
         Map<Long, ExamScopeNodeEmbedding> embeddingMap =
                 examScopeNodeEmbeddingRepository
-                        .findAllByExamScopeNode_IdInAndEmbeddingModel(scopeNodeIds, embeddingModel)
+                        .findAllByExamScopeNode_IdInAndEmbeddingProviderAndEmbeddingModel(
+                                scopeNodeIds,
+                                embeddingProvider,
+                                embeddingModel
+                        )
                         .stream()
-                        .collect(Collectors.toMap(
-                                embedding -> embedding.getExamScopeNode().getId(),
-                                Function.identity()
-                        ));
+                        .collect(
+                                Collectors.toMap(
+                                        embedding ->
+                                                embedding
+                                                        .getExamScopeNode()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
         if (embeddingMap.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
 
         return embeddingMap;
     }
 
-    private List<Long> extractChunkIds(List<DocumentChunk> chunks) {
+    private List<Long> extractChunkIds(
+            List<DocumentChunk> chunks
+    ) {
         return chunks.stream()
                 .filter(Objects::nonNull)
                 .map(DocumentChunk::getId)
@@ -205,7 +285,9 @@ public class ScopeCandidateSimilarityService {
                 .toList();
     }
 
-    private List<Long> extractScopeNodeIds(List<ExamScopeNode> scopeNodes) {
+    private List<Long> extractScopeNodeIds(
+            List<ExamScopeNode> scopeNodes
+    ) {
         return scopeNodes.stream()
                 .filter(Objects::nonNull)
                 .map(ExamScopeNode::getId)
@@ -219,15 +301,22 @@ public class ScopeCandidateSimilarityService {
             int topN
     ) {
         if (chunks == null || chunks.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
+            );
         }
 
-        if (scopeNodes == null || scopeNodes.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        if (scopeNodes == null
+                || scopeNodes.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
 
         if (topN <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE
+            );
         }
     }
 
