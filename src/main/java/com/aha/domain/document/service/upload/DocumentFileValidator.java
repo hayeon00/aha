@@ -1,6 +1,7 @@
-package com.aha.domain.document.service;
+package com.aha.domain.document.service.upload;
 
 import com.aha.domain.document.config.DocumentUploadProperties;
+import com.aha.domain.document.enums.DocumentFileExtension;
 import com.aha.domain.document.model.ValidatedDocumentFile;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -12,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
-import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -25,7 +25,9 @@ public class DocumentFileValidator {
 
     private final Tika tika = new Tika();
 
-    public ValidatedDocumentFile validate(MultipartFile file) {
+    public ValidatedDocumentFile validate(
+            MultipartFile file
+    ) {
         validateFileRequired(file);
         validateFileNotEmpty(file);
         validateFileSize(file);
@@ -33,7 +35,7 @@ public class DocumentFileValidator {
         String originalFileName =
                 resolveOriginalFileName(file);
 
-        String fileExtension =
+        DocumentFileExtension fileExtension =
                 extractAndValidateExtension(
                         originalFileName
                 );
@@ -88,6 +90,7 @@ public class DocumentFileValidator {
         if (file.getSize()
                 > documentUploadProperties
                 .getMaxFileSizeBytes()) {
+
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_SIZE_EXCEEDED
             );
@@ -97,11 +100,11 @@ public class DocumentFileValidator {
     private String resolveOriginalFileName(
             MultipartFile file
     ) {
-        String originalFileName =
-                file.getOriginalFilename();
+        String originalFileName = file.getOriginalFilename();
 
         if (originalFileName == null
                 || originalFileName.isBlank()) {
+
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_NAME_INVALID
             );
@@ -129,6 +132,7 @@ public class DocumentFileValidator {
         if (normalizedFileName.length()
                 > documentUploadProperties
                 .getMaxFileNameLength()) {
+
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_NAME_INVALID
             );
@@ -137,7 +141,7 @@ public class DocumentFileValidator {
         return normalizedFileName;
     }
 
-    private String extractAndValidateExtension(
+    private DocumentFileExtension extractAndValidateExtension(
             String originalFileName
     ) {
         int extensionIndex =
@@ -146,6 +150,7 @@ public class DocumentFileValidator {
         if (extensionIndex <= 0
                 || extensionIndex
                 == originalFileName.length() - 1) {
+
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_EXTENSION_INVALID
             );
@@ -154,25 +159,30 @@ public class DocumentFileValidator {
         String extension =
                 originalFileName
                         .substring(extensionIndex + 1)
+                        .trim()
                         .toLowerCase(Locale.ROOT);
 
-        if (!DocumentFileTypePolicy
-                .supportsExtension(extension)) {
+        try {
+            return DocumentFileExtension.from(
+                    extension
+            );
+
+        } catch (IllegalArgumentException exception) {
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_EXTENSION_INVALID
             );
         }
-
-        return extension;
     }
 
     private String resolveRequestedMimeType(
             MultipartFile file
     ) {
-        String mimeType = file.getContentType();
+        String mimeType =
+                file.getContentType();
 
         if (mimeType == null
                 || mimeType.isBlank()) {
+
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_MIME_TYPE_INVALID
             );
@@ -182,12 +192,14 @@ public class DocumentFileValidator {
                 mimeType.indexOf(';');
 
         String normalizedMimeType =
-                (parameterIndex >= 0
-                        ? mimeType.substring(
-                        0,
-                        parameterIndex
+                (
+                        parameterIndex >= 0
+                                ? mimeType.substring(
+                                0,
+                                parameterIndex
+                        )
+                                : mimeType
                 )
-                        : mimeType)
                         .trim()
                         .toLowerCase(Locale.ROOT);
 
@@ -201,23 +213,16 @@ public class DocumentFileValidator {
     }
 
     private void validateRequestedMimeType(
-            String fileExtension,
+            DocumentFileExtension fileExtension,
             String requestedMimeType
     ) {
-        Set<String> allowedMimeTypes =
-                DocumentFileTypePolicy
-                        .getAllowedMimeTypes(
-                                fileExtension
-                        );
-
         if (GENERIC_BINARY_MIME_TYPE.equals(
                 requestedMimeType
         )) {
             return;
         }
 
-        if (allowedMimeTypes == null
-                || !allowedMimeTypes.contains(
+        if (!fileExtension.supportsMimeType(
                 requestedMimeType
         )) {
             throw new BusinessException(
@@ -229,17 +234,12 @@ public class DocumentFileValidator {
     private String detectAndValidateMimeType(
             MultipartFile file,
             String originalFileName,
-            String fileExtension
+            DocumentFileExtension fileExtension
     ) {
-        Set<String> allowedMimeTypes =
-                DocumentFileTypePolicy
-                        .getAllowedMimeTypes(
-                                fileExtension
-                        );
-
-        try (InputStream inputStream =
-                     file.getInputStream()) {
-
+        try (
+                InputStream inputStream =
+                        file.getInputStream()
+        ) {
             String detectedMimeType =
                     tika.detect(
                             inputStream,
@@ -251,20 +251,17 @@ public class DocumentFileValidator {
                             .trim()
                             .toLowerCase(Locale.ROOT);
 
-            if (allowedMimeTypes == null
-                    || !allowedMimeTypes.contains(
+            if (!fileExtension.supportsMimeType(
                     normalizedDetectedMimeType
             )) {
                 throw new BusinessException(
-                        ErrorCode
-                                .DOCUMENT_FILE_MIME_TYPE_INVALID
+                        ErrorCode.DOCUMENT_FILE_MIME_TYPE_INVALID
                 );
             }
 
             return normalizedDetectedMimeType;
 
         } catch (IOException exception) {
-
             throw new BusinessException(
                     ErrorCode.DOCUMENT_FILE_UNREADABLE
             );

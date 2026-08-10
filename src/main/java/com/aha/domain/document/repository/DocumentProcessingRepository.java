@@ -12,7 +12,20 @@ import java.util.List;
 
 public interface DocumentProcessingRepository extends JpaRepository<DocumentProcessing, Long> {
 
-    Optional<DocumentProcessing> findByLearningNote_Id(Long learningNoteId);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     void deleteByLearningNote_Id(Long learningNoteId);
 

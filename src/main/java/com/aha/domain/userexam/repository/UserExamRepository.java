@@ -13,6 +13,12 @@ public interface UserExamRepository extends JpaRepository<UserExam, Long> {
     Optional<UserExam> findByIdAndUser_Id(Long userExamId, Long userId);
 
 
+
+
+
+
+
+
     @Query("""
         SELECT ue
         FROM UserExam ue

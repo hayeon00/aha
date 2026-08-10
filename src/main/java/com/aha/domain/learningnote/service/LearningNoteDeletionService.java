@@ -7,7 +7,7 @@ import com.aha.domain.document.repository.DocumentChunkRepository;
 import com.aha.domain.document.repository.DocumentProcessingRepository;
 import com.aha.domain.document.repository.DocumentScopeMappingRepository;
 import com.aha.domain.document.repository.SourceDocumentRepository;
-import com.aha.domain.document.service.DocumentFileStorageService;
+import com.aha.domain.document.service.upload.DocumentFileStorageService;
 import com.aha.domain.learningnote.repository.LearningNoteContentRepository;
 import com.aha.domain.learningnote.repository.LearningNoteRepository;
 import com.aha.global.exception.BusinessException;

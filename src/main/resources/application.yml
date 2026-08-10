@@ -20,7 +20,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
-      max-request-size: ${DOCUMENT_MAX_REQUEST_SIZE:105MB}
+      max-request-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
 
   security:
     oauth2:
@@ -61,24 +61,20 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:1800000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:1209600000}
 
-openAI:
+openai:
   api-key: ${OPENAI_API_KEY:}
   model: ${OPENAI_MODEL:gpt-4.1-mini}
   embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
 
 file:
   profile-upload-dir: ${PROFILE_UPLOAD_DIR:uploads/profile}
-  document-upload-dir: ${DOCUMENT_UPLOAD_DIR:uploads/documents}
-
-  document:
-    max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
-    max-total-size: ${DOCUMENT_MAX_TOTAL_SIZE:100MB}
-    max-file-count: ${DOCUMENT_MAX_FILE_COUNT:5}
-    max-file-name-length: ${DOCUMENT_MAX_FILE_NAME_LENGTH:255}
-    cleanup-stale-after: ${DOCUMENT_CLEANUP_STALE_AFTER:1h}
-    cleanup-interval-ms: ${DOCUMENT_CLEANUP_INTERVAL_MS:600000}
 
 document:
+  upload:
+    directory: ${DOCUMENT_UPLOAD_DIRECTORY:uploads/documents}
+    max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
+    max-file-name-length: ${DOCUMENT_MAX_FILE_NAME_LENGTH:255}
+
   processing:
     core-pool-size: ${DOCUMENT_PROCESSING_CORE_POOL_SIZE:2}
     max-pool-size: ${DOCUMENT_PROCESSING_MAX_POOL_SIZE:4}
@@ -99,4 +95,3 @@ auth:
 scheduler:
   past-paper-attempt-expiration:
     fixed-delay: 60000
-

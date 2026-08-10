@@ -27,6 +27,33 @@ public class LearningNoteController {
     private final LearningNoteDeletionService learningNoteDeletionService;
     private final LearningNoteService learningNoteService;
 
+    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<LearningNoteCreateResponseDto>> uploadDocument(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam("userExamId") Long userExamId,
+            @RequestParam("title") String title,
+            @RequestPart("file") MultipartFile file
+    ) {
+        LearningNoteCreateResponseDto response =
+                learningNoteCreateService.create(
+                        user.getId(),
+                        userExamId,
+                        title,
+                        file
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(
+                        ApiResponse.success(
+                                202,
+                                "학습노트 생성 요청이 접수되었습니다.",
+                                response
+                        )
+                );
+    }
+
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<LearningNoteSummaryResponseDto>>> getCompletedNotes(
             @AuthenticationPrincipal CustomUserDetails user
@@ -92,29 +119,5 @@ public class LearningNoteController {
         ));
     }
 
-    @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<LearningNoteCreateResponseDto>> uploadDocument(
-            @AuthenticationPrincipal CustomUserDetails user,
-            @RequestParam("userExamId") Long userExamId,
-            @RequestParam("title") String title,
-            @RequestPart("file") MultipartFile file
-    ) {
-        LearningNoteCreateResponseDto response =
-                learningNoteCreateService.create(
-                        user.getId(),
-                        userExamId,
-                        title,
-                        file
-                );
 
-        return ResponseEntity
-                .status(HttpStatus.ACCEPTED)
-                .body(
-                        ApiResponse.success(
-                                202,
-                                "문서 업로드 성공",
-                                response
-                        )
-                );
-    }
 }

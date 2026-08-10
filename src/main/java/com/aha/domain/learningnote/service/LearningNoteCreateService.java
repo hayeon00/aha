@@ -2,14 +2,13 @@ package com.aha.domain.learningnote.service;
 
 import com.aha.domain.document.entity.DocumentProcessing;
 import com.aha.domain.document.entity.SourceDocument;
-import com.aha.domain.document.enums.DocumentFileExtension;
 import com.aha.domain.document.event.DocumentProcessingRequestedEvent;
 import com.aha.domain.document.repository.DocumentProcessingRepository;
 import com.aha.domain.document.repository.SourceDocumentRepository;
 import com.aha.domain.document.model.ValidatedDocumentFile;
 import com.aha.domain.document.model.StoredDocumentFile;
-import com.aha.domain.document.service.DocumentFileStorageService;
-import com.aha.domain.document.service.DocumentFileValidator;
+import com.aha.domain.document.service.upload.DocumentFileStorageService;
+import com.aha.domain.document.service.upload.DocumentFileValidator;
 import com.aha.domain.learningnote.dto.response.LearningNoteCreateResponseDto;
 import com.aha.domain.learningnote.entity.LearningNote;
 import com.aha.domain.learningnote.repository.LearningNoteRepository;
@@ -62,7 +61,7 @@ public class LearningNoteCreateService {
                             validatedFile.originalFileName(),
                             storedFile.storedFileName(),
                             storedFile.storageKey(),
-                            DocumentFileExtension.valueOf(validatedFile.fileExtension()),
+                            validatedFile.fileExtension(),
                             validatedFile.mimeType(),
                             validatedFile.fileSize()
                     )
