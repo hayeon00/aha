@@ -193,4 +193,18 @@ public class StudyRoom {
 
         status = StudyRoomStatus.SOLVING;
     }
+
+    public void validateCanGetAttempt() {
+
+        validateNotCanceled();
+        validateNotWaiting();
+        validateNotFeedback();
+    }
+
+    private void validateNotWaiting() {
+
+        if(status == StudyRoomStatus.WAITING){
+            throw new BusinessException(ErrorCode.STUDY_ROOM_WAITING);
+        }
+    }
 }
