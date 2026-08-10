@@ -19,6 +19,8 @@ const rehypePrism = rehypePrismGenerator(refractor);
 
 const getLoadErrorMessage = (errorCode) => {
     switch (errorCode) {
+        case "PAST_PAPER_003":
+            return "풀이 기록을 찾을 수 없습니다.";
         case "PAST_PAPER_004":
             return "이 풀이 기록을 찾을 수 없거나 접근할 수 없습니다.";
         case "PAST_PAPER_002":
@@ -36,6 +38,8 @@ const getLoadErrorMessage = (errorCode) => {
 
 const getInteractionErrorMessage = (errorCode) => {
     switch (errorCode) {
+        case "PAST_PAPER_003":
+            return "풀이 기록을 찾을 수 없습니다.";
         case "PAST_PAPER_006":
             return "제한 시간이 지나 답안을 변경할 수 없습니다.";
         case "PAST_PAPER_005":
@@ -53,6 +57,8 @@ const getInteractionErrorMessage = (errorCode) => {
 
 const getSubmitErrorMessage = (errorCode) => {
     switch (errorCode) {
+        case "PAST_PAPER_003":
+            return "풀이 기록을 찾을 수 없습니다.";
         case "PAST_PAPER_006":
             return "제한 시간이 지나 제출할 수 없습니다.";
         case "PAST_PAPER_005":
@@ -244,10 +250,18 @@ function PastPaperAttemptPage() {
         setInteractionError(null);
 
         try {
-            await togglePastPaperReviewMark({ attemptId, problemId });
+            const currentMarkedForReview =
+                answersByProblemId.get(problemId)?.checked ?? false;
+            const markedForReview = !currentMarkedForReview;
+
+            await togglePastPaperReviewMark({
+                attemptId,
+                problemId,
+                markedForReview,
+            });
             updateAnswerState(problemId, (answer) => ({
                 ...answer,
-                checked: !answer.checked,
+                checked: markedForReview,
             }));
         } catch (error) {
             console.error("문제 검토 상태 변경 실패:", error);
