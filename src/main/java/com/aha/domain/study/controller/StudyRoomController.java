@@ -1,6 +1,7 @@
 package com.aha.domain.study.controller;
 
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
+import com.aha.domain.study.dto.response.StudyRoomAttemptStartResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class StudyRoomController {
 
-    private final StudyRoomService studyRoomService;
+    private final StudyRoomService roomService;
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/study-rooms")
@@ -49,7 +50,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     201,
                     "스터디룸 생성 완료",
-                    studyRoomService.createStudyRoom(requestDto, userDetails.getId())
+                    roomService.createStudyRoom(requestDto, userDetails.getId())
                 )
             );
     }
@@ -78,7 +79,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     200,
                     "스터디룸 목록 조회 성공",
-                    studyRoomService.getStudyRooms(examVersionId, status, page, size, sortType)
+                    roomService.getStudyRooms(examVersionId, status, page, size, sortType)
                 )
             );
     }
@@ -96,7 +97,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     200,
                     "스터디룸 상세 조회 성공",
-                    studyRoomService.getStudyRoom(studyRoomId, userDetails.getId())
+                    roomService.getStudyRoom(studyRoomId, userDetails.getId())
                 )
             );
     }
@@ -112,7 +113,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     200,
                     "참가한 현재 스터디룸 조회 성공",
-                    studyRoomService.getCurrentStudyRoom(customUserDetails.getId())
+                    roomService.getCurrentStudyRoom(customUserDetails.getId())
                 )
             );
     }
@@ -130,7 +131,24 @@ public class StudyRoomController {
                 ApiResponse.success(
                     201,
                     "스터디룸 참가 성공",
-                    studyRoomService.joinStudyRoom(customUserDetails.getId(), studyRoomId)
+                    roomService.joinStudyRoom(customUserDetails.getId(), studyRoomId)
+                )
+            );
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/study-rooms/{studyRoomId}/start")
+    public ResponseEntity<ApiResponse<StudyRoomAttemptStartResponseDto>> startStudyRoom(
+        @PathVariable("studyRoomId") Long roomId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(
+                ApiResponse.success(
+                    201,
+                    "스터디룸 풀이 시작 성공",
+                    roomService.startStudyRoom(roomId,userDetails.getId())
                 )
             );
     }
