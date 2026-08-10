@@ -20,18 +20,25 @@ import java.time.LocalDateTime;
         name = "document_processing",
         indexes = {
                 @Index(
-                        name = "idx_document_processing_status",
+                        name = "idx_processing_note",
+                        columnList = "learning_note_id"
+                ),
+                @Index(
+                        name = "idx_processing_status",
                         columnList = "status"
                 ),
                 @Index(
-                        name = "idx_document_processing_current_step",
-                        columnList = "current_step"
+                        name = "idx_processing_status_step",
+                        columnList = "status, current_step"
                 )
         },
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_document_processing_learning_note",
-                        columnNames = "learning_note_id"
+                        name = "uk_processing_note_attempt",
+                        columnNames = {
+                                "learning_note_id",
+                                "attempt_no"
+                        }
                 )
         }
 )
@@ -40,20 +47,20 @@ import java.time.LocalDateTime;
 @Builder(access = AccessLevel.PRIVATE)
 public class DocumentProcessing {
 
-    private static final int MAX_ERROR_CODE_LENGTH = 50;
-    private static final int MAX_ERROR_MESSAGE_LENGTH = 1000;
+    private static final int MAX_PIPELINE_VERSION_LENGTH = 50;
+    private static final int MAX_ERROR_CODE_LENGTH = 100;
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 2000;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "learning_note_id",
             nullable = false,
-            unique = true,
             foreignKey = @ForeignKey(
-                    name = "fk_document_processing_learning_note"
+                    name = "fk_processing_learning_note"
             )
     )
     private LearningNote learningNote;
@@ -66,14 +73,17 @@ public class DocumentProcessing {
     @Column(name = "current_step", length = 50)
     private DocumentProcessingStep currentStep;
 
+    @Column(name = "pipeline_version", nullable = false, length = 50)
+    private String pipelineVersion;
+
+    @Column(name = "attempt_no", nullable = false)
+    private int attemptNo;
+
     @Column(name = "error_code", length = 50)
     private String errorCode;
 
-    @Column(name = "error_message", length = 1000)
+    @Column(name = "error_message", length = 2000)
     private String errorMessage;
-
-    @Column(name = "retry_count", nullable = false)
-    private int retryCount;
 
     @Column(name = "started_at")
     private LocalDateTime startedAt;
@@ -91,19 +101,21 @@ public class DocumentProcessing {
 
 
     public static DocumentProcessing createPending(
-            LearningNote learningNote
+            LearningNote learningNote,
+            String pipelineVersion,
+            int attemptNo
     ) {
-        if (learningNote == null) {
-            throw new IllegalArgumentException(
-                    "학습 노트는 필수입니다."
-            );
-        }
+        validateLearningNote(learningNote);
+        validateAttemptNo(attemptNo);
 
         return DocumentProcessing.builder()
                 .learningNote(learningNote)
                 .status(DocumentProcessingStatus.PENDING)
                 .currentStep(null)
-                .retryCount(0)
+                .pipelineVersion(
+                        normalizePipelineVersion(pipelineVersion)
+                )
+                .attemptNo(attemptNo)
                 .build();
     }
 
@@ -115,13 +127,17 @@ public class DocumentProcessing {
         }
 
         this.status = DocumentProcessingStatus.PROCESSING;
-        this.currentStep = DocumentProcessingStep.TEXT_EXTRACTING;
+        this.currentStep =
+                DocumentProcessingStep.DOCUMENT_PARSING;
         this.startedAt = LocalDateTime.now();
         this.completedAt = null;
+
         clearError();
     }
 
-    public void changeStep(DocumentProcessingStep nextStep) {
+    public void changeStep(
+            DocumentProcessingStep nextStep
+    ) {
         if (status != DocumentProcessingStatus.PROCESSING) {
             throw new IllegalStateException(
                     "처리 중인 작업만 단계를 변경할 수 있습니다."
@@ -135,7 +151,24 @@ public class DocumentProcessing {
         }
 
         validateStepTransition(nextStep);
+
         this.currentStep = nextStep;
+    }
+
+    public void moveToNextStep() {
+        if (status != DocumentProcessingStatus.PROCESSING) {
+            throw new IllegalStateException(
+                    "처리 중인 작업만 다음 단계로 이동할 수 있습니다."
+            );
+        }
+
+        if (currentStep == null) {
+            throw new IllegalStateException(
+                    "현재 처리 단계가 설정되어 있지 않습니다."
+            );
+        }
+
+        this.currentStep = currentStep.next();
     }
 
     public void complete() {
@@ -145,8 +178,15 @@ public class DocumentProcessing {
             );
         }
 
+        if (currentStep != DocumentProcessingStep.COMPLETED) {
+            throw new IllegalStateException(
+                    "모든 처리 단계를 완료한 후 작업을 완료할 수 있습니다."
+            );
+        }
+
         this.status = DocumentProcessingStatus.COMPLETED;
         this.completedAt = LocalDateTime.now();
+
         clearError();
     }
 
@@ -160,45 +200,62 @@ public class DocumentProcessing {
             );
         }
 
+        if (status == DocumentProcessingStatus.CANCELLED) {
+            throw new IllegalStateException(
+                    "취소된 문서 처리는 실패 상태로 변경할 수 없습니다."
+            );
+        }
+
         this.status = DocumentProcessingStatus.FAILED;
         this.errorCode = normalizeNullableText(
                 errorCode,
                 MAX_ERROR_CODE_LENGTH
         );
-        this.errorMessage = normalizeErrorMessage(errorMessage);
+        this.errorMessage =
+                normalizeErrorMessage(errorMessage);
         this.completedAt = LocalDateTime.now();
     }
 
-    public void prepareRetry() {
-        if (status != DocumentProcessingStatus.FAILED) {
+    public void cancel() {
+        if (status == DocumentProcessingStatus.COMPLETED) {
             throw new IllegalStateException(
-                    "실패한 문서 처리만 재시도할 수 있습니다."
+                    "완료된 문서 처리는 취소할 수 없습니다."
             );
         }
 
-        this.status = DocumentProcessingStatus.PENDING;
-        this.currentStep = null;
-        this.retryCount++;
-        this.startedAt = null;
-        this.completedAt = null;
-        clearError();
+        if (status == DocumentProcessingStatus.FAILED) {
+            throw new IllegalStateException(
+                    "실패한 문서 처리는 취소할 수 없습니다."
+            );
+        }
+
+        this.status = DocumentProcessingStatus.CANCELLED;
+        this.completedAt = LocalDateTime.now();
     }
 
     private void validateStepTransition(
             DocumentProcessingStep nextStep
     ) {
         if (currentStep == null) {
-            if (nextStep != DocumentProcessingStep.TEXT_EXTRACTING) {
+            if (nextStep
+                    != DocumentProcessingStep.DOCUMENT_PARSING) {
                 throw new IllegalStateException(
-                        "문서 처리는 텍스트 추출 단계부터 시작해야 합니다."
+                        "문서 처리는 문서 파싱 단계부터 시작해야 합니다."
                 );
             }
+
             return;
         }
 
-        if (nextStep.ordinal() <= currentStep.ordinal()) {
+        DocumentProcessingStep expectedNextStep =
+                currentStep.next();
+
+        if (nextStep != expectedNextStep) {
             throw new IllegalStateException(
-                    "현재 단계보다 이전 또는 동일한 단계로 변경할 수 없습니다."
+                    "잘못된 처리 단계 전이입니다. 현재 단계="
+                            + currentStep
+                            + ", 다음 가능한 단계="
+                            + expectedNextStep
             );
         }
     }
@@ -208,19 +265,68 @@ public class DocumentProcessing {
         this.errorMessage = null;
     }
 
-    private String normalizeErrorMessage(String value) {
+    private static void validateLearningNote(
+            LearningNote learningNote
+    ) {
+        if (learningNote == null) {
+            throw new IllegalArgumentException(
+                    "학습 노트는 필수입니다."
+            );
+        }
+    }
+
+    private static void validateAttemptNo(
+            int attemptNo
+    ) {
+        if (attemptNo < 1) {
+            throw new IllegalArgumentException(
+                    "처리 시도 번호는 1 이상이어야 합니다."
+            );
+        }
+    }
+
+    private static String normalizePipelineVersion(
+            String pipelineVersion
+    ) {
+        if (pipelineVersion == null
+                || pipelineVersion.isBlank()) {
+            throw new IllegalArgumentException(
+                    "파이프라인 버전은 필수입니다."
+            );
+        }
+
+        String normalized =
+                pipelineVersion.trim();
+
+        if (normalized.length()
+                > MAX_PIPELINE_VERSION_LENGTH) {
+            throw new IllegalArgumentException(
+                    "파이프라인 버전은 50자 이하여야 합니다."
+            );
+        }
+
+        return normalized;
+    }
+
+    private static String normalizeErrorMessage(
+            String value
+    ) {
         if (value == null || value.isBlank()) {
             return "문서 처리 중 오류가 발생했습니다.";
         }
 
         String normalized = value.trim();
 
-        return normalized.length() <= MAX_ERROR_MESSAGE_LENGTH
+        return normalized.length()
+                <= MAX_ERROR_MESSAGE_LENGTH
                 ? normalized
-                : normalized.substring(0, MAX_ERROR_MESSAGE_LENGTH);
+                : normalized.substring(
+                0,
+                MAX_ERROR_MESSAGE_LENGTH
+        );
     }
 
-    private String normalizeNullableText(
+    private static String normalizeNullableText(
             String value,
             int maxLength
     ) {
@@ -232,6 +338,13 @@ public class DocumentProcessing {
 
         return normalized.length() <= maxLength
                 ? normalized
-                : normalized.substring(0, maxLength);
+                : normalized.substring(
+                0,
+                maxLength
+        );
     }
+
+
+
+
 }

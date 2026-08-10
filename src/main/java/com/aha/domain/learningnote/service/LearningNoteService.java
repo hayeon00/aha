@@ -124,7 +124,7 @@ public class LearningNoteService {
                 List.of(new LearningNoteDetailResponseDto.DocumentItem(
                         sourceDocument.getId(),
                         sourceDocument.getOriginalFileName(),
-                        sourceDocument.getFileExtension(),
+                        sourceDocument.getFileExtension().name(),
                         sourceDocument.getFileSize()
                 )),
                 contentItems,

@@ -8,8 +8,9 @@ import java.util.List;
 
 public interface ExamScopeNodeEmbeddingRepository extends JpaRepository<ExamScopeNodeEmbedding, Long> {
 
-    List<ExamScopeNodeEmbedding> findAllByExamScopeNode_IdInAndEmbeddingModel(
+    List<ExamScopeNodeEmbedding> findAllByExamScopeNode_IdInAndEmbeddingProviderAndEmbeddingModel(
             Collection<Long> examScopeNodeIds,
+            String embeddingProvider,
             String embeddingModel
     );
 

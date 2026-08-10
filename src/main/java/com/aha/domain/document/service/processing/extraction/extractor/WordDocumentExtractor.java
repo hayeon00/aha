@@ -66,7 +66,7 @@ public class WordDocumentExtractor implements DocumentExtractor {
                                 null,
                                 currentHeadingPath,
                                 currentSectionTitle,
-                                DocumentChunkContentType.HEADING,
+                                DocumentChunkContentType.TEXT,
                                 null,
                                 paragraphText,
                                 paragraphText

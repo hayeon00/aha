@@ -13,24 +13,26 @@ import com.aha.domain.document.enums.DocumentChunkContentType;
 
 public record ClassifiedBlockType(
         DocumentChunkContentType contentType,
-        DocumentChunkCodeLanguage codeLanguage
+        DocumentChunkCodeLanguage codeLanguage,
+        boolean headingBlock
 ) {
     public static ClassifiedBlockType text() {
-        return new ClassifiedBlockType(DocumentChunkContentType.TEXT, null);
+        return new ClassifiedBlockType(DocumentChunkContentType.TEXT, null, false);
     }
 
     public static ClassifiedBlockType heading() {
-        return new ClassifiedBlockType(DocumentChunkContentType.HEADING, null);
+        return new ClassifiedBlockType(DocumentChunkContentType.TEXT, null, true);
     }
 
     public static ClassifiedBlockType table() {
-        return new ClassifiedBlockType(DocumentChunkContentType.TABLE, null);
+        return new ClassifiedBlockType(DocumentChunkContentType.TABLE, null, false);
     }
 
     public static ClassifiedBlockType sqlCode() {
         return new ClassifiedBlockType(
                 DocumentChunkContentType.CODE,
-                DocumentChunkCodeLanguage.SQL
+                DocumentChunkCodeLanguage.SQL,
+                false
         );
     }
 }

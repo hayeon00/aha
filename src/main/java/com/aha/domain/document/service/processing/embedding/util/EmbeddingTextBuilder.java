@@ -18,7 +18,7 @@ public class EmbeddingTextBuilder {
         }
 
         if (chunk.getCodeLanguage() != null) {
-            appendIfNotBlank(builder, "코드 언어", chunk.getCodeLanguage().name());
+            appendIfNotBlank(builder, "코드 언어", chunk.getCodeLanguage());
         }
 
         appendIfNotBlank(builder, "본문", chunk.getContentText());

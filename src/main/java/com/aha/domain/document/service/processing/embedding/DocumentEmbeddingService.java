@@ -6,7 +6,6 @@ import com.aha.domain.document.entity.DocumentChunkEmbedding;
 import com.aha.domain.document.entity.ExamScopeNodeEmbedding;
 import com.aha.domain.document.repository.DocumentChunkEmbeddingRepository;
 import com.aha.domain.document.repository.ExamScopeNodeEmbeddingRepository;
-import com.aha.domain.document.service.processing.embedding.util.EmbeddingJsonConverter;
 import com.aha.domain.document.service.processing.embedding.util.EmbeddingTextBuilder;
 import com.aha.domain.document.service.processing.embedding.util.EmbeddingTextHashGenerator;
 import com.aha.domain.exam.entity.ExamScopeNode;
@@ -17,7 +16,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,17 +34,25 @@ public class DocumentEmbeddingService {
     private final EmbeddingModelProvider embeddingModelProvider;
     private final EmbeddingTextBuilder embeddingTextBuilder;
     private final EmbeddingTextHashGenerator embeddingTextHashGenerator;
-    private final EmbeddingJsonConverter embeddingJsonConverter;
+
     private final DocumentChunkEmbeddingRepository documentChunkEmbeddingRepository;
     private final ExamScopeNodeEmbeddingRepository examScopeNodeEmbeddingRepository;
 
     @Transactional
-    public void ensureChunkEmbeddings(List<DocumentChunk> chunks) {
+    public void ensureChunkEmbeddings(
+            List<DocumentChunk> chunks
+    ) {
         if (chunks == null || chunks.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
+            );
         }
 
-        String embeddingModel = embeddingModelProvider.getEmbeddingModel();
+        String embeddingProvider =
+                embeddingModelProvider.getEmbeddingProvider();
+
+        String embeddingModel =
+                embeddingModelProvider.getEmbeddingModel();
 
         List<Long> chunkIds = chunks.stream()
                 .filter(Objects::nonNull)
@@ -51,121 +61,196 @@ public class DocumentEmbeddingService {
                 .toList();
 
         if (chunkIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_CHUNK_NOT_FOUND);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_CHUNK_NOT_FOUND
+            );
         }
 
         Map<Long, DocumentChunkEmbedding> existingEmbeddingMap =
                 documentChunkEmbeddingRepository
-                        .findAllByDocumentChunk_IdInAndEmbeddingModel(chunkIds, embeddingModel)
+                        .findAllByDocumentChunk_IdInAndEmbeddingProviderAndEmbeddingModel(
+                                chunkIds,
+                                embeddingProvider,
+                                embeddingModel
+                        )
                         .stream()
-                        .collect(Collectors.toMap(
-                                embedding -> embedding.getDocumentChunk().getId(),
-                                Function.identity()
-                        ));
+                        .collect(
+                                Collectors.toMap(
+                                        embedding ->
+                                                embedding
+                                                        .getDocumentChunk()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
-        List<ChunkEmbeddingTarget> targets = new ArrayList<>();
+        List<ChunkEmbeddingTarget> targets =
+                new ArrayList<>();
 
         for (DocumentChunk chunk : chunks) {
             if (chunk == null || chunk.getId() == null) {
                 continue;
             }
 
-            String embeddingText = embeddingTextBuilder.buildChunkEmbeddingText(chunk);
+            String embeddingText =
+                    embeddingTextBuilder
+                            .buildChunkEmbeddingText(chunk);
 
-            if (embeddingText == null || embeddingText.isBlank()) {
-                log.warn("임베딩 대상 청크 텍스트가 비어 있어 제외합니다. documentChunkId={}", chunk.getId());
+            if (embeddingText == null
+                    || embeddingText.isBlank()) {
+
+                log.warn(
+                        "임베딩 대상 청크 텍스트가 비어 있어 제외합니다. documentChunkId={}",
+                        chunk.getId()
+                );
+
                 continue;
             }
 
-            String textHash = embeddingTextHashGenerator.hash(embeddingText);
-            DocumentChunkEmbedding existingEmbedding = existingEmbeddingMap.get(chunk.getId());
+            String textHash =
+                    embeddingTextHashGenerator.hash(
+                            embeddingText
+                    );
 
-            if (existingEmbedding != null && existingEmbedding.hasSameTextHash(textHash)) {
+            DocumentChunkEmbedding existingEmbedding =
+                    existingEmbeddingMap.get(
+                            chunk.getId()
+                    );
+
+            if (existingEmbedding != null
+                    && existingEmbedding
+                    .hasSameTextHash(textHash)) {
                 continue;
             }
 
-            targets.add(new ChunkEmbeddingTarget(
-                    chunk,
-                    existingEmbedding,
-                    embeddingText,
-                    textHash
-            ));
+            targets.add(
+                    new ChunkEmbeddingTarget(
+                            chunk,
+                            existingEmbedding,
+                            embeddingText,
+                            textHash
+                    )
+            );
         }
 
         if (targets.isEmpty()) {
             log.info(
-                    "생성 또는 갱신할 문서 청크 임베딩이 없습니다. chunkCount={}, embeddingModel={}",
+                    "생성 또는 갱신할 문서 청크 임베딩이 없습니다. "
+                            + "chunkCount={}, embeddingProvider={}, embeddingModel={}",
                     chunks.size(),
+                    embeddingProvider,
                     embeddingModel
             );
+
             return;
         }
 
-        for (int start = 0; start < targets.size(); start += EMBEDDING_BATCH_SIZE) {
-            int end = Math.min(start + EMBEDDING_BATCH_SIZE, targets.size());
-            List<ChunkEmbeddingTarget> batch = targets.subList(start, end);
+        for (
+                int start = 0;
+                start < targets.size();
+                start += EMBEDDING_BATCH_SIZE
+        ) {
+            int end = Math.min(
+                    start + EMBEDDING_BATCH_SIZE,
+                    targets.size()
+            );
+
+            List<ChunkEmbeddingTarget> batch =
+                    targets.subList(start, end);
 
             List<String> texts = batch.stream()
-                    .map(ChunkEmbeddingTarget::embeddingText)
+                    .map(
+                            ChunkEmbeddingTarget::embeddingText
+                    )
                     .toList();
 
-            List<List<Double>> embeddings = embeddingClient.embedAll(texts);
+            List<List<Double>> embeddings =
+                    embeddingClient.embedAll(texts);
 
-            if (embeddings.size() != batch.size()) {
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+            if (embeddings == null
+                    || embeddings.size() != batch.size()) {
+
+                throw new BusinessException(
+                        ErrorCode.INTERNAL_SERVER_ERROR
+                );
             }
 
-            List<DocumentChunkEmbedding> newEmbeddings = new ArrayList<>();
+            List<DocumentChunkEmbedding> newEmbeddings =
+                    new ArrayList<>();
 
             for (int i = 0; i < batch.size(); i++) {
-                ChunkEmbeddingTarget target = batch.get(i);
-                List<Double> embedding = embeddings.get(i);
 
-                if (embedding == null || embedding.isEmpty()) {
-                    throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+                ChunkEmbeddingTarget target =
+                        batch.get(i);
+
+                List<Double> embedding =
+                        embeddings.get(i);
+
+                if (embedding == null
+                        || embedding.isEmpty()) {
+
+                    throw new BusinessException(
+                            ErrorCode.INTERNAL_SERVER_ERROR
+                    );
                 }
 
-                String embeddingJson = embeddingJsonConverter.toJson(embedding);
-
                 if (target.existingEmbedding() == null) {
-                    DocumentChunkEmbedding newEmbedding = DocumentChunkEmbedding.builder()
-                            .documentChunk(target.documentChunk())
-                            .embeddingModel(embeddingModel)
-                            .embeddingJson(embeddingJson)
-                            .embeddingDimension(embedding.size())
-                            .embeddingTextHash(target.textHash())
-                            .build();
 
-                    newEmbeddings.add(newEmbedding);
-                } else {
-                    target.existingEmbedding().updateEmbedding(
-                            embeddingJson,
-                            embedding.size(),
-                            target.textHash()
+                    DocumentChunkEmbedding newEmbedding =
+                            DocumentChunkEmbedding.create(
+                                    target.documentChunk(),
+                                    embeddingProvider,
+                                    embeddingModel,
+                                    embedding,
+                                    target.textHash()
+                            );
+
+                    newEmbeddings.add(
+                            newEmbedding
                     );
+
+                } else {
+
+                    target.existingEmbedding()
+                            .updateEmbedding(
+                                    embedding,
+                                    target.textHash()
+                            );
                 }
             }
 
             if (!newEmbeddings.isEmpty()) {
-                documentChunkEmbeddingRepository.saveAll(newEmbeddings);
+                documentChunkEmbeddingRepository
+                        .saveAll(newEmbeddings);
             }
         }
 
         log.info(
-                "문서 청크 임베딩 생성/갱신 완료. chunkCount={}, targetCount={}, embeddingModel={}",
+                "문서 청크 임베딩 생성/갱신 완료. "
+                        + "chunkCount={}, targetCount={}, "
+                        + "embeddingProvider={}, embeddingModel={}",
                 chunks.size(),
                 targets.size(),
+                embeddingProvider,
                 embeddingModel
         );
     }
 
     @Transactional
-    public void ensureScopeNodeEmbeddings(List<ExamScopeNode> scopeNodes) {
+    public void ensureScopeNodeEmbeddings(
+            List<ExamScopeNode> scopeNodes
+    ) {
         if (scopeNodes == null || scopeNodes.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
 
-        String embeddingModel = embeddingModelProvider.getEmbeddingModel();
+        String embeddingProvider =
+                embeddingModelProvider.getEmbeddingProvider();
+
+        String embeddingModel =
+                embeddingModelProvider.getEmbeddingModel();
 
         List<Long> scopeNodeIds = scopeNodes.stream()
                 .filter(Objects::nonNull)
@@ -174,110 +259,181 @@ public class DocumentEmbeddingService {
                 .toList();
 
         if (scopeNodeIds.isEmpty()) {
-            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         }
 
         Map<Long, ExamScopeNodeEmbedding> existingEmbeddingMap =
                 examScopeNodeEmbeddingRepository
-                        .findAllByExamScopeNode_IdInAndEmbeddingModel(scopeNodeIds, embeddingModel)
+                        .findAllByExamScopeNode_IdInAndEmbeddingProviderAndEmbeddingModel(
+                                scopeNodeIds,
+                                embeddingProvider,
+                                embeddingModel
+                        )
                         .stream()
-                        .collect(Collectors.toMap(
-                                embedding -> embedding.getExamScopeNode().getId(),
-                                Function.identity()
-                        ));
+                        .collect(
+                                Collectors.toMap(
+                                        embedding ->
+                                                embedding
+                                                        .getExamScopeNode()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
-        List<ScopeNodeEmbeddingTarget> targets = new ArrayList<>();
+        List<ScopeNodeEmbeddingTarget> targets =
+                new ArrayList<>();
 
         for (ExamScopeNode scopeNode : scopeNodes) {
-            if (scopeNode == null || scopeNode.getId() == null) {
+
+            if (scopeNode == null
+                    || scopeNode.getId() == null) {
                 continue;
             }
 
-            String embeddingText = embeddingTextBuilder.buildScopeNodeEmbeddingText(scopeNode);
+            String embeddingText =
+                    embeddingTextBuilder
+                            .buildScopeNodeEmbeddingText(
+                                    scopeNode
+                            );
 
-            if (embeddingText == null || embeddingText.isBlank()) {
-                log.warn("임베딩 대상 목차 텍스트가 비어 있어 제외합니다. examScopeNodeId={}", scopeNode.getId());
+            if (embeddingText == null
+                    || embeddingText.isBlank()) {
+
+                log.warn(
+                        "임베딩 대상 목차 텍스트가 비어 있어 제외합니다. examScopeNodeId={}",
+                        scopeNode.getId()
+                );
+
                 continue;
             }
 
-            String textHash = embeddingTextHashGenerator.hash(embeddingText);
-            ExamScopeNodeEmbedding existingEmbedding = existingEmbeddingMap.get(scopeNode.getId());
+            String textHash =
+                    embeddingTextHashGenerator.hash(
+                            embeddingText
+                    );
 
-            if (existingEmbedding != null && existingEmbedding.hasSameTextHash(textHash)) {
+            ExamScopeNodeEmbedding existingEmbedding =
+                    existingEmbeddingMap.get(
+                            scopeNode.getId()
+                    );
+
+            if (existingEmbedding != null
+                    && existingEmbedding
+                    .hasSameTextHash(textHash)) {
                 continue;
             }
 
-            targets.add(new ScopeNodeEmbeddingTarget(
-                    scopeNode,
-                    existingEmbedding,
-                    embeddingText,
-                    textHash
-            ));
+            targets.add(
+                    new ScopeNodeEmbeddingTarget(
+                            scopeNode,
+                            existingEmbedding,
+                            embeddingText,
+                            textHash
+                    )
+            );
         }
 
         if (targets.isEmpty()) {
             log.info(
-                    "생성 또는 갱신할 시험 목차 임베딩이 없습니다. scopeNodeCount={}, embeddingModel={}",
+                    "생성 또는 갱신할 시험 목차 임베딩이 없습니다. "
+                            + "scopeNodeCount={}, embeddingProvider={}, embeddingModel={}",
                     scopeNodes.size(),
+                    embeddingProvider,
                     embeddingModel
             );
+
             return;
         }
 
-        for (int start = 0; start < targets.size(); start += EMBEDDING_BATCH_SIZE) {
-            int end = Math.min(start + EMBEDDING_BATCH_SIZE, targets.size());
-            List<ScopeNodeEmbeddingTarget> batch = targets.subList(start, end);
+        for (
+                int start = 0;
+                start < targets.size();
+                start += EMBEDDING_BATCH_SIZE
+        ) {
+            int end = Math.min(
+                    start + EMBEDDING_BATCH_SIZE,
+                    targets.size()
+            );
+
+            List<ScopeNodeEmbeddingTarget> batch =
+                    targets.subList(start, end);
 
             List<String> texts = batch.stream()
-                    .map(ScopeNodeEmbeddingTarget::embeddingText)
+                    .map(
+                            ScopeNodeEmbeddingTarget::embeddingText
+                    )
                     .toList();
 
-            List<List<Double>> embeddings = embeddingClient.embedAll(texts);
+            List<List<Double>> embeddings =
+                    embeddingClient.embedAll(texts);
 
-            if (embeddings.size() != batch.size()) {
-                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+            if (embeddings == null
+                    || embeddings.size() != batch.size()) {
+
+                throw new BusinessException(
+                        ErrorCode.INTERNAL_SERVER_ERROR
+                );
             }
 
-            List<ExamScopeNodeEmbedding> newEmbeddings = new ArrayList<>();
+            List<ExamScopeNodeEmbedding> newEmbeddings =
+                    new ArrayList<>();
 
             for (int i = 0; i < batch.size(); i++) {
-                ScopeNodeEmbeddingTarget target = batch.get(i);
-                List<Double> embedding = embeddings.get(i);
 
-                if (embedding == null || embedding.isEmpty()) {
-                    throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
+                ScopeNodeEmbeddingTarget target =
+                        batch.get(i);
+
+                List<Double> embedding =
+                        embeddings.get(i);
+
+                if (embedding == null
+                        || embedding.isEmpty()) {
+
+                    throw new BusinessException(
+                            ErrorCode.INTERNAL_SERVER_ERROR
+                    );
                 }
 
-                String embeddingJson = embeddingJsonConverter.toJson(embedding);
-
                 if (target.existingEmbedding() == null) {
-                    ExamScopeNodeEmbedding newEmbedding = ExamScopeNodeEmbedding.builder()
-                            .examScopeNode(target.examScopeNode())
-                            .embeddingModel(embeddingModel)
-                            .embeddingJson(embeddingJson)
-                            .embeddingDimension(embedding.size())
-                            .embeddingTextHash(target.textHash())
-                            .build();
 
-                    newEmbeddings.add(newEmbedding);
-                } else {
-                    target.existingEmbedding().updateEmbedding(
-                            embeddingJson,
-                            embedding.size(),
-                            target.textHash()
+                    ExamScopeNodeEmbedding newEmbedding =
+                            ExamScopeNodeEmbedding.create(
+                                    target.examScopeNode(),
+                                    embeddingProvider,
+                                    embeddingModel,
+                                    embedding,
+                                    target.textHash()
+                            );
+
+                    newEmbeddings.add(
+                            newEmbedding
                     );
+
+                } else {
+
+                    target.existingEmbedding()
+                            .updateEmbedding(
+                                    embedding,
+                                    target.textHash()
+                            );
                 }
             }
 
             if (!newEmbeddings.isEmpty()) {
-                examScopeNodeEmbeddingRepository.saveAll(newEmbeddings);
+                examScopeNodeEmbeddingRepository
+                        .saveAll(newEmbeddings);
             }
         }
 
         log.info(
-                "시험 목차 임베딩 생성/갱신 완료. scopeNodeCount={}, targetCount={}, embeddingModel={}",
+                "시험 목차 임베딩 생성/갱신 완료. "
+                        + "scopeNodeCount={}, targetCount={}, "
+                        + "embeddingProvider={}, embeddingModel={}",
                 scopeNodes.size(),
                 targets.size(),
+                embeddingProvider,
                 embeddingModel
         );
     }

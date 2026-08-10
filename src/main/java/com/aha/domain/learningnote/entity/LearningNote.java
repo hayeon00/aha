@@ -1,6 +1,7 @@
 package com.aha.domain.learningnote.entity;
 
 import com.aha.domain.document.entity.SourceDocument;
+import com.aha.domain.learningnote.enums.LearningNoteStatus;
 import com.aha.domain.userexam.entity.UserExam;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -21,12 +22,19 @@ import java.time.LocalDateTime;
                 @Index(
                         name = "idx_learning_note_user_exam",
                         columnList = "user_exam_id"
+                ),
+                @Index(
+                        name = "idx_learning_note_source_document",
+                        columnList = "source_document_id"
                 )
         },
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_learning_note_source_document",
-                        columnNames = "source_document_id"
+                        name = "uk_learning_note_exam_document",
+                        columnNames = {
+                                "user_exam_id",
+                                "source_document_id"
+                        }
                 )
         }
 )
@@ -51,11 +59,10 @@ public class LearningNote {
     )
     private UserExam userExam;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "source_document_id",
             nullable = false,
-            unique = true,
             foreignKey = @ForeignKey(
                     name = "fk_learning_note_source_document"
             )
@@ -64,6 +71,10 @@ public class LearningNote {
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private LearningNoteStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -85,7 +96,16 @@ public class LearningNote {
                 .userExam(userExam)
                 .sourceDocument(sourceDocument)
                 .title(normalizeTitle(title))
+                .status(LearningNoteStatus.GENERATING)
                 .build();
+    }
+
+    public void markReady() {
+        this.status = LearningNoteStatus.READY;
+    }
+
+    public void markFailed() {
+        this.status = LearningNoteStatus.FAILED;
     }
 
     private static void validateUserExam(UserExam userExam) {
