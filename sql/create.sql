@@ -705,8 +705,9 @@ CREATE TABLE `past_paper_attempt`
     `status`        VARCHAR(30) NOT NULL DEFAULT 'SOLVING',
     `user_score`    INT         NULL     DEFAULT NULL,
     `passed`        TINYINT(1)  NULL     DEFAULT NULL,
-    `elapsed_time`  INT                  DEFAULT NULL,
+    `elapsed_time`  INT         NULL     DEFAULT NULL,
     `started_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `due_at`        DATETIME    NOT NULL,
     `updated_at`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_past_paper_attempt_user_id`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
