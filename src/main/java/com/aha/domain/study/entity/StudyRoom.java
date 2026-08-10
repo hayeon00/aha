@@ -102,8 +102,67 @@ public class StudyRoom {
 
     public void validateNotCanceled() {
 
-        if(status==StudyRoomStatus.CANCELED){
+        if (status == StudyRoomStatus.CANCELED) {
             throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_CANCELED);
         }
+    }
+
+    public void validateForJoin(long memberCount) {
+
+        validateNotCanceled();
+
+        validateNotSolving();
+
+        if (memberCount >= capacity) {
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_FULL);
+        }
+    }
+
+    private void validateNotSolving() {
+
+        if (status == StudyRoomStatus.SOLVING) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_SOLVING);
+        }
+    }
+
+    public void validateForLeave() {
+
+        validateNotCanceled();
+
+        validateNotSolving();
+    }
+
+    public boolean isWaiting() {
+
+        return status == StudyRoomStatus.WAITING;
+    }
+
+    public void validateForKick() {
+
+        validateNotCanceled();
+        validateNotSolving();
+        validateNotFeedback();
+    }
+
+    private void validateNotFeedback() {
+
+        if (status == StudyRoomStatus.FEEDBACK) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_FEEDBACK);
+        }
+    }
+
+    public void validateForChangeHost() {
+
+        validateNotCanceled();
+        validateNotSolving();
+    }
+
+    public void validateForUpdateReady() {
+
+        validateNotCanceled();
+        validateNotSolving();
+        validateNotFeedback();
     }
 }

@@ -13,6 +13,12 @@ const markdownComponents = {
             {children}
         </a>
     ),
+    code: ({ className, children }) => {
+        const value = String(children).trim();
+        const isSqlFunction = /^(COUNT|SUM|AVG|MIN|MAX|MIN\s*\/\s*MAX)$/i.test(value);
+        return <code className={`${className || ""} ${isSqlFunction ? "sql-function-chip" : ""}`.trim()}>{children}</code>;
+    },
+    strong: ({ children }) => <strong className="aha-markdown-strong">{children}</strong>,
 };
 
 export function LearningContentSkeleton() {

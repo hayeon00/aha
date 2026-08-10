@@ -3,6 +3,8 @@ package com.aha.domain.study.entity;
 import com.aha.domain.pastpaper.entity.PastPaperAttempt;
 import com.aha.domain.study.enums.StudyRoomMemberRole;
 import com.aha.domain.user.entity.User;
+import com.aha.global.exception.BusinessException;
+import com.aha.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -88,15 +90,75 @@ public class StudyRoomMember {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public static StudyRoomMember create(User createdBy, StudyRoom studyRoom) {
+    public static StudyRoomMember create(User user, StudyRoom studyRoom, StudyRoomMemberRole role) {
 
         return StudyRoomMember.builder()
-            .user(createdBy)
+            .user(user)
             .studyRoom(studyRoom)
             .pastPaperAttempt(null)
-            .role(StudyRoomMemberRole.HOST)
+            .role(role)
             .isReady(false)
             .build();
+    }
 
+    public void validateForLeave() {
+
+        validateNotHost();
+    }
+
+    private void validateNotHost() {
+
+        if (role == StudyRoomMemberRole.HOST) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_MEMBER_ROLE_MUST_BE_MEMBER);
+        }
+    }
+
+    public void validateForKick(StudyRoomMember target) throws BusinessException {
+
+        validateNotMember();
+
+        validateKickNotYourself(target);
+    }
+
+    private void validateKickNotYourself(StudyRoomMember target) {
+
+        if(id.equals(target.getId())){
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_HOST_CANNOT_KICK_SELF);
+        }
+    }
+
+    private void validateNotMember() {
+
+        if (role == StudyRoomMemberRole.MEMBER) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_MEMBER_ROLE_MUST_BE_HOST);
+        }
+    }
+
+
+    public void validateForChangeHost(StudyRoomMember target) {
+
+        validateNotMember();
+        validateNotDelegateYourself(target);
+    }
+
+    private void validateNotDelegateYourself(StudyRoomMember target) {
+
+        if(id.equals(target.getId())){
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_HOST_CANNOT_DELEGATE_SELF);
+        }
+    }
+
+    public void updateRole(StudyRoomMemberRole studyRoomMemberRole) {
+
+        role=studyRoomMemberRole;
+    }
+
+    public void updateReady(boolean ready) {
+
+        this.isReady = ready;
     }
 }

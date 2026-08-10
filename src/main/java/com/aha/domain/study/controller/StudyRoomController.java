@@ -3,6 +3,7 @@ package com.aha.domain.study.controller;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
+import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomResponseDto;
 import com.aha.domain.study.enums.StudyRoomSortType;
 import com.aha.domain.study.enums.StudyRoomStatus;
@@ -86,7 +87,8 @@ public class StudyRoomController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/study-rooms/{studyRoomId}")
     public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getStudyRoom(
-        @PathVariable(name = "studyRoomId") Long studyRoomId
+        @PathVariable(name = "studyRoomId") Long studyRoomId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
 
         return ResponseEntity.ok()
@@ -94,7 +96,7 @@ public class StudyRoomController {
                 ApiResponse.success(
                     200,
                     "스터디룸 상세 조회 성공",
-                    studyRoomService.getStudyRoom(studyRoomId)
+                    studyRoomService.getStudyRoom(studyRoomId, userDetails.getId())
                 )
             );
     }
@@ -103,7 +105,7 @@ public class StudyRoomController {
     @GetMapping("/users/me/study-rooms/current")
     public ResponseEntity<ApiResponse<StudyRoomDetailResponseDto>> getCurrentStudyRoom(
         @AuthenticationPrincipal CustomUserDetails customUserDetails
-    ){
+    ) {
 
         return ResponseEntity.ok()
             .body(
@@ -113,8 +115,24 @@ public class StudyRoomController {
                     studyRoomService.getCurrentStudyRoom(customUserDetails.getId())
                 )
             );
+    }
 
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/study-rooms/{studyRoomId}/members")
+    public ResponseEntity<ApiResponse<StudyRoomJoinResponseDto>> joinStudyRoom(
+        @AuthenticationPrincipal CustomUserDetails customUserDetails,
+        @PathVariable("studyRoomId") Long studyRoomId
+    ) {
 
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(
+                ApiResponse.success(
+                    201,
+                    "스터디룸 참가 성공",
+                    studyRoomService.joinStudyRoom(customUserDetails.getId(), studyRoomId)
+                )
+            );
     }
 
 }

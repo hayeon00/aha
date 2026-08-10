@@ -5,10 +5,12 @@ import com.aha.domain.pastpaper.repository.PastPaperRepository;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
+import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomResponseDto;
 import com.aha.domain.study.entity.ActiveStudyRoomParticipation;
 import com.aha.domain.study.entity.StudyRoom;
 import com.aha.domain.study.entity.StudyRoomMember;
+import com.aha.domain.study.enums.StudyRoomMemberRole;
 import com.aha.domain.study.enums.StudyRoomSortType;
 import com.aha.domain.study.enums.StudyRoomStatus;
 import com.aha.domain.study.repository.ActiveStudyRoomParticipationRepository;
@@ -58,53 +60,22 @@ public class StudyRoomService {
         paper.validatePublished();
 
         User createdBy = userRepository.findById(userId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() ->
+
+                new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "인증된 사용자 정보를 DB에서 찾을 수 없습니다. userId=" + userId
+                )
+            );
 
         StudyRoom studyRoom = studyRoomRepository.save(StudyRoom.create(
             paper, createdBy, requestDto.title(),
             requestDto.description(), requestDto.capacity(), requestDto.timeLimit())
         );
 
-        try {
-
-            activeStudyRoomParticipationRepository.saveAndFlush(
-                ActiveStudyRoomParticipation.create(userId, studyRoom)
-            );
-        } catch (DataIntegrityViolationException e) {
-
-            if (isActiveParticipationUniqueViolation(e)) {
-
-                throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
-            }
-
-            throw e;
-        }
-
-        studyRoomMemberRepository.save(StudyRoomMember.create(createdBy, studyRoom));
+        registerStudyRoomMember(createdBy, studyRoom, StudyRoomMemberRole.HOST);
 
         return StudyRoomCreateResponseDto.from(studyRoom);
-
-    }
-
-    private boolean isActiveParticipationUniqueViolation(
-        DataIntegrityViolationException exception
-    ) {
-
-        Throwable cause = exception;
-
-        while (cause != null) {
-
-            if (cause instanceof ConstraintViolationException constraintException) {
-
-                return ACTIVE_PARTICIPATION_UNIQUE_CONSTRAINT.equals(
-                    constraintException.getConstraintName()
-                );
-            }
-
-            cause = cause.getCause();
-        }
-
-        return false;
     }
 
     @Transactional(readOnly = true)
@@ -129,22 +100,22 @@ public class StudyRoomService {
     }
 
     @Transactional(readOnly = true)
-    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId) {
+    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId,Long userId) {
 
         StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
-            .orElseThrow(()->new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
         studyRoom.validateNotCanceled();
 
-        return StudyRoomDetailResponseDto.from(studyRoom);
+        return StudyRoomDetailResponseDto.from(studyRoom,userId);
     }
 
     @Transactional(readOnly = true)
     public StudyRoomDetailResponseDto getCurrentStudyRoom(Long userId) {
 
         ActiveStudyRoomParticipation participation
-            =activeStudyRoomParticipationRepository.findByUserId(userId)
-            .orElseThrow(()->new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
+            = activeStudyRoomParticipationRepository.findByUserIdWithStudyRoom(userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
 
         Long studyRoomId = participation.getStudyRoom().getId();
 
@@ -161,6 +132,86 @@ public class StudyRoomService {
                 );
             });
 
-        return StudyRoomDetailResponseDto.from(studyRoom);
+        return StudyRoomDetailResponseDto.from(studyRoom, userId);
+    }
+
+    @Transactional
+    public StudyRoomJoinResponseDto joinStudyRoom(Long userId, Long studyRoomId) {
+
+        StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+
+        if (studyRoom.isWaiting() && activeStudyRoomParticipationRepository.existsByUserId(
+            userId)) {
+
+            throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
+        }
+
+        if (studyRoomMemberRepository.existsByStudyRoom_IdAndUser_Id(studyRoomId, userId)) {
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_JOINED);
+        }
+
+        studyRoom.validateForJoin(
+
+            studyRoomMemberRepository.countByStudyRoom_Id(studyRoomId)
+        );
+
+        User user = userRepository.findById(userId)
+            .orElseThrow(() ->
+
+                new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "인증된 사용자 정보를 DB에서 찾을 수 없습니다. userId=" + userId
+                )
+            );
+
+        registerStudyRoomMember(user, studyRoom, StudyRoomMemberRole.MEMBER);
+
+        return StudyRoomJoinResponseDto.from(studyRoom);
+    }
+
+    private void registerStudyRoomMember(User user, StudyRoom studyRoom, StudyRoomMemberRole role) {
+
+        if (studyRoom.isWaiting()) {
+
+            try {
+
+                activeStudyRoomParticipationRepository.saveAndFlush(
+                    ActiveStudyRoomParticipation.create(user.getId(), studyRoom)
+                );
+            } catch (DataIntegrityViolationException e) {
+
+                if (isActiveParticipationUniqueViolation(e)) {
+
+                    throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
+                }
+
+                throw e;
+            }
+        }
+
+        studyRoomMemberRepository.save(StudyRoomMember.create(user, studyRoom, role));
+    }
+
+    private boolean isActiveParticipationUniqueViolation(
+        DataIntegrityViolationException exception
+    ) {
+
+        Throwable cause = exception;
+
+        while (cause != null) {
+
+            if (cause instanceof ConstraintViolationException constraintException) {
+
+                return ACTIVE_PARTICIPATION_UNIQUE_CONSTRAINT.equals(
+                    constraintException.getConstraintName()
+                );
+            }
+
+            cause = cause.getCause();
+        }
+
+        return false;
     }
 }

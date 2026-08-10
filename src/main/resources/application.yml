@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:none}
     properties:
       hibernate:
         format_sql: ${JPA_FORMAT_SQL:true}
@@ -20,7 +20,7 @@ spring:
     multipart:
       enabled: true
       max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
-      max-request-size: ${DOCUMENT_MAX_TOTAL_SIZE:100MB}
+      max-request-size: ${DOCUMENT_MAX_REQUEST_SIZE:105MB}
 
   security:
     oauth2:
@@ -75,6 +75,8 @@ file:
     max-total-size: ${DOCUMENT_MAX_TOTAL_SIZE:100MB}
     max-file-count: ${DOCUMENT_MAX_FILE_COUNT:5}
     max-file-name-length: ${DOCUMENT_MAX_FILE_NAME_LENGTH:255}
+    cleanup-stale-after: ${DOCUMENT_CLEANUP_STALE_AFTER:1h}
+    cleanup-interval-ms: ${DOCUMENT_CLEANUP_INTERVAL_MS:600000}
 
 document:
   processing:
@@ -97,3 +99,4 @@ auth:
 scheduler:
   past-paper-attempt-expiration:
     fixed-delay: 60000
+
