@@ -175,7 +175,16 @@ public class StudyRoomMember {
     public void validateReady() {
 
         if(!isReady){
+
             throw new BusinessException(ErrorCode.STUDY_ROOM_ALL_MEMBER_NOT_READY);
+        }
+    }
+
+    public void validateCanGetAttempt() {
+
+        if(pastPaperAttempt == null){
+
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ATTEMPT_NOT_FOUND);
         }
     }
 }
