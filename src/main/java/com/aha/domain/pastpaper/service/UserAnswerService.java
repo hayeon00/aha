@@ -1,5 +1,6 @@
 package com.aha.domain.pastpaper.service;
 
+import com.aha.domain.pastpaper.dto.request.AnswerMarkedForReviewRequestDto;
 import com.aha.domain.pastpaper.dto.request.AnswerSaveRequestDto;
 import com.aha.domain.pastpaper.dto.response.PastPaperAttemptAnswersResponseDto;
 import com.aha.domain.pastpaper.entity.PastPaper;
@@ -12,11 +13,10 @@ import com.aha.domain.pastpaper.repository.UserAnswerRepository;
 import com.aha.domain.pastpaper.repository.ProblemRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
-import com.aha.global.security.CustomUserDetails;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,12 +28,10 @@ public class UserAnswerService {
     private final PastPaperItemRepository pastPaperItemRepository;
 
     public PastPaperAttemptAnswersResponseDto getAttemptsAnswer(Long attemptId,
-        CustomUserDetails userDetails) {
+        Long userId) {
 
         PastPaperAttempt attempt = pastPaperAttemptRepository.findById(attemptId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
-
-        Long userId = getUserId(userDetails);
 
         attempt.validateOwner(userId);
 
@@ -44,62 +42,57 @@ public class UserAnswerService {
 
     }
 
-    public void saveAnswer(Long attemptId, Long problemId, AnswerSaveRequestDto request,
-        CustomUserDetails userDetails) {
+    @Transactional
+    public void saveAnswer(Long attemptId, Long problemId, AnswerSaveRequestDto requestDto,
+        Long userId) {
 
-        Long userId = getUserId(userDetails);
-        PastPaperAttempt attempt = pastPaperAttemptRepository.findById(attemptId)
+        PastPaperAttempt existing = pastPaperAttemptRepository.findByIdForUpdate(attemptId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
-        attempt.validateCanSolve(userId);
+
+        existing.validateCanSolve(userId);
 
         Problem problem = problemRepository.findById(problemId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PROBLEM_NOT_FOUND));
 
-        validateProblemInPastPaper(attempt.getPastPaper(), problem);
+        validateProblemInPastPaper(existing.getPastPaper(), problem);
 
-        String userAnswer =request.userAnswer();
+        String userAnswer = requestDto.userAnswer();
 
         userAnswerRepository.findByPastPaperAttempt_IdAndProblem_Id(attemptId, problemId)
-            .ifPresentOrElse(ua -> updateUserAnswer(userAnswer, ua),
-                () -> createOrUpdateUserAnswer(attempt, problem, userAnswer));
+            .ifPresentOrElse(
+
+                answer -> answer.updateUserAnswer(userAnswer),
+                () -> userAnswerRepository.save(
+                    UserAnswer.create(existing, problem, userAnswer, false)
+                ));
     }
 
-    private void createOrUpdateUserAnswer(PastPaperAttempt attempt, Problem problem,
-        String userAnswer) {
-        try {
-            userAnswerRepository.saveAndFlush(
-                UserAnswer.create(attempt, problem, userAnswer, false));
-        } catch (DataIntegrityViolationException e) {
-            userAnswerRepository.findByPastPaperAttempt_IdAndProblem_Id(attempt.getId(),
-                problem.getId()).ifPresentOrElse(ua -> updateUserAnswer(userAnswer, ua), () -> {
-                throw e;
-            });
-        }
-    }
+    @Transactional
+    public void markForReview(
+        Long attemptId, Long problemId, AnswerMarkedForReviewRequestDto requestDto, Long userId
+    ) {
 
-    private void updateUserAnswer(String userAnswer, UserAnswer ua) {
-        ua.updateUserAnswer(userAnswer);
-        userAnswerRepository.saveAndFlush(ua);
-    }
-
-    public void toggleMarkedForReview(Long attemptId, Long problemId,
-        CustomUserDetails userDetails) {
-
-        Long userId = getUserId(userDetails);
-        PastPaperAttempt attempt = pastPaperAttemptRepository.findById(attemptId)
+        PastPaperAttempt existing = pastPaperAttemptRepository.findByIdForUpdate(attemptId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
-        attempt.validateCanSolve(userId);
+
+        existing.validateCanSolve(userId);
 
         Problem problem = problemRepository.findById(problemId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PROBLEM_NOT_FOUND));
 
-        validateProblemInPastPaper(attempt.getPastPaper(), problem);
+        validateProblemInPastPaper(existing.getPastPaper(), problem);
+
+        boolean marked = requestDto.markedForReview();
 
         userAnswerRepository.findByPastPaperAttempt_IdAndProblem_Id(attemptId, problemId)
-            .ifPresentOrElse(this::toggleMarked,
-                () -> createMarkedAnswer(attempt, problem));
-    }
+            .ifPresentOrElse(
 
+                answer -> answer.updateMarkedForReview(marked),
+                () -> userAnswerRepository.save(
+                    UserAnswer.create(existing, problem, null, marked)
+                )
+            );
+    }
 
     private void validateProblemInPastPaper(PastPaper paper, Problem problem) {
         boolean isIncluded = pastPaperItemRepository.existsByPastPaper_IdAndProblem_Id(
@@ -107,25 +100,5 @@ public class UserAnswerService {
         if (!isIncluded) {
             throw new BusinessException(ErrorCode.PROBLEM_NOT_IN_PAST_PAPER);
         }
-    }
-
-    private void toggleMarked(UserAnswer ua) {
-        ua.toggleChecked();
-        userAnswerRepository.saveAndFlush(ua);
-    }
-
-    private void createMarkedAnswer(PastPaperAttempt attempt, Problem problem) {
-        try {
-            userAnswerRepository.saveAndFlush(UserAnswer.create(attempt, problem, null, true));
-        } catch (DataIntegrityViolationException e) {
-            userAnswerRepository.findByPastPaperAttempt_IdAndProblem_Id(attempt.getId(),
-                problem.getId()).ifPresentOrElse(this::toggleMarked, () -> {
-                throw e;
-            });
-        }
-    }
-
-    private Long getUserId(CustomUserDetails userDetails) {
-        return userDetails.getId();
     }
 }
