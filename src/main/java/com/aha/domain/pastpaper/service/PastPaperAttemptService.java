@@ -19,12 +19,12 @@ import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.response.PageResponseDto;
 import com.aha.global.security.CustomUserDetails;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,76 +40,25 @@ public class PastPaperAttemptService {
     private final PastPaperItemRepository pastPaperItemRepository;
     private final PastPaperAttemptResultService pastPaperAttemptResultService;
 
+    @Transactional
     public PastPaperAttemptStartResponseDto getOrStartAttempt(Long paperId,
-        CustomUserDetails userDetails) {
+        Long userId) {
 
         PastPaper paper = pastPaperRepository.findByIdWithExamVersionAndExam(paperId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_NOT_FOUND));
 
         paper.validateCanSolve();
 
-        Long userId = userDetails.getId();
-        return findSolvingAttempt(paperId, userId)
-            .map(PastPaperAttemptStartResponseDto::from)
-            .orElseGet(() -> createOrGetAttempt(paper, userId));
-    }
+        int timeLimit = paper.getExamVersion().getDefaultDurationSeconds();
 
+        pastPaperAttemptRepository.insertOrReuseSolvingAttempt(userId,paper.getId(),timeLimit);
 
-    private PastPaperAttemptStartResponseDto createOrGetAttempt(PastPaper paper, Long userId) {
+        long attemptId = pastPaperAttemptRepository.findLastInsertId();
 
-        PastPaperAttempt attempt = PastPaperAttempt.create(userId, paper);
-
-        try {
-            return PastPaperAttemptStartResponseDto.from(
-                pastPaperAttemptRepository.saveAndFlush(attempt));
-        } catch (DataIntegrityViolationException e) {
-            return findSolvingAttempt(paper.getId(), userId)
-                .map(PastPaperAttemptStartResponseDto::from)
-                .orElseThrow(() -> e);
-        }
-    }
-
-    private Optional<PastPaperAttempt> findSolvingAttempt(Long paperId,
-        Long userId) {
-        return pastPaperAttemptRepository.findByPastPaper_IdAndUserIdAndStatus(paperId, userId,
-            PastPaperAttemptStatus.SOLVING);
-    }
-
-    @Transactional
-    public PastPaperAttemptSubmitResponseDto submitAttempt(Long attemptId,
-        CustomUserDetails userDetails) {
-
-        Long userId = userDetails.getId();
-        PastPaperAttempt attempt = pastPaperAttemptRepository.findByIdWithPastPaperAndExamVersionAndExamParts(
-                attemptId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND));
-        attempt.validateCanSubmit(userId);
-
-        List<UserAnswer> userAnswers = userAnswerRepository.findByPastPaperAttempt_IdWithProblemAndExamScopeNode(
-            attemptId);
-        Set<Long> answeredProblemIds = userAnswers.stream().map(ua -> ua.getProblem().getId())
-            .collect(Collectors.toSet());
-
-        List<PastPaperItem> items = pastPaperItemRepository.findByPastPaper_IdWithProblem(
-            attempt.getPastPaper().getId());
-        List<Problem> problemsInPaper = items.stream().map(PastPaperItem::getProblem).toList();
-
-        for (Problem problem : problemsInPaper) {
-            if (!answeredProblemIds.contains(problem.getId())) {
-
-                UserAnswer created = userAnswerRepository.save(
-                    UserAnswer.create(attempt, problem, null, false));
-                userAnswers.add(created);
-                answeredProblemIds.add(problem.getId());
-            }
-        }
-
-        TotalResultAggregator totalAggregator = pastPaperAttemptResultService.gradeAttempt(attempt,
-            userAnswers);
-
-        attempt.updateAfterGraded(totalAggregator);
-
-        return PastPaperAttemptSubmitResponseDto.of(attempt, totalAggregator);
+        return PastPaperAttemptStartResponseDto.from(
+            pastPaperAttemptRepository.findById(attemptId)
+                .orElseThrow(()->new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND))
+        );
     }
 
     @Transactional(readOnly = true)
@@ -140,5 +89,102 @@ public class PastPaperAttemptService {
         TotalResultAggregator totalAggregator = pastPaperAttemptResultService.calculateResult(attempt, userAnswers);
 
         return PastPaperAttemptResultResponseDto.from(totalAggregator);
+    }
+
+    @Transactional
+    public void submitExpiredAttempt(Long attemptId) {
+        PastPaperAttempt attempt = pastPaperAttemptRepository
+            .findByIdForUpdate(attemptId)
+            .orElse(null);
+
+        if (attempt == null) {
+            return;
+        }
+
+        LocalDateTime completedAt = LocalDateTime.now();
+
+        if (!attempt.isExpiredSolving(completedAt)) {
+            return;
+        }
+
+        completeAttempt(attempt, completedAt);
+    }
+
+    @Transactional
+    public PastPaperAttemptSubmitResponseDto submitAttempt(
+        Long attemptId,
+        Long userId
+    ) {
+        PastPaperAttempt attempt = pastPaperAttemptRepository
+            .findByIdForUpdate(attemptId)
+            .orElseThrow(() ->
+                new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_FOUND)
+            );
+
+        attempt.validateCanSubmit(userId);
+
+        TotalResultAggregator result =
+            completeAttempt(attempt, LocalDateTime.now());
+
+        return PastPaperAttemptSubmitResponseDto.of(attempt, result);
+    }
+
+    private TotalResultAggregator completeAttempt(
+        PastPaperAttempt attempt,
+        LocalDateTime completedAt
+    ) {
+        List<UserAnswer> answers = new ArrayList<>(
+            userAnswerRepository
+                .findByPastPaperAttempt_IdWithProblemAndExamScopeNode(
+                    attempt.getId()
+                )
+        );
+
+        List<PastPaperItem> items = pastPaperItemRepository
+            .findByPastPaper_IdWithProblem(
+                attempt.getPastPaper().getId()
+            );
+
+        addMissingAnswers(attempt, answers, items);
+
+        TotalResultAggregator result =
+            pastPaperAttemptResultService.gradeAttempt(attempt, answers);
+
+        attempt.updateAfterGraded(result, completedAt);
+
+        return result;
+    }
+
+    private void addMissingAnswers(
+        PastPaperAttempt attempt,
+        List<UserAnswer> answers,
+        List<PastPaperItem> items
+    ) {
+        Set<Long> answeredProblemIds =
+            answers.stream()
+                .map(answer ->
+                    answer.getProblem().getId()
+                )
+                .collect(Collectors.toSet());
+
+        for (PastPaperItem item : items) {
+            Problem problem = item.getProblem();
+
+            if (answeredProblemIds.contains(problem.getId())) {
+                continue;
+            }
+
+            UserAnswer missingAnswer =
+                UserAnswer.create(
+                    attempt,
+                    problem,
+                    null,
+                    false
+                );
+
+            userAnswerRepository.save(missingAnswer);
+            answers.add(missingAnswer);
+            answeredProblemIds.add(problem.getId());
+        }
     }
 }
