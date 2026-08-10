@@ -70,65 +70,83 @@ public class PastPaperAttempt {
     @Column(name = "started_at", nullable = false, updatable = false)
     private LocalDateTime startedAt;
 
+    @Column(name = "due_at", nullable = false)
+    private LocalDateTime dueAt;
+
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public static PastPaperAttempt create(Long userId, PastPaper pastPaper) {
-
-        return PastPaperAttempt.builder()
-            .userId(userId)
-            .pastPaper(pastPaper)
-            .status(PastPaperAttemptStatus.SOLVING)
-            .build();
-    }
-
     public void validateOwner(Long userId) {
+
         if (!Objects.equals(this.userId, userId)) {
             throw new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_YOURS);
         }
     }
 
     private void validateSolving() {
+
         if (status != PastPaperAttemptStatus.SOLVING) {
             throw new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_SOLVING);
         }
     }
 
     private void validateWithinSolvingTime(LocalDateTime now) {
-        LocalDateTime deadLine = startedAt.plusSeconds(pastPaper.getTimeLimit());
-        if (!now.isBefore(deadLine)) {
+
+        if (!now.isBefore(dueAt)) {
             throw new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_TIME_EXPIRED);
         }
     }
 
     public void validateCanSolve(Long userId) {
+
         validateOwner(userId);
         validateSolving();
         validateWithinSolvingTime(LocalDateTime.now());
     }
 
     public void validateCanSubmit(Long userId) {
+
         validateOwner(userId);
         validateSolving();
     }
 
-    public void updateAfterGraded(TotalResultAggregator totalAggregator) {
+    public void updateAfterGraded(
+        TotalResultAggregator result,
+        LocalDateTime completedAt
+    ) {
         status = PastPaperAttemptStatus.GRADED;
-        userScore = totalAggregator.getUserScore();
-        passed = totalAggregator.isPassed();
-        LocalDateTime now = LocalDateTime.now();
-        elapsedTime = (int) Duration.between(startedAt, now).getSeconds();
+        userScore = result.getUserScore();
+        passed = result.isPassed();
+
+        LocalDateTime effectiveCompletedAt =
+            completedAt.isBefore(dueAt)
+                ? completedAt
+                : dueAt;
+
+        elapsedTime = Math.toIntExact(
+            Duration.between(
+                startedAt,
+                effectiveCompletedAt
+            ).getSeconds()
+        );
     }
 
     public void validateGraded() {
+
         if(status != PastPaperAttemptStatus.GRADED){
             throw new BusinessException(ErrorCode.PAST_PAPER_ATTEMPT_NOT_GRADED);
         }
     }
 
     public void validateCanSeeResult(Long userId){
+
         validateOwner(userId);
         validateGraded();
+    }
+
+    public boolean isExpiredSolving(LocalDateTime now) {
+        return status == PastPaperAttemptStatus.SOLVING
+            && !now.isBefore(dueAt);
     }
 }
