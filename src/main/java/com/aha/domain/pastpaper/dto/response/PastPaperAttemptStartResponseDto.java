@@ -1,6 +1,5 @@
 package com.aha.domain.pastpaper.dto.response;
 
-import com.aha.domain.pastpaper.entity.PastPaper;
 import com.aha.domain.pastpaper.entity.PastPaperAttempt;
 import com.aha.domain.pastpaper.enums.PastPaperAttemptStatus;
 import java.time.LocalDateTime;
@@ -17,19 +16,12 @@ public record PastPaperAttemptStartResponseDto(
 ) {
 
     public static PastPaperAttemptStartResponseDto from(PastPaperAttempt attempt) {
-        PastPaper paper = attempt.getPastPaper();
-        LocalDateTime startedAt = attempt.getStartedAt();
-        int timeLimit = paper.getTimeLimit();
 
         return PastPaperAttemptStartResponseDto.builder()
             .attemptId(attempt.getId())
             .attemptStatus(attempt.getStatus())
-            .startedAt(startedAt)
-            .dueAt(createDueAt(startedAt, timeLimit))
+            .startedAt(attempt.getStartedAt())
+            .dueAt(attempt.getDueAt())
             .build();
-    }
-
-    private static LocalDateTime createDueAt(LocalDateTime startedAt, int timeLimit) {
-        return startedAt.plusSeconds(timeLimit);
     }
 }
