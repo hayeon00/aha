@@ -146,8 +146,8 @@ export const savePastPaperAnswer = async ({
     userAnswer,
 }) => {
     try {
-        await axiosInstance.patch(
-            `/api/v1/past-paper-attempts/${attemptId}/problems/${problemId}/answers`,
+        await axiosInstance.put(
+            `/api/v1/past-paper-attempts/${attemptId}/problems/${problemId}/answer`,
             { userAnswer }
         );
     } catch (error) {
@@ -158,10 +158,12 @@ export const savePastPaperAnswer = async ({
 export const togglePastPaperReviewMark = async ({
     attemptId,
     problemId,
+    markedForReview,
 }) => {
     try {
         await axiosInstance.patch(
-            `/api/v1/past-paper-attempts/${attemptId}/problems/${problemId}/review-mark`
+            `/api/v1/past-paper-attempts/${attemptId}/problems/${problemId}/review-mark`,
+            { markedForReview }
         );
     } catch (error) {
         throw normalizeError(error);

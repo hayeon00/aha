@@ -40,7 +40,7 @@ public class UserAnswer {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "past_paper_attempt_id", nullable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_user_answer_past_paper_attempt_id"))
-    private  PastPaperAttempt pastPaperAttempt;
+    private PastPaperAttempt pastPaperAttempt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "problem_id", nullable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_user_answer_problem_id"))
@@ -65,7 +65,7 @@ public class UserAnswer {
 
 
     public static UserAnswer create(PastPaperAttempt pastPaperAttempt, Problem problem,
-        String userAnswer,boolean markedForReviewed) {
+        String userAnswer, boolean markedForReviewed) {
         return UserAnswer.builder()
             .pastPaperAttempt(pastPaperAttempt)
             .problem(problem)
@@ -74,20 +74,8 @@ public class UserAnswer {
             .build();
     }
 
-    public void update(String userAnswer) {
-        this.userAnswer = userAnswer.strip();
-    }
-
-    public void update() {
-        markedForReview = !markedForReview;
-    }
-
     public void updateUserAnswer(String userAnswer) {
         this.userAnswer = userAnswer.strip();
-    }
-
-    public void toggleChecked() {
-        markedForReview = !markedForReview;
     }
 
     public void right() {
@@ -101,4 +89,6 @@ public class UserAnswer {
     public void requestGrading() {
         problem.grade(this);
     }
+
+    public void updateMarkedForReview(boolean marked) { this.markedForReview = marked; }
 }
