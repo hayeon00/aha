@@ -5,6 +5,7 @@ import {
     getStudyRoom,
     kickStudyRoomMember,
     leaveStudyRoom,
+    startStudyRoom,
     updateStudyRoomReady,
 } from "../api/studyRoomApi.js";
 import "./StudyRoomWaitingPage.css";
@@ -22,6 +23,8 @@ const ERROR_MESSAGES = {
     STUDY_012: "방장은 자신을 강퇴할 수 없습니다.",
     STUDY_013: "대상 멤버를 찾을 수 없습니다.",
     STUDY_014: "방장 본인에게 권한을 위임할 수 없습니다.",
+    STUDY_015: "스터디를 시작하려면 최소 2명이 참여해야 합니다.",
+    STUDY_016: "모든 참가자가 준비 완료 상태여야 합니다.",
 };
 
 const getProfileImageUrl = (imageUrl) => {
@@ -128,6 +131,7 @@ function StudyRoomWaitingPage() {
             const data = await getStudyRoom(studyRoomId);
             setRoom(data);
         } catch (requestError) {
+            setRoom(null);
             setError(
                 getErrorMessage(
                     requestError,
@@ -149,6 +153,7 @@ function StudyRoomWaitingPage() {
             })
             .catch((requestError) => {
                 if (active) {
+                    setRoom(null);
                     setError(
                         getErrorMessage(
                             requestError,
@@ -176,6 +181,7 @@ function StudyRoomWaitingPage() {
     const allReady =
         Boolean(room?.members?.length) &&
         room.members.every((member) => member.ready);
+    const canStart = (room?.memberCount ?? 0) >= 2 && allReady;
 
     const runAction = async (actionKey, action, fallback) => {
         if (pendingAction) {
@@ -215,6 +221,58 @@ function StudyRoomWaitingPage() {
         } catch (requestError) {
             setActionError(
                 getErrorMessage(requestError, "스터디룸에서 나가지 못했습니다.")
+            );
+            setPendingAction("");
+        }
+    };
+
+    const handleStart = async () => {
+        if (!isHost || !canStart || pendingAction) {
+            return;
+        }
+
+        setPendingAction("start");
+        setActionError("");
+
+        try {
+            const data = await startStudyRoom(room.id);
+            const { pastPaperAttemptId, startedAt, dueAt } = data || {};
+
+            if (!pastPaperAttemptId) {
+                throw new Error("풀이 시작 응답에 풀이 ID가 없습니다.");
+            }
+
+            const attempt = {
+                attemptId: pastPaperAttemptId,
+                attemptStatus: "SOLVING",
+                startedAt,
+                dueAt,
+            };
+            const pastPaperTitle = room.pastPaper?.title || "스터디 기출문제";
+
+            sessionStorage.setItem(
+                `past-paper-attempt-${pastPaperAttemptId}`,
+                JSON.stringify(attempt)
+            );
+            sessionStorage.setItem(
+                `past-paper-title-attempt-${pastPaperAttemptId}`,
+                pastPaperTitle
+            );
+
+            navigate(`/past-paper-attempts/${pastPaperAttemptId}/solve`, {
+                replace: true,
+                state: {
+                    attempt,
+                    pastPaperTitle,
+                    studyRoomId: room.id,
+                },
+            });
+        } catch (requestError) {
+            setActionError(
+                getErrorMessage(
+                    requestError,
+                    "스터디룸 풀이를 시작하지 못했습니다."
+                )
             );
             setPendingAction("");
         }
@@ -436,18 +494,20 @@ function StudyRoomWaitingPage() {
                                 ? "모든 참가자가 준비되었습니다."
                                 : "아직 준비하지 않은 참가자가 있습니다."}
                         </strong>
-                        <span>
-                            풀이 시작 기능은 백엔드 API가 준비되면 연결됩니다.
-                        </span>
                     </div>
                     {isHost ? (
                         <button
                             type="button"
                             className="waiting-start-button"
-                            disabled
-                            title="풀이 시작 API 준비 후 사용할 수 있습니다."
+                            onClick={handleStart}
+                            disabled={!canStart || Boolean(pendingAction)}
+                            title={
+                                canStart
+                                    ? "스터디룸 풀이 시작"
+                                    : "최소 2명이 참여하고 모두 준비해야 시작할 수 있습니다."
+                            }
                         >
-                            풀이 시작
+                            {pendingAction === "start" ? "시작 중..." : "풀이 시작"}
                         </button>
                     ) : (
                         <button

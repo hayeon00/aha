@@ -107,7 +107,7 @@ public class StudyRoom {
         }
     }
 
-    public void validateForJoin(long memberCount) {
+    public void validateCanJoin(long memberCount) {
 
         validateNotCanceled();
 
@@ -126,7 +126,7 @@ public class StudyRoom {
         }
     }
 
-    public void validateForLeave() {
+    public void validateCanLeave() {
 
         validateNotCanceled();
 
@@ -138,7 +138,7 @@ public class StudyRoom {
         return status == StudyRoomStatus.WAITING;
     }
 
-    public void validateForKick() {
+    public void validateCanKick() {
 
         validateNotCanceled();
         validateNotSolving();
@@ -153,16 +153,44 @@ public class StudyRoom {
         }
     }
 
-    public void validateForChangeHost() {
+    public void validateCanChangeHost() {
 
         validateNotCanceled();
         validateNotSolving();
     }
 
-    public void validateForUpdateReady() {
+    public void validateCanUpdateReady() {
 
         validateNotCanceled();
         validateNotSolving();
         validateNotFeedback();
+    }
+
+    public void validateCanStart() {
+
+        validateNotCanceled();
+        validateNotSolving();
+        validateNotFeedback();
+        validateMetMinimumSize();
+        validateAllMemberReady();
+    }
+
+    private void validateMetMinimumSize() {
+
+        if (members.size() < 2) {
+            throw new BusinessException(ErrorCode.STUDY_ROOM_INSUFFICIENT_MEMBERS);
+        }
+    }
+
+    private void validateAllMemberReady(){
+
+        members.forEach(
+            StudyRoomMember::validateReady
+        );
+    }
+
+    public void updateStatusAfterStart() {
+
+        status = StudyRoomStatus.SOLVING;
     }
 }

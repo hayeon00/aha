@@ -161,4 +161,21 @@ public class StudyRoomMember {
 
         this.isReady = ready;
     }
+
+    public void assignAttempt(PastPaperAttempt pastPaperAttempt) {
+
+        this.pastPaperAttempt = pastPaperAttempt;
+    }
+
+    public void validateCanStartRoom() {
+
+        validateNotMember();
+    }
+
+    public void validateReady() {
+
+        if(!isReady){
+            throw new BusinessException(ErrorCode.STUDY_ROOM_ALL_MEMBER_NOT_READY);
+        }
+    }
 }

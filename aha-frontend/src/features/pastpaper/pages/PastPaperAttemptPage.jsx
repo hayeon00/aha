@@ -188,8 +188,9 @@ function PastPaperAttemptPage() {
     const answeredCount = answerSheetItems.filter((item) => item.userAnswer).length;
     const pastPaperTitle =
         location.state?.pastPaperTitle ||
+        sessionStorage.getItem(`past-paper-title-attempt-${attemptId}`) ||
         sessionStorage.getItem(`past-paper-title-${pastPaperId}`) ||
-        `기출 문제 #${pastPaperId}`;
+        (pastPaperId ? `기출 문제 #${pastPaperId}` : "스터디 기출문제");
 
     const moveToProblem = (nextIndex) => {
         if (nextIndex < 0 || nextIndex >= items.length) {
@@ -302,13 +303,18 @@ function PastPaperAttemptPage() {
         try {
             const response = await submitPastPaperAttempt(attemptId);
 
+            const resultPath = pastPaperId
+                ? `/past-papers/${pastPaperId}/attempts/${attemptId}/result`
+                : `/past-paper-attempts/${attemptId}/result`;
+
             navigate(
-                `/past-papers/${pastPaperId}/attempts/${attemptId}/result`,
+                resultPath,
                 {
                     replace: true,
                     state: {
                         pastPaperTitle,
                         result: response.data.result,
+                        studyRoomId: location.state?.studyRoomId,
                     },
                 }
             );

@@ -126,6 +126,18 @@ export const updateStudyRoomReady = async (ready) => {
     }
 };
 
+export const startStudyRoom = async (studyRoomId) => {
+    try {
+        const response = await axiosInstance.post(
+            `/api/v1/study-rooms/${studyRoomId}/start`
+        );
+
+        return getApiData(response);
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
 export const kickStudyRoomMember = async (studyRoomId, studyRoomMemberId) => {
     try {
         await axiosInstance.delete(

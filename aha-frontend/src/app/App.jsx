@@ -153,13 +153,25 @@ function App() {
                     path="/past-papers/:pastPaperId/attempts/:attemptId"
                     element={<PastPaperAttemptPage />}
                 />
+                <Route
+                    path="/past-paper-attempts/:attemptId/solve"
+                    element={<PastPaperAttemptPage />}
+                />
 
                 <Route
                     path="/past-papers/:pastPaperId/attempts/:attemptId/result"
                     element={<PastPaperResultPage />}
                 />
                 <Route
+                    path="/past-paper-attempts/:attemptId/result"
+                    element={<PastPaperResultPage />}
+                />
+                <Route
                     path="/past-papers/:pastPaperId/attempts/:attemptId/explanation"
+                    element={<PastPaperExplanationPage />}
+                />
+                <Route
+                    path="/past-paper-attempts/:attemptId/explanation"
                     element={<PastPaperExplanationPage />}
                 />
             </Route>

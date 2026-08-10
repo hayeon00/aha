@@ -77,6 +77,17 @@ public class PastPaperAttempt {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    public static PastPaperAttempt create(int timeLimit, long userId, PastPaper paper,
+        LocalDateTime now) {
+
+        return PastPaperAttempt.builder()
+            .userId(userId)
+            .pastPaper(paper)
+            .status(PastPaperAttemptStatus.SOLVING)
+            .dueAt(now.plusSeconds(timeLimit))
+            .build();
+    }
+
     public void validateOwner(Long userId) {
 
         if (!Objects.equals(this.userId, userId)) {

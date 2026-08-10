@@ -1,6 +1,7 @@
 package com.aha.domain.study.repository;
 
 import com.aha.domain.study.entity.StudyRoomMember;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,4 +23,14 @@ public interface StudyRoomMemberRepository extends JpaRepository<StudyRoomMember
     long countByStudyRoom_Id(Long studyRoomId);
 
     boolean existsByStudyRoom_IdAndUser_Id(Long studyRoomId, Long userId);
+
+    List<StudyRoomMember> findByStudyRoom_Id(Long roomId);
+
+
+    @Query("""
+    SELECT srm FROM StudyRoomMember srm
+      JOIN FETCH srm.user
+      WHERE srm.studyRoom.id = :roomId
+""")
+    List<StudyRoomMember> findByStudyRoom_IdWithUser(@Param("roomId") Long roomId);
 }

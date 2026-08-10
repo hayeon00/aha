@@ -1,8 +1,11 @@
 package com.aha.domain.study.service;
 
 import com.aha.domain.pastpaper.entity.PastPaper;
+import com.aha.domain.pastpaper.entity.PastPaperAttempt;
+import com.aha.domain.pastpaper.repository.PastPaperAttemptRepository;
 import com.aha.domain.pastpaper.repository.PastPaperRepository;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
+import com.aha.domain.study.dto.response.StudyRoomAttemptStartResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
@@ -21,6 +24,8 @@ import com.aha.domain.user.repository.UserRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import com.aha.global.response.PageResponseDto;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
@@ -39,10 +44,11 @@ public class StudyRoomService {
     private static final String ACTIVE_PARTICIPATION_UNIQUE_CONSTRAINT = "uk_active_study_room_participation_user_id";
 
     private final PastPaperRepository pastPaperRepository;
-    private final ActiveStudyRoomParticipationRepository activeStudyRoomParticipationRepository;
-    private final StudyRoomRepository studyRoomRepository;
+    private final ActiveStudyRoomParticipationRepository participationRepository;
+    private final StudyRoomRepository roomRepository;
     private final UserRepository userRepository;
-    private final StudyRoomMemberRepository studyRoomMemberRepository;
+    private final StudyRoomMemberRepository memberRepository;
+    private final PastPaperAttemptRepository attemptRepository;
 
     @Transactional
     public StudyRoomCreateResponseDto createStudyRoom(
@@ -50,7 +56,7 @@ public class StudyRoomService {
         Long userId
     ) {
 
-        if (activeStudyRoomParticipationRepository.existsByUserId(userId)) {
+        if (participationRepository.existsByUserId(userId)) {
             throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
         }
 
@@ -68,14 +74,14 @@ public class StudyRoomService {
                 )
             );
 
-        StudyRoom studyRoom = studyRoomRepository.save(StudyRoom.create(
+        StudyRoom room = roomRepository.save(StudyRoom.create(
             paper, createdBy, requestDto.title(),
             requestDto.description(), requestDto.capacity(), requestDto.timeLimit())
         );
 
-        registerStudyRoomMember(createdBy, studyRoom, StudyRoomMemberRole.HOST);
+        registerStudyRoomMember(createdBy, room, StudyRoomMemberRole.HOST);
 
-        return StudyRoomCreateResponseDto.from(studyRoom);
+        return StudyRoomCreateResponseDto.from(room);
     }
 
     @Transactional(readOnly = true)
@@ -90,7 +96,7 @@ public class StudyRoomService {
         );
 
         Page<StudyRoomResponseDto> result =
-            studyRoomRepository.findStudyRooms(
+            roomRepository.findStudyRooms(
                 examVersionId,
                 status,
                 pageable
@@ -100,26 +106,26 @@ public class StudyRoomService {
     }
 
     @Transactional(readOnly = true)
-    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId,Long userId) {
+    public StudyRoomDetailResponseDto getStudyRoom(Long studyRoomId, Long userId) {
 
-        StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
+        StudyRoom studyRoom = roomRepository.findStudyRoom(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
         studyRoom.validateNotCanceled();
 
-        return StudyRoomDetailResponseDto.from(studyRoom,userId);
+        return StudyRoomDetailResponseDto.from(studyRoom, userId);
     }
 
     @Transactional(readOnly = true)
     public StudyRoomDetailResponseDto getCurrentStudyRoom(Long userId) {
 
         ActiveStudyRoomParticipation participation
-            = activeStudyRoomParticipationRepository.findByUserIdWithStudyRoom(userId)
+            = participationRepository.findByUserIdWithStudyRoom(userId)
             .orElseThrow(() -> new BusinessException(ErrorCode.JOINED_STUDY_ROOM_NOT_FOUND));
 
         Long studyRoomId = participation.getStudyRoom().getId();
 
-        StudyRoom studyRoom = studyRoomRepository.findStudyRoom(studyRoomId)
+        StudyRoom studyRoom = roomRepository.findStudyRoom(studyRoomId)
             .orElseThrow(() -> {
                 log.error(
                     "스터디룸 정합성 오류: active participation은 존재하지만 room 상세 조회 실패. userId={}, studyRoomId={}",
@@ -138,23 +144,23 @@ public class StudyRoomService {
     @Transactional
     public StudyRoomJoinResponseDto joinStudyRoom(Long userId, Long studyRoomId) {
 
-        StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
+        StudyRoom room = roomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        if (studyRoom.isWaiting() && activeStudyRoomParticipationRepository.existsByUserId(
+        if (room.isWaiting() && participationRepository.existsByUserId(
             userId)) {
 
             throw new BusinessException(ErrorCode.STUDY_PARTICIPATION_ALREADY_EXISTS);
         }
 
-        if (studyRoomMemberRepository.existsByStudyRoom_IdAndUser_Id(studyRoomId, userId)) {
+        if (memberRepository.existsByStudyRoom_IdAndUser_Id(studyRoomId, userId)) {
 
             throw new BusinessException(ErrorCode.STUDY_ROOM_ALREADY_JOINED);
         }
 
-        studyRoom.validateForJoin(
+        room.validateCanJoin(
 
-            studyRoomMemberRepository.countByStudyRoom_Id(studyRoomId)
+            memberRepository.countByStudyRoom_Id(studyRoomId)
         );
 
         User user = userRepository.findById(userId)
@@ -166,19 +172,19 @@ public class StudyRoomService {
                 )
             );
 
-        registerStudyRoomMember(user, studyRoom, StudyRoomMemberRole.MEMBER);
+        registerStudyRoomMember(user, room, StudyRoomMemberRole.MEMBER);
 
-        return StudyRoomJoinResponseDto.from(studyRoom);
+        return StudyRoomJoinResponseDto.from(room);
     }
 
-    private void registerStudyRoomMember(User user, StudyRoom studyRoom, StudyRoomMemberRole role) {
+    private void registerStudyRoomMember(User user, StudyRoom room, StudyRoomMemberRole role) {
 
-        if (studyRoom.isWaiting()) {
+        if (room.isWaiting()) {
 
             try {
 
-                activeStudyRoomParticipationRepository.saveAndFlush(
-                    ActiveStudyRoomParticipation.create(user.getId(), studyRoom)
+                participationRepository.saveAndFlush(
+                    ActiveStudyRoomParticipation.create(user.getId(), room)
                 );
             } catch (DataIntegrityViolationException e) {
 
@@ -191,7 +197,7 @@ public class StudyRoomService {
             }
         }
 
-        studyRoomMemberRepository.save(StudyRoomMember.create(user, studyRoom, role));
+        memberRepository.save(StudyRoomMember.create(user, room, role));
     }
 
     private boolean isActiveParticipationUniqueViolation(
@@ -213,5 +219,47 @@ public class StudyRoomService {
         }
 
         return false;
+    }
+
+    @Transactional
+    public StudyRoomAttemptStartResponseDto startStudyRoom(Long roomId, Long userId) {
+
+        StudyRoom room = roomRepository.findByIdForUpdate(roomId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+
+        StudyRoomMember maybeHost = memberRepository.findByStudyRoom_IdAndUser_Id(
+                room.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+
+        maybeHost.validateCanStartRoom();
+
+        List<StudyRoomMember> members = memberRepository.findByStudyRoom_IdWithUser(roomId);
+
+        room.validateCanStart();
+
+        LocalDateTime startTime = LocalDateTime.now();
+
+        List<PastPaperAttempt> newAttempts = members
+            .stream().map(
+
+                member ->
+                    PastPaperAttempt.create(
+                        room.getTimeLimit(),
+                        member.getUser().getId(),
+                        room.getPastPaper(),
+                        startTime
+                    )
+            ).toList();
+
+        for (int i = 0; i < members.size(); i++) {
+
+            members.get(i).assignAttempt(newAttempts.get(i));
+        }
+
+        attemptRepository.saveAll(newAttempts);
+
+        room.updateStatusAfterStart();
+
+        return StudyRoomAttemptStartResponseDto.from(maybeHost.getPastPaperAttempt());
     }
 }

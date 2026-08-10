@@ -29,7 +29,7 @@ public class StudyRoomMemberService {
         StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        studyRoom.validateForLeave();
+        studyRoom.validateCanLeave();
 
         StudyRoomMember member = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
                 studyRoom.getId(), userId)
@@ -56,7 +56,7 @@ public class StudyRoomMemberService {
         StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        studyRoom.validateForKick();
+        studyRoom.validateCanKick();
 
         StudyRoomMember member = studyRoomMemberRepository.findByIdAndStudyRoom_IdWithUser(memberId,
                 studyRoomId)
@@ -85,7 +85,7 @@ public class StudyRoomMemberService {
         StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(studyRoomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        studyRoom.validateForChangeHost();
+        studyRoom.validateCanChangeHost();
 
         Long memberId = requestDto.studyRoomMemberId();
 
@@ -114,7 +114,7 @@ public class StudyRoomMemberService {
         StudyRoom studyRoom = studyRoomRepository.findByIdForUpdate(participation.getStudyRoom().getId())
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
 
-        studyRoom.validateForUpdateReady();
+        studyRoom.validateCanUpdateReady();
 
         StudyRoomMember member = studyRoomMemberRepository.findByStudyRoom_IdAndUser_Id(
                 studyRoom.getId(), userId)

@@ -45,8 +45,9 @@ function PastPaperResultPage() {
 
     const pastPaperTitle =
         location.state?.pastPaperTitle ||
+        sessionStorage.getItem(`past-paper-title-attempt-${attemptId}`) ||
         sessionStorage.getItem(`past-paper-title-${pastPaperId}`) ||
-        `기출 문제 #${pastPaperId}`;
+        (pastPaperId ? `기출 문제 #${pastPaperId}` : "스터디 기출문제");
 
     const partResults = useMemo(
         () => result?.partResults || [],
@@ -257,8 +258,15 @@ function PastPaperResultPage() {
                         className="secondary"
                         onClick={() =>
                             navigate(
-                                `/past-papers/${pastPaperId}/attempts/${attemptId}/explanation`,
-                                { state: { pastPaperTitle } }
+                                pastPaperId
+                                    ? `/past-papers/${pastPaperId}/attempts/${attemptId}/explanation`
+                                    : `/past-paper-attempts/${attemptId}/explanation`,
+                                {
+                                    state: {
+                                        pastPaperTitle,
+                                        studyRoomId: location.state?.studyRoomId,
+                                    },
+                                }
                             )
                         }
                     >
