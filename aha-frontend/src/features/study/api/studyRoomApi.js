@@ -138,6 +138,18 @@ export const startStudyRoom = async (studyRoomId) => {
     }
 };
 
+export const getMyStudyRoomAttempt = async (studyRoomId) => {
+    try {
+        const response = await axiosInstance.get(
+            `/api/v1/study-rooms/${studyRoomId}/attempts/me`
+        );
+
+        return getApiData(response);
+    } catch (error) {
+        throw normalizeError(error);
+    }
+};
+
 export const kickStudyRoomMember = async (studyRoomId, studyRoomMemberId) => {
     try {
         await axiosInstance.delete(

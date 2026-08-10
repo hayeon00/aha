@@ -1,11 +1,11 @@
 package com.aha.domain.study.service;
 
+import com.aha.domain.pastpaper.dto.response.PastPaperAttemptStartResponseDto;
 import com.aha.domain.pastpaper.entity.PastPaper;
 import com.aha.domain.pastpaper.entity.PastPaperAttempt;
 import com.aha.domain.pastpaper.repository.PastPaperAttemptRepository;
 import com.aha.domain.pastpaper.repository.PastPaperRepository;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
-import com.aha.domain.study.dto.response.StudyRoomAttemptStartResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
@@ -16,6 +16,7 @@ import com.aha.domain.study.entity.StudyRoomMember;
 import com.aha.domain.study.enums.StudyRoomMemberRole;
 import com.aha.domain.study.enums.StudyRoomSortType;
 import com.aha.domain.study.enums.StudyRoomStatus;
+import com.aha.domain.study.event.application.StudyRoomStartedApplicationEvent;
 import com.aha.domain.study.repository.ActiveStudyRoomParticipationRepository;
 import com.aha.domain.study.repository.StudyRoomMemberRepository;
 import com.aha.domain.study.repository.StudyRoomRepository;
@@ -29,6 +30,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +51,7 @@ public class StudyRoomService {
     private final UserRepository userRepository;
     private final StudyRoomMemberRepository memberRepository;
     private final PastPaperAttemptRepository attemptRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public StudyRoomCreateResponseDto createStudyRoom(
@@ -222,7 +225,10 @@ public class StudyRoomService {
     }
 
     @Transactional
-    public StudyRoomAttemptStartResponseDto startStudyRoom(Long roomId, Long userId) {
+    public PastPaperAttemptStartResponseDto startStudyRoom(
+        Long roomId,
+        Long userId
+    ) {
 
         StudyRoom room = roomRepository.findByIdForUpdate(roomId)
             .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
@@ -237,17 +243,17 @@ public class StudyRoomService {
 
         room.validateCanStart();
 
-        LocalDateTime startTime = LocalDateTime.now();
+        LocalDateTime startedAt = LocalDateTime.now();
+        LocalDateTime dueAt = startedAt.plusSeconds(room.getTimeLimit());
 
         List<PastPaperAttempt> newAttempts = members
             .stream().map(
 
                 member ->
                     PastPaperAttempt.create(
-                        room.getTimeLimit(),
                         member.getUser().getId(),
                         room.getPastPaper(),
-                        startTime
+                        dueAt
                     )
             ).toList();
 
@@ -260,6 +266,31 @@ public class StudyRoomService {
 
         room.updateStatusAfterStart();
 
-        return StudyRoomAttemptStartResponseDto.from(maybeHost.getPastPaperAttempt());
+        eventPublisher.publishEvent(
+            new StudyRoomStartedApplicationEvent(
+                room.getId(),
+                startedAt,
+                dueAt
+            )
+        );
+
+        return PastPaperAttemptStartResponseDto.from(maybeHost.getPastPaperAttempt());
+    }
+
+    @Transactional(readOnly = true)
+    public PastPaperAttemptStartResponseDto getMyAttemptInRoom(Long roomId, Long userId) {
+
+        StudyRoom room = roomRepository.findById(roomId)
+            .orElseThrow(()->new BusinessException(ErrorCode.STUDY_ROOM_NOT_FOUND));
+
+        room.validateCanGetAttempt();
+
+        StudyRoomMember requester = memberRepository.findByStudyRoom_IdAndUser_IdWithAttempt(
+                room.getId(), userId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
+
+        requester.validateCanGetAttempt();
+
+        return PastPaperAttemptStartResponseDto.from(requester.getPastPaperAttempt());
     }
 }

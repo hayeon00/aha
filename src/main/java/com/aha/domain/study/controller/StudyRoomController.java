@@ -1,7 +1,7 @@
 package com.aha.domain.study.controller;
 
+import com.aha.domain.pastpaper.dto.response.PastPaperAttemptStartResponseDto;
 import com.aha.domain.study.dto.request.StudyRoomCreateRequestDto;
-import com.aha.domain.study.dto.response.StudyRoomAttemptStartResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomCreateResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomDetailResponseDto;
 import com.aha.domain.study.dto.response.StudyRoomJoinResponseDto;
@@ -138,7 +138,7 @@ public class StudyRoomController {
 
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/study-rooms/{studyRoomId}/start")
-    public ResponseEntity<ApiResponse<StudyRoomAttemptStartResponseDto>> startStudyRoom(
+    public ResponseEntity<ApiResponse<PastPaperAttemptStartResponseDto>> startStudyRoom(
         @PathVariable("studyRoomId") Long roomId,
         @AuthenticationPrincipal CustomUserDetails userDetails
     ){
@@ -153,4 +153,20 @@ public class StudyRoomController {
             );
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/study-rooms/{studyRoomId}/attempts/me")
+    public ResponseEntity<ApiResponse<PastPaperAttemptStartResponseDto>> getMyAttemptInRoom(
+        @PathVariable("studyRoomId") Long roomId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ){
+
+        return ResponseEntity.ok()
+            .body(
+                ApiResponse.success(
+                    200,
+                    "스터디룸 내 풀이 조회 성공",
+                    roomService.getMyAttemptInRoom(roomId,userDetails.getId())
+                )
+            );
+    }
 }

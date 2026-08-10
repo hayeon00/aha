@@ -6,12 +6,14 @@ import com.aha.domain.study.entity.ActiveStudyRoomParticipation;
 import com.aha.domain.study.entity.StudyRoom;
 import com.aha.domain.study.entity.StudyRoomMember;
 import com.aha.domain.study.enums.StudyRoomMemberRole;
+import com.aha.domain.study.event.application.StudyRoomReadyUpdatedApplicationEvent;
 import com.aha.domain.study.repository.ActiveStudyRoomParticipationRepository;
 import com.aha.domain.study.repository.StudyRoomMemberRepository;
 import com.aha.domain.study.repository.StudyRoomRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,8 @@ public class StudyRoomMemberService {
     private final StudyRoomRepository studyRoomRepository;
     private final StudyRoomMemberRepository studyRoomMemberRepository;
     private final ActiveStudyRoomParticipationRepository activeStudyRoomParticipationRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
 
     @Transactional
     public void leaveStudyRoom(Long studyRoomId, Long userId) {
@@ -121,5 +125,13 @@ public class StudyRoomMemberService {
             .orElseThrow(() -> new BusinessException(ErrorCode.REQUESTER_NOT_STUDY_ROOM_MEMBER));
 
         member.updateReady(requestDto.ready());
+
+        eventPublisher.publishEvent(
+            new StudyRoomReadyUpdatedApplicationEvent(
+                studyRoom.getId(),
+                member.getId(),
+                member.isReady()
+            )
+        );
     }
 }

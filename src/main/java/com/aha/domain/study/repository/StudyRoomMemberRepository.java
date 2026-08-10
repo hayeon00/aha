@@ -33,4 +33,12 @@ public interface StudyRoomMemberRepository extends JpaRepository<StudyRoomMember
       WHERE srm.studyRoom.id = :roomId
 """)
     List<StudyRoomMember> findByStudyRoom_IdWithUser(@Param("roomId") Long roomId);
+
+    @Query("""
+    SELECT srm FROM StudyRoomMember srm
+      LEFT JOIN FETCH srm.pastPaperAttempt ppa
+      WHERE srm.user.id = :userId
+        AND srm.studyRoom.id = :roomId
+""")
+    Optional<StudyRoomMember> findByStudyRoom_IdAndUser_IdWithAttempt(@Param("roomId") Long roomId, @Param("userId")Long userId);
 }

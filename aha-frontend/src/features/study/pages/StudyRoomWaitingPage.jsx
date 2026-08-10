@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
     changeStudyRoomHost,
+    getMyStudyRoomAttempt,
     getStudyRoom,
     kickStudyRoomMember,
     leaveStudyRoom,
     startStudyRoom,
     updateStudyRoomReady,
 } from "../api/studyRoomApi.js";
+import { useStudyRoomEvents } from "../hooks/useStudyRoomEvents.js";
 import "./StudyRoomWaitingPage.css";
 
 const API_BASE_URL =
@@ -25,6 +27,8 @@ const ERROR_MESSAGES = {
     STUDY_014: "방장 본인에게 권한을 위임할 수 없습니다.",
     STUDY_015: "스터디를 시작하려면 최소 2명이 참여해야 합니다.",
     STUDY_016: "모든 참가자가 준비 완료 상태여야 합니다.",
+    STUDY_017: "아직 풀이가 시작되지 않은 스터디룸입니다.",
+    STUDY_018: "현재 진행 중인 내 풀이를 찾을 수 없습니다.",
 };
 
 const getProfileImageUrl = (imageUrl) => {
@@ -123,6 +127,7 @@ function StudyRoomWaitingPage() {
     const [error, setError] = useState("");
     const [actionError, setActionError] = useState("");
     const [pendingAction, setPendingAction] = useState("");
+    const isMovingToAttemptRef = useRef(false);
 
     const loadRoom = useCallback(async () => {
         setError("");
@@ -183,6 +188,109 @@ function StudyRoomWaitingPage() {
         room.members.every((member) => member.ready);
     const canStart = (room?.memberCount ?? 0) >= 2 && allReady;
 
+    const applyReadyUpdate = useCallback(({ memberId, ready }) => {
+        setRoom((currentRoom) => {
+            if (!currentRoom?.members) {
+                return currentRoom;
+            }
+
+            return {
+                ...currentRoom,
+                members: currentRoom.members.map((member) =>
+                    member.memberId === memberId
+                        ? { ...member, ready }
+                        : member
+                ),
+            };
+        });
+    }, []);
+
+    const moveToAttempt = useCallback(
+        (data) => {
+            const { attemptId, startedAt, dueAt } = data || {};
+
+            if (!attemptId || isMovingToAttemptRef.current) {
+                return false;
+            }
+
+            isMovingToAttemptRef.current = true;
+
+            const attempt = {
+                attemptId,
+                attemptStatus: "SOLVING",
+                startedAt,
+                dueAt,
+            };
+            const pastPaperTitle =
+                room?.pastPaper?.title || "스터디 기출문제";
+
+            sessionStorage.setItem(
+                `past-paper-attempt-${attemptId}`,
+                JSON.stringify(attempt)
+            );
+            sessionStorage.setItem(
+                `past-paper-title-attempt-${attemptId}`,
+                pastPaperTitle
+            );
+
+            navigate(`/past-paper-attempts/${attemptId}/solve`, {
+                replace: true,
+                state: {
+                    attempt,
+                    pastPaperTitle,
+                    studyRoomId: room?.id,
+                },
+            });
+
+            return true;
+        },
+        [navigate, room?.id, room?.pastPaper?.title]
+    );
+
+    const enterStartedAttempt = useCallback(async () => {
+        if (!studyRoomId || isMovingToAttemptRef.current) {
+            return;
+        }
+
+        setPendingAction("transition");
+        setActionError("");
+
+        try {
+            const attempt = await getMyStudyRoomAttempt(studyRoomId);
+
+            if (!moveToAttempt(attempt)) {
+                throw new Error("풀이 시작 응답에 풀이 ID가 없습니다.");
+            }
+        } catch (requestError) {
+            setActionError(
+                getErrorMessage(
+                    requestError,
+                    "시작된 풀이 정보를 불러오지 못했습니다."
+                )
+            );
+            setPendingAction("");
+        }
+    }, [moveToAttempt, studyRoomId]);
+
+    useStudyRoomEvents({
+        studyRoomId,
+        onConnected: loadRoom,
+        onStarted: enterStartedAttempt,
+        onReadyUpdated: applyReadyUpdate,
+    });
+
+    useEffect(() => {
+        if (room?.status !== "SOLVING") {
+            return undefined;
+        }
+
+        const timerId = window.setTimeout(() => {
+            void enterStartedAttempt();
+        }, 0);
+
+        return () => window.clearTimeout(timerId);
+    }, [enterStartedAttempt, room?.status]);
+
     const runAction = async (actionKey, action, fallback) => {
         if (pendingAction) {
             return;
@@ -201,12 +309,33 @@ function StudyRoomWaitingPage() {
         }
     };
 
-    const handleReady = () =>
-        runAction(
-            "ready",
-            () => updateStudyRoomReady(!me.ready),
-            "준비 상태를 변경하지 못했습니다."
-        );
+    const handleReady = async () => {
+        if (pendingAction) {
+            return;
+        }
+
+        const nextReady = !me.ready;
+
+        setPendingAction("ready");
+        setActionError("");
+
+        try {
+            await updateStudyRoomReady(nextReady);
+            applyReadyUpdate({
+                memberId: me.memberId,
+                ready: nextReady,
+            });
+        } catch (requestError) {
+            setActionError(
+                getErrorMessage(
+                    requestError,
+                    "준비 상태를 변경하지 못했습니다."
+                )
+            );
+        } finally {
+            setPendingAction("");
+        }
+    };
 
     const handleLeave = async () => {
         if (!window.confirm("스터디룸에서 나가시겠습니까?")) {
@@ -236,37 +365,10 @@ function StudyRoomWaitingPage() {
 
         try {
             const data = await startStudyRoom(room.id);
-            const { pastPaperAttemptId, startedAt, dueAt } = data || {};
 
-            if (!pastPaperAttemptId) {
+            if (!moveToAttempt(data)) {
                 throw new Error("풀이 시작 응답에 풀이 ID가 없습니다.");
             }
-
-            const attempt = {
-                attemptId: pastPaperAttemptId,
-                attemptStatus: "SOLVING",
-                startedAt,
-                dueAt,
-            };
-            const pastPaperTitle = room.pastPaper?.title || "스터디 기출문제";
-
-            sessionStorage.setItem(
-                `past-paper-attempt-${pastPaperAttemptId}`,
-                JSON.stringify(attempt)
-            );
-            sessionStorage.setItem(
-                `past-paper-title-attempt-${pastPaperAttemptId}`,
-                pastPaperTitle
-            );
-
-            navigate(`/past-paper-attempts/${pastPaperAttemptId}/solve`, {
-                replace: true,
-                state: {
-                    attempt,
-                    pastPaperTitle,
-                    studyRoomId: room.id,
-                },
-            });
         } catch (requestError) {
             setActionError(
                 getErrorMessage(

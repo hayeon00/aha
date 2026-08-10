@@ -77,14 +77,17 @@ public class PastPaperAttempt {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public static PastPaperAttempt create(int timeLimit, long userId, PastPaper paper,
-        LocalDateTime now) {
+    public static PastPaperAttempt create(
+        long userId,
+        PastPaper paper,
+        LocalDateTime dueAt
+    ) {
 
         return PastPaperAttempt.builder()
             .userId(userId)
             .pastPaper(paper)
             .status(PastPaperAttemptStatus.SOLVING)
-            .dueAt(now.plusSeconds(timeLimit))
+            .dueAt(dueAt)
             .build();
     }
 
