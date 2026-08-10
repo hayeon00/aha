@@ -26,5 +26,4 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer,Long> {
 
     Optional<UserAnswer> findByPastPaperAttempt_IdAndProblem_Id(Long attemptId, Long problemId);
 
-    List<UserAnswer> findByPastPaperAttempt_Id(Long attemptId);
 }
