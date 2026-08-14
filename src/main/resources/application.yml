@@ -70,6 +70,11 @@ file:
   profile-upload-dir: ${PROFILE_UPLOAD_DIR:uploads/profile}
 
 document:
+  ocr:
+    data-path: ${TESSERACT_DATA_PATH:}
+    native-library-path: ${TESSERACT_NATIVE_LIBRARY_PATH:}
+    language: ${TESSERACT_LANGUAGE:kor+eng}
+
   upload:
     directory: ${DOCUMENT_UPLOAD_DIRECTORY:uploads/documents}
     max-file-size: ${DOCUMENT_MAX_FILE_SIZE:20MB}
