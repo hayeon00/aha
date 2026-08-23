@@ -696,10 +696,8 @@ CREATE TABLE `document_scope_mapping` (
 
                                           CONSTRAINT `chk_mapping_method`
                                               CHECK (`mapping_method` IN (
-                                                                          'VECTOR',
-                                                                          'LLM',
-                                                                          'HYBRID',
-                                                                          'MANUAL'
+                                                                          'EXACT_TITLE',
+                                                                          'HYBRID'
                                                   ))
 );
 
