@@ -7,7 +7,7 @@ import com.aha.domain.document.repository.DocumentProcessingRepository;
 import com.aha.domain.document.repository.SourceDocumentRepository;
 import com.aha.domain.document.model.ValidatedDocumentFile;
 import com.aha.domain.document.model.StoredDocumentFile;
-import com.aha.domain.document.service.upload.DocumentFileStorageService;
+import com.aha.domain.document.service.storage.DocumentFileStorageService;
 import com.aha.domain.document.service.upload.DocumentFileValidator;
 import com.aha.domain.learningnote.dto.response.LearningNoteCreateResponseDto;
 import com.aha.domain.learningnote.entity.LearningNote;
