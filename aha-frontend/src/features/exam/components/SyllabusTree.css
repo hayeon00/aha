@@ -143,6 +143,15 @@
     border-color: #edf0f4;
 }
 
+.syllabus-topic-button.preview-only {
+    cursor: default;
+}
+
+.syllabus-topic-button.preview-only:hover {
+    border-color: transparent;
+    background: transparent;
+}
+
 .syllabus-topic-button.selected {
     background: #ffffff;
     border-color: #ff6b00;

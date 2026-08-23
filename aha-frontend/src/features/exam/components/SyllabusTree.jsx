@@ -24,6 +24,7 @@ function SyllabusTree({
                           selectedNodeId,
                           onSelectNode,
                           topicProgresses = [],
+                          selectable = true,
                       }) {
     const [closedNodeIds, setClosedNodeIds] = useState([]);
 
@@ -121,12 +122,13 @@ function SyllabusTree({
                             <li key={node.id} className="syllabus-topic-item">
                                 <button
                                     type="button"
-                                    className={
-                                        isSelected
-                                            ? "syllabus-topic-button selected"
-                                            : "syllabus-topic-button"
-                                    }
-                                    onClick={() => onSelectNode(node)}
+                                    className={[
+                                        "syllabus-topic-button",
+                                        isSelected ? "selected" : "",
+                                        !selectable ? "preview-only" : "",
+                                    ].filter(Boolean).join(" ")}
+                                    onClick={() => selectable && onSelectNode?.(node)}
+                                    aria-disabled={!selectable}
                                 >
                                     <span
                                         className={[

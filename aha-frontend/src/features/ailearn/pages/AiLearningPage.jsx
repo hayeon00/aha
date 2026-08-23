@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
+import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
+import SyllabusTree from "../../exam/components/SyllabusTree.jsx";
 import { useLearningNoteCreation } from "../hooks/useLearningNoteCreation.js";
 import LearningNoteDetailPage from "./LearningNoteDetailPage.jsx";
 
@@ -38,12 +40,21 @@ function AiLearningPage() {
         userExams,
         selectedUserExamId,
         selectedUserExam,
+        selectedExamVersionId,
         isExamLoading,
         examMessage,
     } = useUserExams({
         initialUserExamId: Number.isInteger(requestedUserExamId) && requestedUserExamId > 0
             ? requestedUserExamId
             : undefined,
+    });
+
+    const {
+        scopeNodes,
+        isScopeLoading,
+        scopeMessage,
+    } = useExamScopeNodes({
+        examVersionId: selectedExamVersionId,
     });
 
     const {
@@ -162,22 +173,51 @@ function AiLearningPage() {
                         </header>
                         <section className="studio-panel studio-ai-canvas">
                             <form className="studio-form" onSubmit={handleSubmit}>
-                            <fieldset disabled={isWorking || submitting}>
-                                <div className="canvas-context-bar">
-                                    <div className="studio-title-field">
-                                        <div className="studio-title-label"><strong>학습 노트 제목</strong><span>AI가 생성할 노트의 이름을 입력해 주세요</span></div>
-                                        <label className="canvas-title-pill">
-                                            <span className="title-field-icon" aria-hidden="true">Aa</span>
-                                            <input
-                                                value={title}
-                                                maxLength={255}
-                                                onChange={(event) => setTitle(event.target.value)}
-                                                placeholder={selectedUserExam ? `예: ${selectedUserExam.examName} 핵심 요약` : "학습 노트 제목을 입력하세요"}
-                                                aria-label="학습 노트 제목"
-                                            />
-                                        </label>
+                                <fieldset disabled={isWorking || submitting}>
+                                    <div className="canvas-context-bar">
+                                        <div className="studio-title-field">
+                                            <div className="studio-title-label"><strong>학습 노트 제목</strong><span>AI가 생성할 노트의 이름을 입력해 주세요</span></div>
+                                            <label className="canvas-title-pill">
+                                                <span className="title-field-icon" aria-hidden="true">Aa</span>
+                                                <input
+                                                    value={title}
+                                                    maxLength={255}
+                                                    onChange={(event) => setTitle(event.target.value)}
+                                                    placeholder={selectedUserExam ? `예: ${selectedUserExam.examName} 핵심 요약` : "학습 노트 제목을 입력하세요"}
+                                                    aria-label="학습 노트 제목"
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
-                                </div>
+                                    <div className="studio-upload-layout">
+                                <aside
+                                    className="studio-syllabus-panel"
+                                    aria-label={`${selectedUserExam?.examName ?? "선택한 시험"} 시험 목차`}
+                                >
+                                    <div className="studio-syllabus-scroll">
+                                        {isScopeLoading ? (
+                                            <div className="studio-syllabus-state" aria-busy="true">
+                                                <span className="studio-spinner" />
+                                                <p>목차를 불러오고 있어요.</p>
+                                            </div>
+                                        ) : scopeNodes.length > 0 ? (
+                                            <SyllabusTree
+                                                nodes={scopeNodes}
+                                                selectedNodeId={null}
+                                                onSelectNode={() => {}}
+                                                selectable={false}
+                                            />
+                                        ) : (
+                                            <div className="studio-syllabus-state">
+                                                <p>{scopeMessage || "표시할 시험 목차가 없습니다."}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="studio-syllabus-caption">
+                                        업로드한 내용은 관련 있는 목차에 자동으로 연결됩니다.
+                                    </p>
+                                </aside>
+                                <div className="studio-upload-column">
                                 <div className="studio-field studio-upload-field">
                                     {!file ? (
                                         <div
@@ -226,16 +266,18 @@ function AiLearningPage() {
                                     />
                                     {validationMessage && <p className="studio-validation"><AlertIcon />{validationMessage}</p>}
                                 </div>
-                            </fieldset>
-
-                            {file && (
-                                <div className="canvas-action-row">
-                                    <span><ShieldIcon />문서는 노트 생성에만 사용돼요</span>
-                                    <button className="studio-submit" type="submit" disabled={!canSubmit}>
-                                        {submitting ? <><span className="button-spinner" />생성 중...</> : <><SparkleIcon />AI 학습노트 생성<ArrowIcon /></>}
-                                    </button>
                                 </div>
-                            )}
+                                    </div>
+                                </fieldset>
+
+                                {file && (
+                                    <div className="canvas-action-row">
+                                        <span><ShieldIcon />문서는 노트 생성에만 사용돼요</span>
+                                        <button className="studio-submit" type="submit" disabled={!canSubmit}>
+                                            {submitting ? <><span className="button-spinner" />생성 중...</> : <><SparkleIcon />AI 학습노트 생성<ArrowIcon /></>}
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         </section>
                     </section>
