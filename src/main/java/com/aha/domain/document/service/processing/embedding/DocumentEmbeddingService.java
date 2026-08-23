@@ -237,7 +237,7 @@ public class DocumentEmbeddingService {
     }
 
     @Transactional
-    public void ensureScopeNodeEmbeddings(
+    public boolean ensureScopeNodeEmbeddings(
             List<ExamScopeNode> scopeNodes
     ) {
         if (scopeNodes == null || scopeNodes.isEmpty()) {
@@ -344,7 +344,7 @@ public class DocumentEmbeddingService {
                     embeddingModel
             );
 
-            return;
+            return false;
         }
 
         for (
@@ -436,6 +436,8 @@ public class DocumentEmbeddingService {
                 embeddingProvider,
                 embeddingModel
         );
+
+        return true;
     }
 
     private record ChunkEmbeddingTarget(
