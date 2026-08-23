@@ -1,4 +1,4 @@
-package com.aha.domain.document.service.upload;
+package com.aha.domain.document.service.storage;
 
 import com.aha.domain.document.config.DocumentUploadProperties;
 import com.aha.domain.document.enums.DocumentFileExtension;
@@ -450,5 +450,24 @@ public class DocumentFileStorageService {
                     currentDirectory
                             .getParent();
         }
+    }
+
+    public Path resolveForRead(
+            String storageKey
+    ) {
+        Path filePath =
+                resolveStoragePath(
+                        storageKey
+                );
+
+        if (!Files.isRegularFile(
+                filePath
+        )) {
+            throw new BusinessException(
+                    ErrorCode.DOCUMENT_STORAGE_FAILED
+            );
+        }
+
+        return filePath;
     }
 }

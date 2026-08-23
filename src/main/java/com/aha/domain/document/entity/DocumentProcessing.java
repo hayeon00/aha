@@ -13,6 +13,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Getter
 @Entity
@@ -51,6 +52,36 @@ public class DocumentProcessing {
     private static final int MAX_ERROR_CODE_LENGTH = 100;
     private static final int MAX_ERROR_MESSAGE_LENGTH = 2000;
 
+    /**
+     * 사용자/운영 관점에서 의미 있는 파이프라인 단계만 관리한다.
+     *
+     * EMBEDDING은 SCOPE_MAPPING 내부 구현 세부사항이므로
+     * 별도 상태 전이 단계로 취급하지 않는다.
+     *
+     * 추후 내부 구현이 바뀌더라도 처리 상태 모델이 불필요하게
+     * 흔들리지 않도록 업무 단계 중심으로 전이 규칙을 정의한다.
+     */
+    private static final Map<DocumentProcessingStep, DocumentProcessingStep>
+            NEXT_STEP_MAP = Map.of(
+            DocumentProcessingStep.DOCUMENT_PARSING,
+            DocumentProcessingStep.QUALITY_CHECK,
+
+            DocumentProcessingStep.QUALITY_CHECK,
+            DocumentProcessingStep.CHUNKING,
+
+            DocumentProcessingStep.CHUNKING,
+            DocumentProcessingStep.SCOPE_MAPPING,
+
+            DocumentProcessingStep.SCOPE_MAPPING,
+            DocumentProcessingStep.CONTENT_GENERATING,
+
+            DocumentProcessingStep.CONTENT_GENERATING,
+            DocumentProcessingStep.FINALIZING,
+
+            DocumentProcessingStep.FINALIZING,
+            DocumentProcessingStep.COMPLETED
+    );
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -79,7 +110,7 @@ public class DocumentProcessing {
     @Column(name = "attempt_no", nullable = false)
     private int attemptNo;
 
-    @Column(name = "error_code", length = 50)
+    @Column(name = "error_code", length = 100)
     private String errorCode;
 
     @Column(name = "error_message", length = 2000)
@@ -99,50 +130,68 @@ public class DocumentProcessing {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-
     public static DocumentProcessing createPending(
             LearningNote learningNote,
             String pipelineVersion,
             int attemptNo
     ) {
-        validateLearningNote(learningNote);
-        validateAttemptNo(attemptNo);
+        validateLearningNote(
+                learningNote
+        );
+
+        validateAttemptNo(
+                attemptNo
+        );
 
         return DocumentProcessing.builder()
                 .learningNote(learningNote)
                 .status(DocumentProcessingStatus.PENDING)
                 .currentStep(null)
                 .pipelineVersion(
-                        normalizePipelineVersion(pipelineVersion)
+                        normalizePipelineVersion(
+                                pipelineVersion
+                        )
                 )
                 .attemptNo(attemptNo)
                 .build();
     }
 
+    /**
+     * PENDING -> PROCESSING
+     *
+     * 처리 시작 시 첫 업무 단계인 DOCUMENT_PARSING으로 진입한다.
+     */
     public void start() {
-        if (status != DocumentProcessingStatus.PENDING) {
+        if (status
+                != DocumentProcessingStatus.PENDING) {
+
             throw new IllegalStateException(
                     "대기 중인 문서 처리만 시작할 수 있습니다."
             );
         }
 
-        this.status = DocumentProcessingStatus.PROCESSING;
+        this.status =
+                DocumentProcessingStatus.PROCESSING;
+
         this.currentStep =
                 DocumentProcessingStep.DOCUMENT_PARSING;
-        this.startedAt = LocalDateTime.now();
-        this.completedAt = null;
+
+        this.startedAt =
+                LocalDateTime.now();
+
+        this.completedAt =
+                null;
 
         clearError();
     }
 
+    /**
+     * Coordinator가 명시적으로 다음 처리 단계로 이동할 때 사용한다.
+     */
     public void changeStep(
             DocumentProcessingStep nextStep
     ) {
-        if (status != DocumentProcessingStatus.PROCESSING) {
-            throw new IllegalStateException(
-                    "처리 중인 작업만 단계를 변경할 수 있습니다."
-            );
-        }
+        validateProcessingStatus();
 
         if (nextStep == null) {
             throw new IllegalArgumentException(
@@ -150,17 +199,22 @@ public class DocumentProcessing {
             );
         }
 
-        validateStepTransition(nextStep);
+        validateStepTransition(
+                nextStep
+        );
 
-        this.currentStep = nextStep;
+        this.currentStep =
+                nextStep;
     }
 
+    /**
+     * 필요 시 현재 업무 단계 기준으로 다음 단계로 이동한다.
+     *
+     * enum의 ordinal이나 next()에 의존하지 않고
+     * NEXT_STEP_MAP을 사용한다.
+     */
     public void moveToNextStep() {
-        if (status != DocumentProcessingStatus.PROCESSING) {
-            throw new IllegalStateException(
-                    "처리 중인 작업만 다음 단계로 이동할 수 있습니다."
-            );
-        }
+        validateProcessingStatus();
 
         if (currentStep == null) {
             throw new IllegalStateException(
@@ -168,24 +222,42 @@ public class DocumentProcessing {
             );
         }
 
-        this.currentStep = currentStep.next();
-    }
+        DocumentProcessingStep nextStep =
+                NEXT_STEP_MAP.get(
+                        currentStep
+                );
 
-    public void complete() {
-        if (status != DocumentProcessingStatus.PROCESSING) {
+        if (nextStep == null) {
             throw new IllegalStateException(
-                    "처리 중인 작업만 완료할 수 있습니다."
+                    "다음 처리 단계가 존재하지 않습니다. 현재 단계="
+                            + currentStep
             );
         }
 
-        if (currentStep != DocumentProcessingStep.COMPLETED) {
+        this.currentStep =
+                nextStep;
+    }
+
+    /**
+     * currentStep이 COMPLETED까지 정상적으로 도달한 경우에만
+     * 처리 상태 자체를 COMPLETED로 변경한다.
+     */
+    public void complete() {
+        validateProcessingStatus();
+
+        if (currentStep
+                != DocumentProcessingStep.COMPLETED) {
+
             throw new IllegalStateException(
                     "모든 처리 단계를 완료한 후 작업을 완료할 수 있습니다."
             );
         }
 
-        this.status = DocumentProcessingStatus.COMPLETED;
-        this.completedAt = LocalDateTime.now();
+        this.status =
+                DocumentProcessingStatus.COMPLETED;
+
+        this.completedAt =
+                LocalDateTime.now();
 
         clearError();
     }
@@ -194,51 +266,76 @@ public class DocumentProcessing {
             String errorCode,
             String errorMessage
     ) {
-        if (status == DocumentProcessingStatus.COMPLETED) {
+        if (status
+                == DocumentProcessingStatus.COMPLETED) {
+
             throw new IllegalStateException(
                     "완료된 문서 처리는 실패 상태로 변경할 수 없습니다."
             );
         }
 
-        if (status == DocumentProcessingStatus.CANCELLED) {
+        if (status
+                == DocumentProcessingStatus.CANCELLED) {
+
             throw new IllegalStateException(
                     "취소된 문서 처리는 실패 상태로 변경할 수 없습니다."
             );
         }
 
-        this.status = DocumentProcessingStatus.FAILED;
-        this.errorCode = normalizeNullableText(
-                errorCode,
-                MAX_ERROR_CODE_LENGTH
-        );
+        this.status =
+                DocumentProcessingStatus.FAILED;
+
+        this.errorCode =
+                normalizeNullableText(
+                        errorCode,
+                        MAX_ERROR_CODE_LENGTH
+                );
+
         this.errorMessage =
-                normalizeErrorMessage(errorMessage);
-        this.completedAt = LocalDateTime.now();
+                normalizeErrorMessage(
+                        errorMessage
+                );
+
+        this.completedAt =
+                LocalDateTime.now();
     }
 
     public void cancel() {
-        if (status == DocumentProcessingStatus.COMPLETED) {
+        if (status
+                == DocumentProcessingStatus.COMPLETED) {
+
             throw new IllegalStateException(
                     "완료된 문서 처리는 취소할 수 없습니다."
             );
         }
 
-        if (status == DocumentProcessingStatus.FAILED) {
+        if (status
+                == DocumentProcessingStatus.FAILED) {
+
             throw new IllegalStateException(
                     "실패한 문서 처리는 취소할 수 없습니다."
             );
         }
 
-        this.status = DocumentProcessingStatus.CANCELLED;
-        this.completedAt = LocalDateTime.now();
+        this.status =
+                DocumentProcessingStatus.CANCELLED;
+
+        this.completedAt =
+                LocalDateTime.now();
     }
 
+    /**
+     * 상태 전이를 enum 선언 순서나 구현 세부 단계에 맡기지 않고
+     * 허용된 업무 단계 전이만 명시적으로 검증한다.
+     */
     private void validateStepTransition(
             DocumentProcessingStep nextStep
     ) {
         if (currentStep == null) {
+
             if (nextStep
                     != DocumentProcessingStep.DOCUMENT_PARSING) {
+
                 throw new IllegalStateException(
                         "문서 처리는 문서 파싱 단계부터 시작해야 합니다."
                 );
@@ -248,27 +345,55 @@ public class DocumentProcessing {
         }
 
         DocumentProcessingStep expectedNextStep =
-                currentStep.next();
+                NEXT_STEP_MAP.get(
+                        currentStep
+                );
 
-        if (nextStep != expectedNextStep) {
+        if (expectedNextStep == null) {
+
+            throw new IllegalStateException(
+                    "현재 단계에서 다음 단계로 이동할 수 없습니다. 현재 단계="
+                            + currentStep
+            );
+        }
+
+        if (nextStep
+                != expectedNextStep) {
+
             throw new IllegalStateException(
                     "잘못된 처리 단계 전이입니다. 현재 단계="
                             + currentStep
                             + ", 다음 가능한 단계="
                             + expectedNextStep
+                            + ", 요청 단계="
+                            + nextStep
+            );
+        }
+    }
+
+    private void validateProcessingStatus() {
+        if (status
+                != DocumentProcessingStatus.PROCESSING) {
+
+            throw new IllegalStateException(
+                    "처리 중인 작업만 단계를 변경할 수 있습니다."
             );
         }
     }
 
     private void clearError() {
-        this.errorCode = null;
-        this.errorMessage = null;
+        this.errorCode =
+                null;
+
+        this.errorMessage =
+                null;
     }
 
     private static void validateLearningNote(
             LearningNote learningNote
     ) {
         if (learningNote == null) {
+
             throw new IllegalArgumentException(
                     "학습 노트는 필수입니다."
             );
@@ -279,6 +404,7 @@ public class DocumentProcessing {
             int attemptNo
     ) {
         if (attemptNo < 1) {
+
             throw new IllegalArgumentException(
                     "처리 시도 번호는 1 이상이어야 합니다."
             );
@@ -290,6 +416,7 @@ public class DocumentProcessing {
     ) {
         if (pipelineVersion == null
                 || pipelineVersion.isBlank()) {
+
             throw new IllegalArgumentException(
                     "파이프라인 버전은 필수입니다."
             );
@@ -300,6 +427,7 @@ public class DocumentProcessing {
 
         if (normalized.length()
                 > MAX_PIPELINE_VERSION_LENGTH) {
+
             throw new IllegalArgumentException(
                     "파이프라인 버전은 50자 이하여야 합니다."
             );
@@ -311,11 +439,14 @@ public class DocumentProcessing {
     private static String normalizeErrorMessage(
             String value
     ) {
-        if (value == null || value.isBlank()) {
+        if (value == null
+                || value.isBlank()) {
+
             return "문서 처리 중 오류가 발생했습니다.";
         }
 
-        String normalized = value.trim();
+        String normalized =
+                value.trim();
 
         return normalized.length()
                 <= MAX_ERROR_MESSAGE_LENGTH
@@ -330,21 +461,21 @@ public class DocumentProcessing {
             String value,
             int maxLength
     ) {
-        if (value == null || value.isBlank()) {
+        if (value == null
+                || value.isBlank()) {
+
             return null;
         }
 
-        String normalized = value.trim();
+        String normalized =
+                value.trim();
 
-        return normalized.length() <= maxLength
+        return normalized.length()
+                <= maxLength
                 ? normalized
                 : normalized.substring(
                 0,
                 maxLength
         );
     }
-
-
-
-
 }
