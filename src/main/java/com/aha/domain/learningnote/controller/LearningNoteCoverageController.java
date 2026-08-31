@@ -1,15 +1,18 @@
 package com.aha.domain.learningnote.controller;
 
 import com.aha.domain.learningnote.dto.response.LearningNoteCoverageResponse;
+import com.aha.domain.learningnote.dto.request.LearningNoteTitleUpdateRequestDto;
 import com.aha.domain.learningnote.dto.response.LearningNoteCreateResponseDto;
 import com.aha.domain.learningnote.dto.response.LearningNoteDetailResponseDto;
 import com.aha.domain.learningnote.dto.response.LearningNoteSummaryResponseDto;
 import com.aha.domain.learningnote.service.LearningNoteCreateService;
 import com.aha.domain.learningnote.service.LearningNoteDeletionService;
 import com.aha.domain.learningnote.service.LearningNoteService;
+import com.aha.domain.learningnote.service.LearningNoteTopicGenerationService;
 import com.aha.domain.learningnote.service.coverage.LearningNoteCoverageService;
 import com.aha.global.response.ApiResponse;
 import com.aha.global.security.CustomUserDetails;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,6 +32,7 @@ public class LearningNoteCoverageController {
     private final LearningNoteCoverageService learningNoteCoverageService;
     private final LearningNoteService learningNoteService;
     private final LearningNoteDeletionService learningNoteDeletionService;
+    private final LearningNoteTopicGenerationService learningNoteTopicGenerationService;
 
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -121,6 +125,44 @@ public class LearningNoteCoverageController {
         return ResponseEntity.ok(ApiResponse.success(
                 200,
                 "학습노트 삭제 성공",
+                null
+        ));
+    }
+
+    @PostMapping("/{learningNoteId}/contents/{scopeNodeId}/generate")
+    public ResponseEntity<ApiResponse<Void>> generateTopicContent(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long learningNoteId,
+            @PathVariable Long scopeNodeId
+    ) {
+        learningNoteTopicGenerationService.generate(
+                user.getId(),
+                learningNoteId,
+                scopeNodeId
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "단원별 개념 설명 생성 성공",
+                null
+        ));
+    }
+
+    @PatchMapping("/{learningNoteId}/title")
+    public ResponseEntity<ApiResponse<Void>> updateTitle(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @PathVariable Long learningNoteId,
+            @Valid @RequestBody LearningNoteTitleUpdateRequestDto request
+    ) {
+        learningNoteService.updateTitle(
+                user.getId(),
+                learningNoteId,
+                request.title()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(
+                200,
+                "학습노트 제목 수정 성공",
                 null
         ));
     }

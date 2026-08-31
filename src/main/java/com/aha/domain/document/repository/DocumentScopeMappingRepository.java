@@ -31,12 +31,6 @@ public interface DocumentScopeMappingRepository
     );
 
 
-    /**
-     * LearningNote 안에서 각 시험 Topic에 매핑된 Chunk 수를 한 번에 집계한다.
-     *
-     * Topic별 count query 반복을 피하고 GROUP BY 한 번으로 Coverage 계산에 필요한
-     * 데이터를 조회한다.
-     */
     @Query("""
         select
             mapping.examScopeNode.id as scopeNodeId,
@@ -52,6 +46,25 @@ public interface DocumentScopeMappingRepository
         group by mapping.examScopeNode.id
         """)
     List<TopicMappingCountProjection> findTopicMappingCountsByLearningNoteId(
+            @Param("learningNoteId") Long learningNoteId
+    );
+
+    @Query("""
+            select dsm
+            from DocumentScopeMapping dsm
+            join fetch dsm.documentChunk dc
+            join fetch dsm.examScopeNode esn
+            where exists (
+                select note.id
+                from LearningNote note
+                where note.id = :learningNoteId
+                  and note.sourceDocument = dc.sourceDocument
+            )
+            order by esn.id asc,
+                     dc.chunkOrder asc,
+                     dsm.rankNo asc
+            """)
+    List<DocumentScopeMapping> findAllForContentGeneration(
             @Param("learningNoteId") Long learningNoteId
     );
 }

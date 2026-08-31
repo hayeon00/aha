@@ -13,11 +13,13 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = ["pdf", "docx"];
 
 const PROCESS_STEPS = [
-    { key: "TEXT_EXTRACTING", label: "내용 읽기", description: "문서의 텍스트와 구조를 읽고 있어요." },
+    { key: "DOCUMENT_PARSING", label: "내용 읽기", description: "문서의 텍스트와 구조를 읽고 있어요." },
+    { key: "QUALITY_CHECK", label: "품질 확인", description: "추출한 내용이 학습에 적합한지 확인하고 있어요." },
     { key: "CHUNKING", label: "내용 정리", description: "학습하기 좋은 단위로 내용을 정리하고 있어요." },
-    { key: "EMBEDDING", label: "핵심 분석", description: "문서의 의미와 핵심 내용을 분석하고 있어요." },
     { key: "SCOPE_MAPPING", label: "목차 연결", description: "시험 목차와 문서 내용을 연결하고 있어요." },
-    { key: "CONTENT_GENERATING", label: "노트 완성", description: "학습할 개념 설명을 완성하고 있어요." },
+    { key: "CONTENT_GENERATING", label: "개념 생성", description: "학습할 개념 설명을 생성하고 있어요." },
+    { key: "FINALIZING", label: "노트 정리", description: "생성한 내용을 학습노트로 정리하고 있어요." },
+    { key: "COMPLETED", label: "완료", description: "학습노트 생성이 완료되었습니다." },
 ];
 
 function AiLearningPage() {
@@ -84,7 +86,8 @@ function AiLearningPage() {
         if (processing.status === "PENDING") return 14;
         if (processing.status === "COMPLETED") return 100;
         if (processing.status === "FAILED") return Math.max(12, activeStepIndex * 20);
-        return Math.min(92, 22 + activeStepIndex * 17);
+        const stepProgress = 78 / Math.max(1, PROCESS_STEPS.length - 1);
+        return Math.min(96, 18 + activeStepIndex * stepProgress);
     }, [activeStepIndex, processing]);
 
     const isWorking = Boolean(processing)

@@ -28,7 +28,7 @@ public class DocumentProcessingWorkerService {
 
             processingCoordinator.process(context);
 
-            //processingStatusService.complete(processingId);
+            processingStatusService.complete(processingId);
 
             log.info(
                     "문서 처리 완료. processingId={}, learningNoteId={}",
@@ -65,4 +65,3 @@ public class DocumentProcessingWorkerService {
         }
     }
 }
-

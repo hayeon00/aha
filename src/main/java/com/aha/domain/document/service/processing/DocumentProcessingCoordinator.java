@@ -5,6 +5,7 @@ import com.aha.domain.document.enums.DocumentProcessingStep;
 import com.aha.domain.document.repository.DocumentChunkRepository;
 import com.aha.domain.document.service.processing.chunking.DocumentChunkService;
 import com.aha.domain.document.service.processing.embedding.DocumentEmbeddingService;
+import com.aha.domain.document.service.processing.generation.DocumentContentGenerationService;
 import com.aha.domain.document.service.processing.mapping.DocumentScopeMappingService;
 import com.aha.domain.document.service.processing.model.DocumentProcessingContext;
 import com.aha.domain.document.service.processing.parsing.DocumentParsingService;
@@ -30,7 +31,7 @@ public class DocumentProcessingCoordinator {
     private final DocumentChunkRepository documentChunkRepository;
     private final DocumentEmbeddingService embeddingService;
     private final DocumentScopeMappingService scopeMappingService;
-    //private final LearningNoteContentGenerationService contentGenerationService;
+    private final DocumentContentGenerationService contentGenerationService;
 
     private final DocumentProcessingStatusService processingStatusService;
 
@@ -119,29 +120,37 @@ public class DocumentProcessingCoordinator {
         scopeMappingService.mapDocuments(
                 context.learningNoteId()
         );
-//
-//
-//        changeStep(
-//                context,
-//                DocumentProcessingStep.CONTENT_GENERATING
-//        );
-//
-//        contentGenerationService.generate(
-//                context.learningNoteId()
-//        );
-//
-//
-//        changeStep(
-//                context,
-//                DocumentProcessingStep.FINALIZING
-//        );
-//
-//        log.info(
-//                "문서 처리 파이프라인 실행 완료. processingId={}, learningNoteId={}, chunkCount={}",
-//                context.processingId(),
-//                context.learningNoteId(),
-//                chunks.size()
-//        );
+
+        changeStep(
+                context,
+                DocumentProcessingStep.CONTENT_GENERATING
+        );
+
+        int generatedTopicCount = contentGenerationService.generate(
+                context.learningNoteId()
+        );
+
+        changeStep(
+                context,
+                DocumentProcessingStep.FINALIZING
+        );
+
+        contentGenerationService.finalizeGeneration(
+                context.learningNoteId()
+        );
+
+        changeStep(
+                context,
+                DocumentProcessingStep.COMPLETED
+        );
+
+        log.info(
+                "문서 처리 파이프라인 실행 완료. processingId={}, learningNoteId={}, chunkCount={}, generatedTopicCount={}",
+                context.processingId(),
+                context.learningNoteId(),
+                chunks.size(),
+                generatedTopicCount
+        );
     }
 
     private void logParsedDocument(

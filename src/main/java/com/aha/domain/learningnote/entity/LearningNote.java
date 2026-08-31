@@ -32,7 +32,6 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(
                         name = "uk_learning_note_exam_document",
                         columnNames = {
-                                "user_exam_id",
                                 "source_document_id"
                         }
                 )
@@ -59,7 +58,7 @@ public class LearningNote {
     )
     private UserExam userExam;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "source_document_id",
             nullable = false,
@@ -106,6 +105,10 @@ public class LearningNote {
 
     public void markFailed() {
         this.status = LearningNoteStatus.FAILED;
+    }
+
+    public void updateTitle(String title) {
+        this.title = normalizeTitle(title);
     }
 
     private static void validateUserExam(UserExam userExam) {

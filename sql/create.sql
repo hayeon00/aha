@@ -360,27 +360,28 @@ CREATE TABLE `source_document` (
 
 );
 
-
 CREATE TABLE `learning_note` (
                                  `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
                                  `user_exam_id`       BIGINT       NOT NULL,
                                  `source_document_id` BIGINT       NOT NULL,
                                  `title`              VARCHAR(255) NOT NULL,
                                  `status`             VARCHAR(30)  NOT NULL DEFAULT 'GENERATING',
-                                 `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                 `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+                                 `created_at`         DATETIME     NOT NULL
+                                                                            DEFAULT CURRENT_TIMESTAMP,
+
+                                 `updated_at`         DATETIME     NOT NULL
+                                                                            DEFAULT CURRENT_TIMESTAMP
                                      ON UPDATE CURRENT_TIMESTAMP,
 
                                  PRIMARY KEY (`id`),
 
-                                 UNIQUE KEY `uk_learning_note_exam_document`
-                                     (`user_exam_id`, `source_document_id`),
+    -- 하나의 SourceDocument는 하나의 LearningNote에만 연결
+                                 UNIQUE KEY `uk_learning_note_source_document`
+                                     (`source_document_id`),
 
                                  INDEX `idx_learning_note_user_exam`
                                      (`user_exam_id`),
-
-                                 INDEX `idx_learning_note_source_document`
-                                     (`source_document_id`),
 
                                  CONSTRAINT `fk_learning_note_user_exam`
                                      FOREIGN KEY (`user_exam_id`)
@@ -393,11 +394,13 @@ CREATE TABLE `learning_note` (
                                          ON DELETE CASCADE,
 
                                  CONSTRAINT `chk_learning_note_status`
-                                     CHECK (`status` IN (
-                                                         'GENERATING',
-                                                         'READY',
-                                                         'FAILED'
-                                         ))
+                                     CHECK (
+                                         `status` IN (
+                                                      'GENERATING',
+                                                      'READY',
+                                                      'FAILED'
+                                             )
+                                         )
 );
 
 CREATE TABLE `learning_note_content` (

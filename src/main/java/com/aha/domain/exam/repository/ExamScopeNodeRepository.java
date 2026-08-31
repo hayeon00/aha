@@ -32,6 +32,22 @@ public interface ExamScopeNodeRepository extends JpaRepository<ExamScopeNode, Lo
             @Param("nodeTypes") List<ExamScopeNodeType> nodeTypes
     );
 
+    @Query("""
+        select n
+        from ExamScopeNode n
+        join fetch n.examPart
+        left join fetch n.parent
+        where n.examVersion.id = :examVersionId
+          and n.isActive = true
+        order by n.examPart.displayOrder asc,
+                 n.depth asc,
+                 n.displayOrder asc,
+                 n.id asc
+    """)
+    List<ExamScopeNode> findAllActiveForLearningNoteDetail(
+            @Param("examVersionId") Long examVersionId
+    );
+
 
     List<ExamScopeNode> findAllByExamVersion_IdAndIsLeafTrueAndIsActiveTrueOrderByDepthAscDisplayOrderAsc(Long examVersionId);
 
