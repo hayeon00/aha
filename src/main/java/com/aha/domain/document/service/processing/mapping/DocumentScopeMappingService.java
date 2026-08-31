@@ -69,6 +69,7 @@ public class DocumentScopeMappingService {
     private final DocumentScopeMappingPersistenceService persistenceService;
     private final DocumentScopeMappingBatchProcessor mappingBatchProcessor;
     private final ScopeCandidateRetriever scopeCandidateRetriever;
+    private final SemanticScopeMappingFastPath semanticFastPath;
 
     public void mapDocuments(
             Long learningNoteId
@@ -136,8 +137,8 @@ public class DocumentScopeMappingService {
                 unresolvedChunks.size()
         );
 
-        List<DocumentScopeMapping> aiMappings =
-                List.of();
+        List<DocumentScopeMapping> semanticMappings = List.of();
+        List<DocumentScopeMapping> aiMappings = List.of();
 
         if (!unresolvedChunks.isEmpty()) {
 
@@ -163,9 +164,28 @@ public class DocumentScopeMappingService {
                             candidatesByChunkId
                     );
 
+            SemanticScopeMappingFastPath.Result semanticResult =
+                    semanticFastPath.evaluate(
+                            unresolvedChunks,
+                            candidatesByChunkId
+                    );
+            semanticMappings = semanticResult.mappings();
+
+            List<DocumentChunk> aiTargetChunks = unresolvedChunks.stream()
+                    .filter(chunk -> !semanticResult.mappedChunkIds().contains(chunk.getId()))
+                    .toList();
+
+            log.info(
+                    "[DOCUMENT_PERF] semantic mapping fast path completed. learningNoteId={}, unresolvedChunkCount={}, semanticMappedChunkCount={}, aiTargetChunkCount={}",
+                    learningNoteId,
+                    unresolvedChunks.size(),
+                    semanticResult.mappedChunkIds().size(),
+                    aiTargetChunks.size()
+            );
+
             List<ChunkScopeMappingRequest> mappingRequests =
                     buildChunkScopeMappingRequests(
-                            unresolvedChunks,
+                            aiTargetChunks,
                             candidatesByChunkId
                     );
 
@@ -189,11 +209,16 @@ public class DocumentScopeMappingService {
         List<DocumentScopeMapping> finalMappings =
                 new ArrayList<>(
                         exactMatchResult.mappings().size()
+                                + semanticMappings.size()
                                 + aiMappings.size()
                 );
 
         finalMappings.addAll(
                 exactMatchResult.mappings()
+        );
+
+        finalMappings.addAll(
+                semanticMappings
         );
 
         finalMappings.addAll(
@@ -211,14 +236,16 @@ public class DocumentScopeMappingService {
         );
 
         log.info(
-                "문서 목차 매핑 완료. learningNoteId={}, chunkCount={}, exactMappingCount={}, aiMappingCount={}, totalMappingCount={}",
+                "문서 목차 매핑 완료. learningNoteId={}, chunkCount={}, exactMappingCount={}, semanticMappingCount={}, aiMappingCount={}, totalMappingCount={}",
                 learningNoteId,
                 chunks.size(),
                 exactMatchResult.mappings().size(),
+                semanticMappings.size(),
                 aiMappings.size(),
                 finalMappings.size()
         );
     }
+
 
     /**
      * Section 제목이 시험 leaf Topic 제목과 정확히 일치하는 경우의 Fast Path.
