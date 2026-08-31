@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 
 import { useUserExams } from "../../exam/hooks/useUserExams.js";
-import { useExamScopeNodes } from "../../exam/hooks/useExamScopeNodes.js";
-import SyllabusTree from "../../exam/components/SyllabusTree.jsx";
 import { useLearningNoteCreation } from "../hooks/useLearningNoteCreation.js";
 import LearningNoteDetailPage from "./LearningNoteDetailPage.jsx";
 
@@ -42,21 +40,12 @@ function AiLearningPage() {
         userExams,
         selectedUserExamId,
         selectedUserExam,
-        selectedExamVersionId,
         isExamLoading,
         examMessage,
     } = useUserExams({
         initialUserExamId: Number.isInteger(requestedUserExamId) && requestedUserExamId > 0
             ? requestedUserExamId
             : undefined,
-    });
-
-    const {
-        scopeNodes,
-        isScopeLoading,
-        scopeMessage,
-    } = useExamScopeNodes({
-        examVersionId: selectedExamVersionId,
     });
 
     const {
@@ -193,33 +182,6 @@ function AiLearningPage() {
                                         </div>
                                     </div>
                                     <div className="studio-upload-layout">
-                                <aside
-                                    className="studio-syllabus-panel"
-                                    aria-label={`${selectedUserExam?.examName ?? "선택한 시험"} 시험 목차`}
-                                >
-                                    <div className="studio-syllabus-scroll">
-                                        {isScopeLoading ? (
-                                            <div className="studio-syllabus-state" aria-busy="true">
-                                                <span className="studio-spinner" />
-                                                <p>목차를 불러오고 있어요.</p>
-                                            </div>
-                                        ) : scopeNodes.length > 0 ? (
-                                            <SyllabusTree
-                                                nodes={scopeNodes}
-                                                selectedNodeId={null}
-                                                onSelectNode={() => {}}
-                                                selectable={false}
-                                            />
-                                        ) : (
-                                            <div className="studio-syllabus-state">
-                                                <p>{scopeMessage || "표시할 시험 목차가 없습니다."}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <p className="studio-syllabus-caption">
-                                        업로드한 내용은 관련 있는 목차에 자동으로 연결됩니다.
-                                    </p>
-                                </aside>
                                 <div className="studio-upload-column">
                                 <div className="studio-field studio-upload-field">
                                     {!file ? (
