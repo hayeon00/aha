@@ -38,6 +38,40 @@ public class DocumentProcessingAsyncConfig implements AsyncConfigurer {
         return executor;
     }
 
+    @Bean(name = "documentContentGenerationTaskExecutor")
+    public ThreadPoolTaskExecutor documentContentGenerationTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        int concurrency = properties.getContentGenerationConcurrency();
+        executor.setThreadNamePrefix("document-content-generation-");
+        executor.setCorePoolSize(concurrency);
+        executor.setMaxPoolSize(concurrency);
+        executor.setQueueCapacity(properties.getContentGenerationQueueCapacity());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(properties.getAwaitTerminationSeconds());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+
+        return executor;
+    }
+
+    @Bean(name = "documentScopeMappingTaskExecutor")
+    public ThreadPoolTaskExecutor documentScopeMappingTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        int concurrency = properties.getScopeMappingConcurrency();
+        executor.setThreadNamePrefix("document-scope-mapping-");
+        executor.setCorePoolSize(concurrency);
+        executor.setMaxPoolSize(concurrency);
+        executor.setQueueCapacity(properties.getScopeMappingQueueCapacity());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(properties.getAwaitTerminationSeconds());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.initialize();
+
+        return executor;
+    }
+
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (Throwable exception, Method method, Object... params) -> {

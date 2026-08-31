@@ -1,6 +1,5 @@
 package com.aha.domain.document.service.processing.mapping;
 
-import com.aha.domain.document.client.mapping.DocumentScopeMappingClient;
 import com.aha.domain.document.client.mapping.dto.ChunkMappingRequest;
 import com.aha.domain.document.client.mapping.dto.ChunkScopeMappingRequest;
 import com.aha.domain.document.client.mapping.dto.ScopeCandidateRequest;
@@ -62,14 +61,13 @@ public class DocumentScopeMappingService {
             BigDecimal.valueOf(1.0);
 
     private static final int MAX_MAPPING_REASON_LENGTH = 1000;
-    private static final int CHUNK_MAPPING_BATCH_SIZE = 5;
     private static final int TOP_SCOPE_CANDIDATE_COUNT = 8;
 
     private final LearningNoteRepository learningNoteRepository;
     private final DocumentChunkRepository documentChunkRepository;
     private final ExamScopeNodeRepository examScopeNodeRepository;
     private final DocumentScopeMappingPersistenceService persistenceService;
-    private final DocumentScopeMappingClient documentScopeMappingClient;
+    private final DocumentScopeMappingBatchProcessor mappingBatchProcessor;
     private final ScopeCandidateRetriever scopeCandidateRetriever;
 
     public void mapDocuments(
@@ -175,7 +173,7 @@ public class DocumentScopeMappingService {
              * 3. AI reranking/classification
              */
             List<ScopeMappingAiResult> aiResults =
-                    requestAiMappingsInBatches(
+                    mappingBatchProcessor.process(
                             mappingRequests
                     );
 
@@ -420,81 +418,6 @@ public class DocumentScopeMappingService {
         );
 
         return selected;
-    }
-
-    private List<ScopeMappingAiResult> requestAiMappingsInBatches(
-            List<ChunkScopeMappingRequest> mappingRequests
-    ) {
-        if (mappingRequests == null
-                || mappingRequests.isEmpty()) {
-            return List.of();
-        }
-
-        List<ScopeMappingAiResult> aiResults =
-                new ArrayList<>();
-
-        for (
-                int start = 0;
-                start < mappingRequests.size();
-                start += CHUNK_MAPPING_BATCH_SIZE
-        ) {
-            int end =
-                    Math.min(
-                            start + CHUNK_MAPPING_BATCH_SIZE,
-                            mappingRequests.size()
-                    );
-
-            List<ChunkScopeMappingRequest> requestBatch =
-                    mappingRequests.subList(
-                            start,
-                            end
-                    );
-
-            int candidateCount =
-                    requestBatch.stream()
-                            .mapToInt(request ->
-                                    request.scopeCandidates() == null
-                                            ? 0
-                                            : request.scopeCandidates().size()
-                            )
-                            .sum();
-
-            log.info(
-                    "문서 목차 AI rerank 요청. start={}, end={}, chunkCount={}, candidateCount={}",
-                    start,
-                    end,
-                    requestBatch.size(),
-                    candidateCount
-            );
-
-            List<ScopeMappingAiResult> batchResults =
-                    documentScopeMappingClient.mapChunks(
-                            requestBatch
-                    );
-
-            for (ScopeMappingAiResult result : batchResults) {
-
-                log.info(
-                        "[AI MAPPING RESULT] chunkId={}, scopeNodeId={}, confidence={}, reason={}",
-                        result.documentChunkId(),
-                        result.examScopeNodeId(),
-                        result.confidenceScore(),
-                        result.mappingReason()
-                );
-            }
-
-            if (batchResults == null) {
-                throw new BusinessException(
-                        ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
-                );
-            }
-
-            aiResults.addAll(
-                    batchResults
-            );
-        }
-
-        return List.copyOf(aiResults);
     }
 
     /**
