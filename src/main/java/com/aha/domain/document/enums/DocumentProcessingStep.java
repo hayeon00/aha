@@ -5,7 +5,6 @@ public enum DocumentProcessingStep {
     DOCUMENT_PARSING,
     QUALITY_CHECK,
     CHUNKING,
-    EMBEDDING,
     SCOPE_MAPPING,
     CONTENT_GENERATING,
     FINALIZING,
@@ -15,8 +14,7 @@ public enum DocumentProcessingStep {
         return switch (this) {
             case DOCUMENT_PARSING -> QUALITY_CHECK;
             case QUALITY_CHECK -> CHUNKING;
-            case CHUNKING -> EMBEDDING;
-            case EMBEDDING -> SCOPE_MAPPING;
+            case CHUNKING -> SCOPE_MAPPING;
             case SCOPE_MAPPING -> CONTENT_GENERATING;
             case CONTENT_GENERATING -> FINALIZING;
             case FINALIZING -> COMPLETED;

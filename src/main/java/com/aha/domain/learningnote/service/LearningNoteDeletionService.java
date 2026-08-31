@@ -7,8 +7,9 @@ import com.aha.domain.document.repository.DocumentChunkRepository;
 import com.aha.domain.document.repository.DocumentProcessingRepository;
 import com.aha.domain.document.repository.DocumentScopeMappingRepository;
 import com.aha.domain.document.repository.SourceDocumentRepository;
-import com.aha.domain.document.service.DocumentFileStorageService;
+import com.aha.domain.document.service.storage.DocumentFileStorageService;
 import com.aha.domain.learningnote.repository.LearningNoteContentRepository;
+import com.aha.domain.learningnote.repository.LearningContentReferenceRepository;
 import com.aha.domain.learningnote.repository.LearningNoteRepository;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
@@ -23,6 +24,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class LearningNoteDeletionService {
 
     private final DocumentProcessingRepository documentProcessingRepository;
+    private final LearningContentReferenceRepository learningContentReferenceRepository;
     private final LearningNoteContentRepository learningNoteContentRepository;
     private final DocumentScopeMappingRepository documentScopeMappingRepository;
     private final DocumentChunkEmbeddingRepository documentChunkEmbeddingRepository;
@@ -38,10 +40,12 @@ public class LearningNoteDeletionService {
         DocumentProcessing processing = documentProcessingRepository
                 .findCompletedOwnedDetail(learningNoteId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.LEARNING_NOTE_NOT_FOUND));
+
         SourceDocument sourceDocument = processing.getLearningNote().getSourceDocument();
         Long sourceDocumentId = sourceDocument.getId();
         String storageKey = sourceDocument.getStorageKey();
 
+        learningContentReferenceRepository.deleteAllByLearningNoteId(learningNoteId);
         learningNoteContentRepository.deleteAllByLearningNote_Id(learningNoteId);
         documentScopeMappingRepository.deleteAllByDocumentChunk_SourceDocument_Id(sourceDocumentId);
         documentChunkEmbeddingRepository.deleteAllByDocumentChunk_SourceDocument_Id(sourceDocumentId);

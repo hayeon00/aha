@@ -1,9 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import ConceptContentView from "../components/ConceptContentView.jsx";
 import { useLearningNoteDetail } from "../hooks/useLearningNoteDetail.js";
-import { deleteLearningNote, generateLearningNoteTopic } from "../api/learningNoteApi.js";
+import {
+    deleteLearningNote,
+    generateLearningNoteTopic,
+    updateLearningNoteTitle,
+} from "../api/learningNoteApi.js";
 
 import "./LearningNoteDetailPage.css";
 
@@ -17,6 +21,14 @@ export default function LearningNoteDetailPage({ learningNoteId }) {
     const [generationError, setGenerationError] = useState("");
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [titleDraft, setTitleDraft] = useState("");
+    const [savingTitle, setSavingTitle] = useState(false);
+    const [titleError, setTitleError] = useState("");
+
+    useEffect(() => {
+        setTitleDraft(detail?.title ?? "");
+    }, [detail?.title]);
 
     const allContents = useMemo(() => detail?.contents ?? [], [detail?.contents]);
     const leafContents = useMemo(
@@ -127,6 +139,26 @@ export default function LearningNoteDetailPage({ learningNoteId }) {
         }
     };
 
+    const handleTitleSave = async () => {
+        const normalizedTitle = titleDraft.trim();
+        if (!normalizedTitle || savingTitle) return;
+
+        try {
+            setSavingTitle(true);
+            setTitleError("");
+            await updateLearningNoteTitle(learningNoteId, normalizedTitle);
+            await refresh({ silent: true });
+            setEditingTitle(false);
+        } catch (requestError) {
+            setTitleError(
+                requestError.response?.data?.message
+                || "학습노트 제목을 수정하지 못했습니다.",
+            );
+        } finally {
+            setSavingTitle(false);
+        }
+    };
+
     if (loading) {
         return (
             <main className="note-detail-page note-detail-state" aria-busy="true">
@@ -154,8 +186,53 @@ export default function LearningNoteDetailPage({ learningNoteId }) {
         <main className="note-detail-page">
             <header className="note-detail-header">
                 <div className="note-detail-heading">
-                    <div>
-                        <h1>{detail.title}</h1>
+                    <div className="note-title-area">
+                        {editingTitle ? (
+                            <div className="note-title-editor">
+                                <input
+                                    value={titleDraft}
+                                    maxLength={255}
+                                    onChange={(event) => setTitleDraft(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") handleTitleSave();
+                                        if (event.key === "Escape") {
+                                            setTitleDraft(detail.title);
+                                            setTitleError("");
+                                            setEditingTitle(false);
+                                        }
+                                    }}
+                                    aria-label="학습노트 제목"
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleTitleSave}
+                                    disabled={savingTitle || !titleDraft.trim()}
+                                >
+                                    {savingTitle ? "저장 중" : "저장"}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="cancel"
+                                    disabled={savingTitle}
+                                    onClick={() => {
+                                        setTitleDraft(detail.title);
+                                        setTitleError("");
+                                        setEditingTitle(false);
+                                    }}
+                                >
+                                    취소
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="note-title-display">
+                                <h1>{detail.title}</h1>
+                                <button type="button" onClick={() => setEditingTitle(true)}>
+                                    제목 수정
+                                </button>
+                            </div>
+                        )}
+                        {titleError && <p className="note-title-error" role="alert">{titleError}</p>}
                     </div>
                     <div className="note-detail-actions">
                         <button type="button" className="note-detail-delete" disabled={deleting} onClick={handleDelete}>

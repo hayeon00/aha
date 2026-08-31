@@ -12,7 +12,20 @@ import java.util.List;
 
 public interface DocumentProcessingRepository extends JpaRepository<DocumentProcessing, Long> {
 
-    Optional<DocumentProcessing> findByLearningNote_Id(Long learningNoteId);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     void deleteByLearningNote_Id(Long learningNoteId);
 
@@ -25,7 +38,14 @@ public interface DocumentProcessingRepository extends JpaRepository<DocumentProc
         join fetch userExam.examVersion examVersion
         join fetch examVersion.exam
         where note.userExam.user.id = :userId
+          and note.status = com.aha.domain.learningnote.enums.LearningNoteStatus.READY
           and processing.status = com.aha.domain.document.enums.DocumentProcessingStatus.COMPLETED
+          and processing.attemptNo = (
+              select max(latest.attemptNo)
+              from DocumentProcessing latest
+              where latest.learningNote = note
+                and latest.status = com.aha.domain.document.enums.DocumentProcessingStatus.COMPLETED
+          )
         order by processing.completedAt desc, note.id desc
     """)
     List<DocumentProcessing> findCompletedOwnedByUserId(@Param("userId") Long userId);
@@ -40,7 +60,14 @@ public interface DocumentProcessingRepository extends JpaRepository<DocumentProc
         join fetch examVersion.exam
         where processing.learningNote.id = :learningNoteId
           and userExam.user.id = :userId
+          and note.status = com.aha.domain.learningnote.enums.LearningNoteStatus.READY
           and processing.status = com.aha.domain.document.enums.DocumentProcessingStatus.COMPLETED
+          and processing.attemptNo = (
+              select max(latest.attemptNo)
+              from DocumentProcessing latest
+              where latest.learningNote = note
+                and latest.status = com.aha.domain.document.enums.DocumentProcessingStatus.COMPLETED
+          )
     """)
     Optional<DocumentProcessing> findCompletedOwnedDetail(
             @Param("learningNoteId") Long learningNoteId,

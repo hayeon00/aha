@@ -17,9 +17,3 @@ export const updateLearningNoteTitle = (learningNoteId, title) =>
         `/api/v1/learning-notes/${learningNoteId}/title`,
         { title },
     );
-
-export const updateLearningNoteContent = (learningNoteId, tocId, content) =>
-    axiosInstance.patch(
-        `/api/v1/learning-notes/${learningNoteId}/contents/${tocId}`,
-        { content },
-    );

@@ -3,6 +3,18 @@
 .note-detail-header { width: min(1180px,100%); margin: 0 auto 30px; }
 .note-detail-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 18px; }
 .note-detail-heading h1 { margin: 0 0 7px; font-family: inherit; font-size: clamp(27px,3vw,36px); font-weight: 700; line-height: 1.25; letter-spacing: -.035em; }
+.note-title-area { min-width: 0; flex: 1; }
+.note-title-display { display: flex; align-items: center; gap: 10px; }
+.note-title-display h1 { overflow: hidden; margin-bottom: 0; text-overflow: ellipsis; }
+.note-title-display button { flex: 0 0 auto; padding: 5px 8px; border: 0; border-radius: 7px; color: #64748b; background: #f1f5f9; font-size: 10px; font-weight: 700; }
+.note-title-display button:hover { color: #ea580c; background: #fff7ed; }
+.note-title-editor { display: flex; max-width: 720px; align-items: center; gap: 7px; }
+.note-title-editor input { min-width: 0; height: 44px; flex: 1; padding: 0 13px; border: 1px solid #cbd5e1; border-radius: 10px; color: #0f172a; background: #fff; font-size: 20px; font-weight: 700; outline: none; }
+.note-title-editor input:focus { border-color: #fb923c; box-shadow: 0 0 0 3px rgba(251,146,60,.12); }
+.note-title-editor button { height: 38px; padding: 0 11px; border: 0; border-radius: 9px; color: #fff; background: #f97316; font-size: 11px; font-weight: 750; }
+.note-title-editor button.cancel { color: #64748b; background: #f1f5f9; }
+.note-title-editor button:disabled { cursor: wait; opacity: .55; }
+.note-title-error { margin: 7px 0 0 !important; color: #dc2626 !important; font-size: 11px !important; }
 .note-detail-heading p { margin: 0; color: #64748b; font-size: 14px; }
 .note-detail-new { height: 40px; padding: 0 15px; border: 0; border-radius: 10px; color: #fff; background: #0f172a; font-size: 12px; font-weight: 750; box-shadow: 0 5px 14px rgba(15,23,42,.14); transition: transform .17s ease,background .17s ease,box-shadow .17s ease; }
 .note-detail-new:hover { color: #fff; background: #1e293b; box-shadow: 0 8px 18px rgba(15,23,42,.2); transform: translateY(-1px); }

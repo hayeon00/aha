@@ -79,6 +79,7 @@ public enum ErrorCode {
     AI_RESPONSE_PARSE_FAILED(500, "DOCUMENT_010", "AI 응답을 처리하는 중 오류가 발생했습니다."),
     DOCUMENT_SCOPE_MAPPING_NOT_FOUND(404, "DOCUMENT_011", "개념 설명 생성에 사용할 목차 매핑 결과를 찾을 수 없습니다."),
     LEARNING_CONTENT_GENERATION_FAILED(500, "DOCUMENT_012", "목차별 개념 설명 생성에 실패했습니다."),
+    OPENAI_CREDIT_EXHAUSTED(503, "DOCUMENT_013", "AI 분석 사용량이 소진되었습니다. API 크레딧을 충전한 뒤 다시 시도해 주세요."),
 
 
     SOURCE_DOCUMENT_NOT_FOUND(404, "DOCUMENT_018", "처리할 원본 문서를 찾을 수 없습니다."),

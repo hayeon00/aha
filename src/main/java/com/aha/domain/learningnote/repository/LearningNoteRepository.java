@@ -9,6 +9,20 @@ import java.util.Optional;
 
 public interface LearningNoteRepository extends JpaRepository<LearningNote, Long> {
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @Query("""
         select note
         from LearningNote note

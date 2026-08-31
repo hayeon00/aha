@@ -1,149 +1,189 @@
 package com.aha.domain.learningnote.service;
 
 import com.aha.domain.document.entity.DocumentProcessing;
+import com.aha.domain.document.entity.SourceDocument;
 import com.aha.domain.document.repository.DocumentProcessingRepository;
+import com.aha.domain.exam.entity.Exam;
+import com.aha.domain.exam.entity.ExamPart;
+import com.aha.domain.exam.entity.ExamScopeNode;
+import com.aha.domain.exam.repository.ExamScopeNodeRepository;
 import com.aha.domain.learningnote.dto.response.LearningNoteDetailResponseDto;
 import com.aha.domain.learningnote.dto.response.LearningNoteSummaryResponseDto;
 import com.aha.domain.learningnote.entity.LearningNote;
 import com.aha.domain.learningnote.entity.LearningNoteContent;
 import com.aha.domain.learningnote.repository.LearningNoteContentRepository;
-import com.aha.domain.learningnote.service.generation.LearningNoteContentGenerationService;
-import com.aha.domain.exam.entity.ExamScopeNode;
-import com.aha.domain.exam.repository.ExamScopeNodeRepository;
-import com.aha.domain.exam.enums.ExamScopeNodeType;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Map;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Please explain the class!!!
+ *
+ * @author : rlagkdus
+ * @filename : LearningNoteService
+ * @since : 2026. 8. 16. 일요일
+ */
+
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class LearningNoteService {
 
     private final DocumentProcessingRepository documentProcessingRepository;
     private final LearningNoteContentRepository learningNoteContentRepository;
     private final ExamScopeNodeRepository examScopeNodeRepository;
-    private final LearningNoteContentGenerationService contentGenerationService;
 
-    @Transactional(readOnly = true)
     public List<LearningNoteSummaryResponseDto> getCompletedNotes(Long userId) {
         validateUserId(userId);
 
         return documentProcessingRepository.findCompletedOwnedByUserId(userId)
                 .stream()
-                .map(processing -> {
-                    LearningNote note = processing.getLearningNote();
-
-                    return new LearningNoteSummaryResponseDto(
-                            note.getId(),
-                            note.getTitle(),
-                            processing.getStatus().name(),
-                            note.getSourceDocument().getId(),
-                            null,
-                            note.getUserExam().getId(),
-                            note.getUserExam().getExamVersion().getExam().getCode(),
-                            note.getUserExam().getExamVersion().getExam().getName(),
-                            1,
-                            note.getUpdatedAt()
-                    );
-                })
+                .map(this::toSummaryResponse)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public LearningNoteDetailResponseDto getCompletedNote(Long userId, Long learningNoteId) {
-        validateUserId(userId);
-        if (learningNoteId == null || learningNoteId <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
-        }
+    public LearningNoteDetailResponseDto getCompletedNote(
+            Long userId,
+            Long learningNoteId
+    ) {
+        validateIds(userId, learningNoteId);
 
         DocumentProcessing processing = documentProcessingRepository
                 .findCompletedOwnedDetail(learningNoteId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.LEARNING_NOTE_NOT_FOUND));
-
-        LearningNote note = processing.getLearningNote();
-
-        List<LearningNoteContent> contents = learningNoteContentRepository
-                .findAllByLearningNoteIdWithScopeNode(learningNoteId);
-
-        Map<Long, LearningNoteContent> contentByScopeNodeId = contents.stream()
-                .collect(Collectors.toMap(
-                        content -> content.getExamScopeNode().getId(),
-                        Function.identity()
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.LEARNING_NOTE_NOT_FOUND
                 ));
 
+        LearningNote note = processing.getLearningNote();
+        SourceDocument document = note.getSourceDocument();
         Long examVersionId = note.getUserExam().getExamVersion().getId();
-        List<ExamScopeNode> learningTopics = examScopeNodeRepository
-                .findActiveNodesByExamVersionIdAndNodeTypes(
-                        examVersionId,
-                        List.of(ExamScopeNodeType.SECTION, ExamScopeNodeType.TOPIC, ExamScopeNodeType.CONCEPT)
-                )
-                .stream()
-                .sorted(this::compareByExamPartAndTreeOrder)
-                .toList();
 
-        List<LearningNoteDetailResponseDto.ContentItem> contentItems = learningTopics.stream()
-                .map(scopeNode -> {
-                    LearningNoteContent content = contentByScopeNodeId.get(scopeNode.getId());
-                    return new LearningNoteDetailResponseDto.ContentItem(
-                            content == null ? null : content.getId(),
-                            scopeNode.getId(),
-                            scopeNode.getTitle(),
-                            scopeNode.getParent() == null ? null : scopeNode.getParent().getId(),
-                            scopeNode.getDepth(),
-                            scopeNode.getNodeType().name(),
-                            scopeNode.isLeaf(),
-                            scopeNode.getExamPart().getId(),
-                            scopeNode.getExamPart().getName(),
-                            scopeNode.getExamPart().getDisplayOrder(),
-                            content == null ? null : content.getTitle(),
-                            scopeNode.getDisplayOrder(),
-                            content == null ? null : content.getSourceType(),
-                            content == null ? null : content.getContent()
-                    );
-                })
-                .toList();
+        Map<Long, LearningNoteContent> contentByScopeNodeId =
+                learningNoteContentRepository
+                        .findAllByLearningNoteIdWithScopeNode(learningNoteId)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                content -> content.getExamScopeNode().getId(),
+                                Function.identity()
+                        ));
 
-        var sourceDocument = note.getSourceDocument();
-        var exam = note.getUserExam().getExamVersion().getExam();
+        List<LearningNoteDetailResponseDto.ContentItem> contents =
+                examScopeNodeRepository
+                        .findAllActiveForLearningNoteDetail(examVersionId)
+                        .stream()
+                        .map(scopeNode -> toContentItem(
+                                scopeNode,
+                                contentByScopeNodeId.get(scopeNode.getId())
+                        ))
+                        .toList();
+
+        Exam exam = note.getUserExam().getExamVersion().getExam();
 
         return new LearningNoteDetailResponseDto(
                 note.getId(),
                 note.getTitle(),
                 note.getUserExam().getId(),
                 exam.getName(),
-                List.of(new LearningNoteDetailResponseDto.DocumentItem(
-                        sourceDocument.getId(),
-                        sourceDocument.getOriginalFileName(),
-                        sourceDocument.getFileExtension().name(),
-                        sourceDocument.getFileSize()
-                )),
-                contentItems,
+                List.of(toDocumentItem(document)),
+                contents,
                 note.getCreatedAt(),
                 note.getUpdatedAt(),
                 processing.getCompletedAt()
         );
     }
 
-    public void generateTopicContent(Long userId, Long learningNoteId, Long tocId) {
-        validateUserId(userId);
-        if (learningNoteId == null || learningNoteId <= 0 || tocId == null || tocId <= 0) {
+    @Transactional
+    public void updateTitle(
+            Long userId,
+            Long learningNoteId,
+            String title
+    ) {
+        validateIds(userId, learningNoteId);
+
+        LearningNote note = documentProcessingRepository
+                .findCompletedOwnedDetail(learningNoteId, userId)
+                .map(DocumentProcessing::getLearningNote)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.LEARNING_NOTE_NOT_FOUND
+                ));
+
+        try {
+            note.updateTitle(title);
+        } catch (IllegalArgumentException exception) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
+    }
 
-        documentProcessingRepository.findCompletedOwnedDetail(learningNoteId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.LEARNING_NOTE_NOT_FOUND));
+    private LearningNoteSummaryResponseDto toSummaryResponse(
+            DocumentProcessing processing
+    ) {
+        LearningNote note = processing.getLearningNote();
+        SourceDocument document = note.getSourceDocument();
+        Exam exam = note.getUserExam().getExamVersion().getExam();
 
-        contentGenerationService.generateTopic(learningNoteId, tocId);
+        Long firstTocId = learningNoteContentRepository
+                .findAllByLearningNoteIdWithScopeNode(note.getId())
+                .stream()
+                .map(content -> content.getExamScopeNode().getId())
+                .findFirst()
+                .orElse(null);
+
+        return new LearningNoteSummaryResponseDto(
+                note.getId(),
+                note.getTitle(),
+                note.getStatus().name(),
+                document.getId(),
+                firstTocId,
+                note.getUserExam().getId(),
+                exam.getCode(),
+                exam.getName(),
+                1,
+                note.getUpdatedAt()
+        );
+    }
+
+    private LearningNoteDetailResponseDto.DocumentItem toDocumentItem(
+            SourceDocument document
+    ) {
+        return new LearningNoteDetailResponseDto.DocumentItem(
+                document.getId(),
+                document.getOriginalFileName(),
+                document.getFileExtension().getValue(),
+                document.getFileSize()
+        );
+    }
+
+    private LearningNoteDetailResponseDto.ContentItem toContentItem(
+            ExamScopeNode scopeNode,
+            LearningNoteContent content
+    ) {
+        ExamPart examPart = scopeNode.getExamPart();
+
+        return new LearningNoteDetailResponseDto.ContentItem(
+                content == null ? null : content.getId(),
+                scopeNode.getId(),
+                scopeNode.getTitle(),
+                scopeNode.getParent() == null
+                        ? null
+                        : scopeNode.getParent().getId(),
+                scopeNode.getDepth(),
+                scopeNode.getNodeType().name(),
+                scopeNode.isLeaf(),
+                examPart.getId(),
+                examPart.getName(),
+                examPart.getDisplayOrder(),
+                content == null ? null : content.getTitle(),
+                scopeNode.getDisplayOrder(),
+                content == null ? null : content.getSourceType(),
+                content == null ? null : content.getContent()
+        );
     }
 
     private void validateUserId(Long userId) {
@@ -152,45 +192,11 @@ public class LearningNoteService {
         }
     }
 
-    private int compareByExamPartAndTreeOrder(ExamScopeNode left, ExamScopeNode right) {
-        int partOrderComparison = Comparator.nullsLast(Integer::compareTo)
-                .compare(
-                        left.getExamPart().getDisplayOrder(),
-                        right.getExamPart().getDisplayOrder()
-                );
-        if (partOrderComparison != 0) return partOrderComparison;
+    private void validateIds(Long userId, Long learningNoteId) {
+        validateUserId(userId);
 
-        int partIdComparison = Comparator.nullsLast(Long::compareTo)
-                .compare(left.getExamPart().getId(), right.getExamPart().getId());
-        if (partIdComparison != 0) return partIdComparison;
-
-        List<Integer> leftPath = buildDisplayOrderPath(left);
-        List<Integer> rightPath = buildDisplayOrderPath(right);
-
-        int commonLength = Math.min(leftPath.size(), rightPath.size());
-
-        for (int index = 0; index < commonLength; index++) {
-            int pathComparison = Integer.compare(leftPath.get(index), rightPath.get(index));
-            if (pathComparison != 0) return pathComparison;
+        if (learningNoteId == null || learningNoteId <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
-
-        int pathLengthComparison = Integer.compare(leftPath.size(), rightPath.size());
-        if (pathLengthComparison != 0) return pathLengthComparison;
-
-        return Comparator.nullsLast(Long::compareTo).compare(left.getId(), right.getId());
     }
-
-    private List<Integer> buildDisplayOrderPath(ExamScopeNode node) {
-        List<Integer> path = new ArrayList<>();
-        ExamScopeNode current = node;
-
-        while (current != null) {
-            path.add(current.getDisplayOrder() == null ? Integer.MAX_VALUE : current.getDisplayOrder());
-            current = current.getParent();
-        }
-
-        Collections.reverse(path);
-        return path;
-    }
-
 }
