@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -39,6 +40,7 @@ public class DocumentProcessingCoordinator {
             DocumentProcessingContext context
     ) {
         validateContext(context);
+        long pipelineStartedAt = System.nanoTime();
 
         log.info(
                 "문서 처리 파이프라인 시작. processingId={}, learningNoteId={}, sourceDocumentId={}",
@@ -47,10 +49,11 @@ public class DocumentProcessingCoordinator {
                 context.sourceDocumentId()
         );
 
-        ParsedDocument parsedDocument =
-                documentParsingService.parse(
-                        context.sourceDocumentId()
-                );
+        long stageStartedAt = System.nanoTime();
+        ParsedDocument parsedDocument = documentParsingService.parse(
+                context.sourceDocumentId()
+        );
+        logStageElapsed(context, "DOCUMENT_PARSING", stageStartedAt);
 
 
         logParsedDocument(
@@ -64,9 +67,9 @@ public class DocumentProcessingCoordinator {
                 DocumentProcessingStep.QUALITY_CHECK
         );
 
-        documentQualityValidator.validate(
-                parsedDocument
-        );
+        stageStartedAt = System.nanoTime();
+        documentQualityValidator.validate(parsedDocument);
+        logStageElapsed(context, "QUALITY_CHECK", stageStartedAt);
 
 
 
@@ -76,16 +79,17 @@ public class DocumentProcessingCoordinator {
                 DocumentProcessingStep.CHUNKING
         );
 
-        int chunkCount =
-                documentChunkService.createChunks(
-                        context.sourceDocumentId(),
-                        parsedDocument
-                );
+        stageStartedAt = System.nanoTime();
+        int chunkCount = documentChunkService.createChunks(
+                context.sourceDocumentId(),
+                parsedDocument
+        );
 
         List<DocumentChunk> chunks =
                 getCreatedChunks(
                         context.sourceDocumentId()
                 );
+        logStageElapsed(context, "CHUNKING", stageStartedAt);
 
         log.info(
                 "파싱/청킹 테스트 완료. processingId={}, sourceDocumentId={}, parsedBlockCount={}, chunkCount={}",
@@ -117,27 +121,29 @@ public class DocumentProcessingCoordinator {
                 DocumentProcessingStep.SCOPE_MAPPING
         );
 
-        scopeMappingService.mapDocuments(
-                context.learningNoteId()
-        );
+        stageStartedAt = System.nanoTime();
+        scopeMappingService.mapDocuments(context.learningNoteId());
+        logStageElapsed(context, "SCOPE_MAPPING", stageStartedAt);
 
         changeStep(
                 context,
                 DocumentProcessingStep.CONTENT_GENERATING
         );
 
+        stageStartedAt = System.nanoTime();
         int generatedTopicCount = contentGenerationService.generate(
                 context.learningNoteId()
         );
+        logStageElapsed(context, "CONTENT_GENERATING", stageStartedAt);
 
         changeStep(
                 context,
                 DocumentProcessingStep.FINALIZING
         );
 
-        contentGenerationService.finalizeGeneration(
-                context.learningNoteId()
-        );
+        stageStartedAt = System.nanoTime();
+        contentGenerationService.finalizeGeneration(context.learningNoteId());
+        logStageElapsed(context, "FINALIZING", stageStartedAt);
 
         changeStep(
                 context,
@@ -151,6 +157,33 @@ public class DocumentProcessingCoordinator {
                 chunks.size(),
                 generatedTopicCount
         );
+
+        log.info(
+                "[DOCUMENT_PERF] pipeline completed. processingId={}, learningNoteId={}, totalMs={}, chunkCount={}, generatedTopicCount={}",
+                context.processingId(),
+                context.learningNoteId(),
+                elapsedMillis(pipelineStartedAt),
+                chunks.size(),
+                generatedTopicCount
+        );
+    }
+
+    private void logStageElapsed(
+            DocumentProcessingContext context,
+            String stage,
+            long startedAt
+    ) {
+        log.info(
+                "[DOCUMENT_PERF] stage completed. processingId={}, learningNoteId={}, stage={}, elapsedMs={}",
+                context.processingId(),
+                context.learningNoteId(),
+                stage,
+                elapsedMillis(startedAt)
+        );
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     }
 
     private void logParsedDocument(

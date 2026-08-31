@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -164,8 +165,14 @@ public class DocumentEmbeddingService {
                     )
                     .toList();
 
-            List<List<Double>> embeddings =
-                    embeddingClient.embedAll(texts);
+            long requestStartedAt = System.nanoTime();
+            List<List<Double>> embeddings = embeddingClient.embedAll(texts);
+
+            log.info(
+                    "[DOCUMENT_PERF] chunk embedding batch completed. batchSize={}, elapsedMs={}",
+                    texts.size(),
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - requestStartedAt)
+            );
 
             if (embeddings == null
                     || embeddings.size() != batch.size()) {
