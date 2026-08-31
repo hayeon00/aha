@@ -5,12 +5,14 @@ import com.aha.domain.document.client.mapping.dto.ChunkScopeMappingRequest;
 import com.aha.domain.document.client.mapping.dto.ScopeMappingAiResult;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
+import com.aha.global.openai.OpenAiApiExceptionTranslator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -80,6 +82,9 @@ public class OpenAiDocumentScopeMappingClient
                 return results;
 
             } catch (BusinessException exception) {
+                if (OpenAiApiExceptionTranslator.isCreditExhausted(exception)) {
+                    throw exception;
+                }
                 lastException = exception;
 
                 if (attempt >= MAX_ATTEMPTS) {
@@ -145,6 +150,16 @@ public class OpenAiDocumentScopeMappingClient
         } catch (BusinessException exception) {
             throw exception;
 
+        } catch (RestClientResponseException exception) {
+            log.error(
+                    "OpenAI 목차 매핑 HTTP 응답 실패. statusCode={}",
+                    exception.getStatusCode().value(),
+                    exception
+            );
+            throw OpenAiApiExceptionTranslator.translate(
+                    exception,
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
         } catch (RestClientException exception) {
             log.error(
                     "OpenAI 목차 매핑 HTTP 요청 실패.",

@@ -5,9 +5,12 @@ import com.aha.domain.document.client.embedding.dto.EmbeddingResponse;
 import com.aha.domain.document.service.processing.embedding.EmbeddingModelProvider;
 import com.aha.global.exception.BusinessException;
 import com.aha.global.exception.ErrorCode;
+import com.aha.global.openai.OpenAiApiExceptionTranslator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Comparator;
 import java.util.List;
@@ -51,11 +54,21 @@ public class OpenAiEmbeddingClient implements EmbeddingClient {
                 normalizedTexts
         );
 
-        EmbeddingResponse response = openAiRestClient.post()
-                .uri(EMBEDDING_ENDPOINT)
-                .body(request)
-                .retrieve()
-                .body(EmbeddingResponse.class);
+        EmbeddingResponse response;
+        try {
+            response = openAiRestClient.post()
+                    .uri(EMBEDDING_ENDPOINT)
+                    .body(request)
+                    .retrieve()
+                    .body(EmbeddingResponse.class);
+        } catch (RestClientResponseException exception) {
+            throw OpenAiApiExceptionTranslator.translate(
+                    exception,
+                    ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED
+            );
+        } catch (RestClientException exception) {
+            throw new BusinessException(ErrorCode.DOCUMENT_SCOPE_MAPPING_FAILED);
+        }
 
         if (response == null || response.data() == null || response.data().isEmpty()) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR);
