@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -128,11 +129,16 @@ public class SecurityConfig {
                                 "/ws",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
+                                "/uploads/**"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
                                 "/api/v1/exams",
                                 "/api/v1/exam-versions/*/syllabus",
-                                "/uploads/**"
-                        )
-                        .permitAll()
+                                "/api/v1/concepts",
+                                "/api/v1/concepts/*"
+                        ).permitAll()
 
                         .requestMatchers(
                                 "/api/v1/admin/**"
