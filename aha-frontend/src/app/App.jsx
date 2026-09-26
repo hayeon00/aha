@@ -20,6 +20,8 @@ import PastPaperExplanationPage from "../features/pastpaper/pages/PastPaperExpla
 import StudyRoomPage from "../features/study/pages/StudyRoomPage.jsx";
 import StudyRoomWaitingPage from "../features/study/pages/StudyRoomWaitingPage.jsx";
 import MainLayout from "../common/layouts/MainLayout.jsx";
+import ConceptListPage from "../features/concept/pages/ConceptListPage.jsx";
+import ConceptDetailPage from "../features/concept/pages/ConceptDetailPage.jsx";
 
 import { useAuth } from "../features/auth/context/useAuth.js";
 
@@ -118,6 +120,8 @@ function App() {
             <Route element={isLoggedIn ? <MainLayout onLogout={handleLogout} /> : <Navigate to="/main" replace />}>
 
                 <Route path="/learning-home" element={<LearningHomePage />} />
+                <Route path="/concepts" element={<ConceptListPage />} />
+                <Route path="/concepts/:conceptId" element={<ConceptDetailPage />} />
 
                 <Route
                     path="/learning"
