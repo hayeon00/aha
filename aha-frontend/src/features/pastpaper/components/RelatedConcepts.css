@@ -1,0 +1,12 @@
+.related-concepts { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+.related-concepts h3 { margin: 0 0 12px; color: #334155; font-size: 14px; }
+.related-concepts ul { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.related-concepts a { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid #fed7aa; border-radius: 12px; background: #fffaf5; text-decoration: none; transition: background .2s; }
+.related-concepts a:hover { background: #fff7ed; }
+.related-concepts a:focus-visible, .related-concepts-feedback button:focus-visible { outline: 2px solid #ea580c; outline-offset: 3px; }
+.related-concepts strong { color: #334155; font-size: 14px; overflow-wrap: anywhere; }
+.related-concepts a > span { color: #c2410c; font-size: 12px; white-space: nowrap; }
+.related-concepts-feedback { margin: 20px 0 0; color: #64748b; font-size: 13px; line-height: 1.7; }
+.related-concepts-feedback button { padding: 5px 8px; border-radius: 6px; color: #c2410c; background: #fff7ed; }
+@media (max-width: 650px) { .related-concepts a { align-items: flex-start; flex-direction: column; gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { .related-concepts a { transition: none; } }
