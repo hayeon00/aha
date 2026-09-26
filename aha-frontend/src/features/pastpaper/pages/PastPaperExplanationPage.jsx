@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useUserExams } from "../../exam/hooks/useUserExams.js";
 import PastPaperProblemViewer from "../components/PastPaperProblemViewer.jsx";
 import {
     getPastPaperAttemptAnswers,
@@ -11,6 +12,9 @@ function PastPaperExplanationPage() {
     const { pastPaperId, attemptId } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialUserExamId = Number(searchParams.get("userExamId") || sessionStorage.getItem("activeUserExamId")) || undefined;
+    const { selectedExamVersionId, selectedUserExamId, isExamLoading } = useUserExams({ initialUserExamId });
     const [items, setItems] = useState([]);
     const [answers, setAnswers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +111,8 @@ function PastPaperExplanationPage() {
             title={pastPaperTitle}
             items={items}
             answers={answers}
+            examVersionId={isExamLoading ? null : selectedExamVersionId}
+            userExamId={selectedUserExamId}
         />
     );
 }

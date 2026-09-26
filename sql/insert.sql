@@ -46,8 +46,8 @@ SET @node_attribute        = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 
 SET @node_identifier       = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-01-05' LIMIT 1); -- 식별자
 SET @node_normalization    = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-02-01' LIMIT 1); -- 정규화
 SET @node_select_stmt      = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-02' LIMIT 1);   -- SELECT 문
-SET @node_where_clause     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-04' LIMIT 1);   -- WHERE 절
-SET @node_groupby_clause   = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-05' LIMIT 1);   -- GROUP BY, HAVING 절
+SET @node_where_clause     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-05' LIMIT 1);   -- WHERE 절
+SET @node_groupby_clause   = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-09' LIMIT 1);   -- GROUP BY, HAVING 절
 SET @node_subquery         = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-01' LIMIT 1);   -- 서브쿼리
 SET @node_window_func      = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-04' LIMIT 1);   -- 윈도우 함수
 
@@ -434,20 +434,20 @@ SELECT
         WHEN 2 THEN @node_groupby_clause
         WHEN 3 THEN @node_subquery
         ELSE @node_window_func
-    END,
+        END,
     'SINGLE_CHOICE',
     CONCAT(
-        '### SQLD 2025년 1회차 ',
-        `number`,
-        '번 가상 문제',
-        '\n\n다음 중 SQL 기본 및 활용에 대한 설명으로 가장 올바른 것을 고르시오.'
+            '### SQLD 2025년 1회차 ',
+            `number`,
+            '번 가상 문제',
+            '\n\n다음 중 SQL 기본 및 활용에 대한 설명으로 가장 올바른 것을 고르시오.'
     ),
     2,
     CAST(MOD(`number` - 1, 4) + 1 AS CHAR),
     CONCAT(
-        '**정답 설명:** ',
-        MOD(`number` - 1, 4) + 1,
-        '번 선택지가 올바른 설명입니다.'
+            '**정답 설명:** ',
+            MOD(`number` - 1, 4) + 1,
+            '번 선택지가 올바른 설명입니다.'
     ),
     4,
     NOW(),
@@ -473,24 +473,24 @@ WITH RECURSIVE `problem_numbers` (`number`) AS (
     FROM `problem_numbers`
     WHERE `number` < 50
 ),
-`choice_numbers` (`number`) AS (
-    SELECT 1
-    UNION ALL
-    SELECT `number` + 1
-    FROM `choice_numbers`
-    WHERE `number` < 4
-)
+               `choice_numbers` (`number`) AS (
+                   SELECT 1
+                   UNION ALL
+                   SELECT `number` + 1
+                   FROM `choice_numbers`
+                   WHERE `number` < 4
+               )
 SELECT
     @prob_id_11 + `problem_numbers`.`number` - 11,
     `choice_numbers`.`number`,
     CONCAT(
-        `choice_numbers`.`number`,
-        '번 선택지: SQL 기본 및 활용 가상 설명'
+            `choice_numbers`.`number`,
+            '번 선택지: SQL 기본 및 활용 가상 설명'
     ),
     NOW(),
     NOW()
 FROM `problem_numbers`
-CROSS JOIN `choice_numbers`
+         CROSS JOIN `choice_numbers`
 ORDER BY `problem_numbers`.`number`, `choice_numbers`.`number`;
 
 INSERT INTO `past_paper_item` (
@@ -537,9 +537,11 @@ SET @past_paper_id_2 = LAST_INSERT_ID();
 SET @node_model_understand = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-01-01' LIMIT 1); -- 데이터모델의 이해
 SET @node_normalization    = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-02-01' LIMIT 1); -- 정규화
 SET @node_select_stmt      = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-02' LIMIT 1);   -- SELECT 문
-SET @node_where_clause     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-04' LIMIT 1);   -- WHERE 절
-SET @node_groupby_clause   = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-05' LIMIT 1);   -- GROUP BY, HAVING 절
-SET @node_join             = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-07' LIMIT 1);   -- 조인
+SET @node_sql_function     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-07' LIMIT 1); -- SQL 함수
+SET @node_null             = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-06' LIMIT 1); -- NULL 처리
+SET @node_where_clause     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-05' LIMIT 1);   -- WHERE 절
+SET @node_groupby_clause   = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-09' LIMIT 1);   -- GROUP BY, HAVING 절
+SET @node_join             = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-12' LIMIT 1);   -- 표준 조인
 SET @node_subquery         = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-01' LIMIT 1);   -- 서브쿼리
 SET @node_group_func       = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-03' LIMIT 1);   -- 그룹 함수
 SET @node_top_n            = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-05' LIMIT 1);   -- Top N 쿼리
@@ -580,7 +582,7 @@ INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `cre
 
 -- [문제 3] SELECT 문 문자열 함수 연산
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
-VALUES (@node_select_stmt, 'SINGLE_CHOICE', '### 다음 중 `SELECT SUBSTR(''SQLD_EXAM'', 1, 4)` 연산을 수행했을 때 반환되는 결과값으로 올바른 것은? (단, SQL 표준 및 Oracle 규칙을 따름)', 2, '1', '**정답 설명:** SUBSTR(문자열, 시작위치, 길이) 함수는 지정한 시작 위치부터 명시한 길이만큼의 문자열을 잘라냅니다. 1번째 글자인 ''S''부터 4글자를 가져오므로 결과는 ''SQLD''가 됩니다.', 4, NOW(), NOW());
+VALUES (@node_sql_function, 'SINGLE_CHOICE', '### 다음 중 `SELECT SUBSTR(''SQLD_EXAM'', 1, 4)` 연산을 수행했을 때 반환되는 결과값으로 올바른 것은? (단, SQL 표준 및 Oracle 규칙을 따름)', 2, '1', '**정답 설명:** SUBSTR(문자열, 시작위치, 길이) 함수는 지정한 시작 위치부터 명시한 길이만큼의 문자열을 잘라냅니다. 1번째 글자인 ''S''부터 4글자를 가져오므로 결과는 ''SQLD''가 됩니다.', 4, NOW(), NOW());
 SET @prob_id_2_3 = LAST_INSERT_ID();
 
 INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at`, `updated_at`) VALUES
@@ -594,7 +596,7 @@ INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `cre
 
 -- [문제 4] WHERE 절 NULL 비교 문법 오류 단골
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
-VALUES (@node_where_clause, 'SINGLE_CHOICE', '### 테이블에서 `COMM` 컬럼의 값이 비어있는(NULL) 행들만 올바르게 필터링하기 위한 SQL 조건절로 가장 적절한 것은?', 2, '2', '**정답 설명:** SQL에서 NULL 값은 알 수 없는 값(Unknown)이므로 비교 연산자(`=`, `!=`)로 동등 비교를 수행할 수 없습니다. NULL 데이터를 찾을 때는 반드시 전용 연산자인 `IS NULL`을 사용해야 합니다.', 4, NOW(), NOW());
+VALUES (@node_null, 'SINGLE_CHOICE', '### 테이블에서 `COMM` 컬럼의 값이 비어있는(NULL) 행들만 올바르게 필터링하기 위한 SQL 조건절로 가장 적절한 것은?', 2, '2', '**정답 설명:** SQL에서 NULL 값은 알 수 없는 값(Unknown)이므로 비교 연산자(`=`, `!=`)로 동등 비교를 수행할 수 없습니다. NULL 데이터를 찾을 때는 반드시 전용 연산자인 `IS NULL`을 사용해야 합니다.', 4, NOW(), NOW());
 SET @prob_id_2_4 = LAST_INSERT_ID();
 
 INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at`, `updated_at`) VALUES
@@ -714,7 +716,8 @@ SET @node_model_understand = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 
 SET @node_identifier       = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-01-05' LIMIT 1); -- 식별자
 SET @node_normalization    = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-MODELING-02-01' LIMIT 1); -- 정규화
 SET @node_select_stmt      = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-02' LIMIT 1);   -- SELECT 문
-SET @node_std_join         = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-08' LIMIT 1);   -- 표준 조인
+SET @node_null             = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-06' LIMIT 1); -- NULL 처리
+SET @node_std_join         = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-01-12' LIMIT 1);   -- 표준 조인
 SET @node_set_operator     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-02' LIMIT 1);   -- 집합 연산자
 SET @node_group_func       = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-03' LIMIT 1);   -- 그룹 함수
 SET @node_hierarchical     = (SELECT `id` FROM `exam_scope_node` WHERE `code` = 'SQLD-SQL-02-06' LIMIT 1);   -- 계층형 질의와 셀프 조인
@@ -775,7 +778,7 @@ INSERT INTO `past_paper_item` (`past_paper_id`, `problem_id`, `sort_order`, `cre
 
 -- [문제 4] SELECT 문 NULL 변환 함수 (NVL, COALESCE) 차이점
 INSERT INTO `problem` (`exam_scope_node_id`, `format`, `content`, `score`, `answer`, `explanation`, `choice_count`, `created_at`, `updated_at`)
-VALUES (@node_select_stmt, 'SINGLE_CHOICE', '### 다음 중 각 데이터베이스 제품별 NULL 처리 함수의 연산 결과가 올바르지 않은 항목은? (단, 각 테이블의 해당 컬럼 값은 NULL 임)', 2, '4', '**정답 설명:** `COALESCE` 함수는 인자로 주어진 표현식 목록 중 **NULL이 아닌 첫 번째 값**을 반환하는 가변 인자 표준 함수입니다. `COALESCE(NULL, NULL, ''SQLD'')`를 수행하면 처음으로 NULL이 아닌 값인 `''SQLD''`가 반환되어야 하므로 NULL을 그대로 반환한다는 설명은 틀렸습니다.', 4, NOW(), NOW());
+VALUES (@node_null, 'SINGLE_CHOICE', '### 다음 중 각 데이터베이스 제품별 NULL 처리 함수의 연산 결과가 올바르지 않은 항목은? (단, 각 테이블의 해당 컬럼 값은 NULL 임)', 2, '4', '**정답 설명:** `COALESCE` 함수는 인자로 주어진 표현식 목록 중 **NULL이 아닌 첫 번째 값**을 반환하는 가변 인자 표준 함수입니다. `COALESCE(NULL, NULL, ''SQLD'')`를 수행하면 처음으로 NULL이 아닌 값인 `''SQLD''`가 반환되어야 하므로 NULL을 그대로 반환한다는 설명은 틀렸습니다.', 4, NOW(), NOW());
 SET @prob_id_3_4 = LAST_INSERT_ID();
 
 INSERT INTO `problem_choice` (`problem_id`, `sort_order`, `content`, `created_at`, `updated_at`) VALUES
@@ -919,5 +922,198 @@ VALUES (@past_paper_id_3, @prob_id_3_10, 10, NOW(), NOW());
 -- =================================================================
 -- 4. 3회차 트랜잭션 최종 반영 및 종결
 -- =================================================================
+
+-- SQLD concept learning: JOIN / LEFT OUTER JOIN
+INSERT INTO concept
+(exam_version_id, exam_scope_node_id, code, title, summary, display_order)
+VALUES
+    (@exam_version_id, @node_std_join, 'SQL_JOIN', 'JOIN',
+     '두 테이블의 행을 연결해 조회한다. INNER JOIN과 OUTER JOIN의 결과 차이를 학습한다.', 1)
+ON DUPLICATE KEY UPDATE
+                     id = LAST_INSERT_ID(id),
+                     exam_scope_node_id = VALUES(exam_scope_node_id),
+                     title = VALUES(title),
+                     summary = VALUES(summary),
+                     display_order = VALUES(display_order);
+
+SET @join_concept_id := LAST_INSERT_ID();
+
+INSERT INTO concept_card (concept_id, title, body, display_order)
+VALUES (
+           @join_concept_id,
+           'LEFT OUTER JOIN',
+           JSON_OBJECT(
+                   'version', 1,
+                   'blocks', JSON_ARRAY(
+                           JSON_OBJECT(
+                                   'type', 'definition',
+                                   'text', 'LEFT OUTER JOIN은 왼쪽 테이블의 모든 행을 유지하고, ON 조건에 일치하는 오른쪽 테이블의 행을 결합한다. 일치하는 행이 없으면 오른쪽 테이블의 컬럼은 NULL로 표시된다.'
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'example',
+                                   'text', 'EMPLOYEE: (1, 김철수, 10), (2, 이영희, 99) / DEPARTMENT: (10, 개발팀)',
+                                   'sql', 'SELECT e.emp_id, e.name, d.dept_name FROM employee e LEFT OUTER JOIN department d ON e.dept_id = d.dept_id;',
+                                   'result', JSON_ARRAY(
+                                           JSON_OBJECT('emp_id', 1, 'name', '김철수', 'dept_name', '개발팀'),
+                                           JSON_OBJECT('emp_id', 2, 'name', '이영희', 'dept_name', NULL)
+                                             )
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'exam_tip',
+                                   'text', 'ON 조건과 WHERE 조건을 구분한다. WHERE 절에서 오른쪽 테이블의 컬럼에 IS NOT NULL 조건을 걸면 일치하지 않아 NULL로 채워진 행은 결과에서 제외된다.'
+                           )
+                             )
+           ),
+           1
+       )
+ON DUPLICATE KEY UPDATE
+                     title = VALUES(title),
+                     body = VALUES(body);
+
+
+
 COMMIT;
+
+START TRANSACTION;
+
+-- SQLD 2025 시험 버전과 'SELECT 기본 구조' 목차 찾기
+SET @select_version_id := (
+    SELECT v.id
+    FROM exam_version v
+             JOIN exam e ON e.id = v.exam_id
+    WHERE e.code = 'SQLD'
+      AND v.version_no = 2025
+    LIMIT 1
+);
+
+SET @select_scope_id := (
+    SELECT id
+    FROM exam_scope_node
+    WHERE exam_version_id = @select_version_id
+      AND code = 'SQLD-SQL-01-02'
+    LIMIT 1
+);
+
+-- 핵심 개념
+INSERT INTO concept
+(exam_version_id, exam_scope_node_id, code, title, summary, display_order)
+VALUES
+    (
+        @select_version_id,
+        @select_scope_id,
+        'SQL_SELECT_BASIC',
+        'SELECT 기본 구조',
+        'SELECT 문에서 조회 대상과 테이블을 지정하고, 조건으로 행을 걸러낸 뒤 필요한 결과를 만드는 기본 흐름을 익힌다.',
+        1
+    )
+ON DUPLICATE KEY UPDATE
+                     id = LAST_INSERT_ID(id),
+                     exam_scope_node_id = VALUES(exam_scope_node_id),
+                     title = VALUES(title),
+                     summary = VALUES(summary),
+                     display_order = VALUES(display_order);
+
+SET @select_concept_id := LAST_INSERT_ID();
+
+-- 상세 카드 1: SELECT와 FROM
+INSERT INTO concept_card (concept_id, title, body, display_order)
+VALUES (
+           @select_concept_id,
+           'SELECT 문 기본 형태',
+           JSON_OBJECT(
+                   'version', 1,
+                   'blocks', JSON_ARRAY(
+                           JSON_OBJECT(
+                                   'type', 'definition',
+                                   'text', 'SELECT는 결과에 표시할 열이나 표현식을 지정하고, FROM은 데이터를 읽을 테이블을 지정한다.'
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'example',
+                                   'text', 'EMPLOYEE 테이블에서 이름과 부서 번호를 조회한다.',
+                                   'sql', 'SELECT employee_name, department_id FROM employee;',
+                                   'result', JSON_ARRAY(
+                                           JSON_OBJECT('employee_name', '김하나', 'department_id', 10),
+                                           JSON_OBJECT('employee_name', '이두리', 'department_id', 20)
+                                             )
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'exam_tip',
+                                   'text', 'SELECT *는 테이블의 모든 열을 조회한다. 특정 열만 필요하면 열 이름을 명시한다.'
+                           )
+                             )
+           ),
+           1
+       )
+ON DUPLICATE KEY UPDATE
+                     title = VALUES(title),
+                     body = VALUES(body);
+
+-- 상세 카드 2: WHERE
+INSERT INTO concept_card (concept_id, title, body, display_order)
+VALUES (
+           @select_concept_id,
+           'WHERE 절과 행 필터링',
+           JSON_OBJECT(
+                   'version', 1,
+                   'blocks', JSON_ARRAY(
+                           JSON_OBJECT(
+                                   'type', 'definition',
+                                   'text', 'WHERE는 조회 대상 행에 적용할 조건을 지정한다. 조건을 만족하는 행만 이후 결과에 포함된다.'
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'example',
+                                   'text', 'EMPLOYEE 테이블에서 부서 번호가 10인 직원의 이름을 조회한다.',
+                                   'sql', 'SELECT employee_name FROM employee WHERE department_id = 10;',
+                                   'result', JSON_ARRAY(
+                                           JSON_OBJECT('employee_name', '김하나')
+                                             )
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'exam_tip',
+                                   'text', 'WHERE는 행을 걸러내는 절이다. 그룹 집계 결과에 대한 조건은 HAVING에서 지정한다.'
+                           )
+                             )
+           ),
+           2
+       )
+ON DUPLICATE KEY UPDATE
+                     title = VALUES(title),
+                     body = VALUES(body);
+
+-- 상세 카드 3: 작성 순서와 논리적 처리 순서
+INSERT INTO concept_card (concept_id, title, body, display_order)
+VALUES (
+           @select_concept_id,
+           '절의 작성 순서와 논리적 처리 순서',
+           JSON_OBJECT(
+                   'version', 1,
+                   'blocks', JSON_ARRAY(
+                           JSON_OBJECT(
+                                   'type', 'definition',
+                                   'text', '기본 작성 순서는 SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY이다. 결과를 이해할 때의 논리적 처리 순서는 FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY로 생각할 수 있다.'
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'example',
+                                   'text', '부서별 직원 수를 집계하고 두 명 이상인 부서만 직원 수가 많은 순서로 표시한다.',
+                                   'sql', 'SELECT department_id, COUNT(*) AS employee_count FROM employee WHERE department_id IS NOT NULL GROUP BY department_id HAVING COUNT(*) >= 2 ORDER BY employee_count DESC;',
+                                   'result', JSON_ARRAY(
+                                           JSON_OBJECT('department_id', 10, 'employee_count', 3),
+                                           JSON_OBJECT('department_id', 20, 'employee_count', 2)
+                                             )
+                           ),
+                           JSON_OBJECT(
+                                   'type', 'exam_tip',
+                                   'text', 'WHERE는 그룹화 전의 행에, HAVING은 그룹화 후의 그룹에 조건을 적용한다. 정렬을 지정하지 않으면 결과 행의 순서는 보장되지 않는다.'
+                           )
+                             )
+           ),
+           3
+       )
+ON DUPLICATE KEY UPDATE
+                     title = VALUES(title),
+                     body = VALUES(body);
+
+COMMIT;
+
+
 

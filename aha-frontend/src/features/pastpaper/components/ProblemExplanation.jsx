@@ -1,7 +1,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import RelatedConcepts from "./RelatedConcepts.jsx";
 
-function ProblemExplanation({ answer, userAnswer, correct, explanation }) {
+function ProblemExplanation({ answer, userAnswer, correct, explanation, problemId, examScopeNodeId, examVersionId, userExamId }) {
     return (
         <section className="problem-explanation" aria-label="문제 해설">
             <div className="problem-explanation-summary">
@@ -24,6 +25,14 @@ function ProblemExplanation({ answer, userAnswer, correct, explanation }) {
                     {explanation || "등록된 해설이 없습니다."}
                 </ReactMarkdown>
             </div>
+            {correct === false && examVersionId && examScopeNodeId && (
+                <RelatedConcepts
+                    key={`${problemId}-${examVersionId}-${examScopeNodeId}`}
+                    examVersionId={examVersionId}
+                    examScopeNodeId={examScopeNodeId}
+                    userExamId={userExamId}
+                />
+            )}
         </section>
     );
 }

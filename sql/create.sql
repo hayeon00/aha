@@ -44,6 +44,10 @@ DROP TABLE IF EXISTS `active_study_room_participation`;
 DROP TABLE IF EXISTS `study_room_member`;
 DROP TABLE IF EXISTS `study_room`;
 
+DROP TABLE IF EXISTS `problem_concept`;
+DROP TABLE IF EXISTS `concept_card`;
+DROP TABLE IF EXISTS `concept`;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 
@@ -969,6 +973,82 @@ CREATE TABLE `active_study_room_participation`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
     CONSTRAINT `fk_active_study_room_participation_study_room_id`
         FOREIGN KEY (`study_room_id`) REFERENCES `study_room` (`id`)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+
+-- problem 테이블 정의 뒤에 추가
+CREATE TABLE `concept`
+(
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT,
+    `exam_version_id`    BIGINT       NOT NULL,
+    `exam_scope_node_id` BIGINT       NOT NULL,
+    `code`               VARCHAR(50)  NOT NULL,
+    `title`              VARCHAR(100) NOT NULL,
+    `summary`            VARCHAR(500) NULL,
+    `display_order`      INT          NOT NULL DEFAULT 0,
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_concept_version_code` (`exam_version_id`, `code`),
+    INDEX `idx_concept_scope_order` (`exam_scope_node_id`, `display_order`),
+    CONSTRAINT `fk_concept_version`
+        FOREIGN KEY (`exam_version_id`) REFERENCES `exam_version` (`id`),
+    CONSTRAINT `fk_concept_scope`
+        FOREIGN KEY (`exam_scope_node_id`) REFERENCES `exam_scope_node` (`id`),
+    CONSTRAINT `chk_concept_display_order`
+        CHECK (`display_order` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `concept_card`
+(
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT,
+    `concept_id`    BIGINT       NOT NULL,
+    `title`         VARCHAR(150) NOT NULL,
+    `body`          JSON         NOT NULL,
+    `display_order` INT          NOT NULL,
+    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_card_concept_order` (`concept_id`, `display_order`),
+    UNIQUE KEY `uk_card_id_concept` (`id`, `concept_id`),
+    CONSTRAINT `fk_card_concept`
+        FOREIGN KEY (`concept_id`) REFERENCES `concept` (`id`)
+            ON DELETE CASCADE,
+    CONSTRAINT `chk_card_display_order`
+        CHECK (`display_order` >= 0)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+CREATE TABLE `problem_concept`
+(
+    `id`              BIGINT NOT NULL AUTO_INCREMENT,
+    `problem_id`      BIGINT NOT NULL,
+    `concept_id`      BIGINT NOT NULL,
+    `concept_card_id` BIGINT NULL,
+
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_problem_concept` (`problem_id`, `concept_id`),
+    INDEX `idx_problem_concept_concept` (`concept_id`, `problem_id`),
+    INDEX `idx_problem_concept_card_concept`
+        (`concept_card_id`, `concept_id`),
+    CONSTRAINT `fk_problem_concept_problem`
+        FOREIGN KEY (`problem_id`) REFERENCES `problem` (`id`)
+            ON DELETE CASCADE,
+    CONSTRAINT `fk_problem_concept_concept`
+        FOREIGN KEY (`concept_id`) REFERENCES `concept` (`id`)
+            ON DELETE CASCADE,
+    CONSTRAINT `fk_problem_concept_card`
+        FOREIGN KEY (`concept_card_id`, `concept_id`)
+            REFERENCES `concept_card` (`id`, `concept_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;

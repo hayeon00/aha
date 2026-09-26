@@ -120,7 +120,9 @@ public enum ErrorCode {
     STUDY_ROOM_INSUFFICIENT_MEMBERS(409,"STUDY_015" ,"스터디룸 최소인원 미달입니다." ),
     STUDY_ROOM_ALL_MEMBER_NOT_READY(409,"STUDY_016" ,"스터디룸 멤버 전원이 준비상태여야 합니다." ),
     STUDY_ROOM_WAITING(409,"STUDY_017" ,"스터디룸이 대기 중이라 풀이에 접근할 수 없습니다." ),
-    STUDY_ROOM_ATTEMPT_NOT_FOUND(404,"STUDY_018" ,"사용자에 대한 스터디룸 풀이를 찾을 수 없습니다." );
+    STUDY_ROOM_ATTEMPT_NOT_FOUND(404,"STUDY_018" ,"사용자에 대한 스터디룸 풀이를 찾을 수 없습니다." ),
+
+    CONCEPT_NOT_FOUND(404, "CONCEPT_001", "핵심 개념을 찾을 수 없습니다.");
 
     private final int status;
     private final String code;

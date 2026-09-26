@@ -16,6 +16,7 @@ public record PastPaperItemResponseDto(
     int sortOrder,
     long problemId,
     String examPartName,
+    Long examScopeNodeId,   // 문항별 풀이 결과에서 관련 개념 설명 제공을 위해 추가됨
     String examScopeTitle,
     ProblemFormat problemFormat,
     String content,
@@ -38,6 +39,7 @@ public record PastPaperItemResponseDto(
             .sortOrder(item.getSortOrder())
             .problemId(problem.getId())
             .examPartName(part.getName())
+                .examScopeNodeId(isGraded ? node.getId() : null)
             .examScopeTitle(isGraded ? node.getTitle() : null)
             .problemFormat(problem.getFormat())
             .content(problem.getContent())

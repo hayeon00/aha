@@ -31,6 +31,8 @@ function PastPaperProblemViewer({
     title,
     items,
     answers,
+    examVersionId,
+    userExamId,
 }) {
     const isExplanation = mode === "explanation";
     const [filter, setFilter] = useState("all");
@@ -233,6 +235,10 @@ function PastPaperProblemViewer({
                                     userAnswer={currentItem.userAnswer}
                                     correct={currentItem.correct}
                                     explanation={currentItem.explanation}
+                                    problemId={currentItem.problemId}
+                                    examScopeNodeId={currentItem.examScopeNodeId}
+                                    examVersionId={examVersionId}
+                                    userExamId={userExamId}
                                 />
                             </div>
 

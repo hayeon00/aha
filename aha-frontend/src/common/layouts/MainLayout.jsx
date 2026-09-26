@@ -182,6 +182,20 @@ function MainLayout({ onLogout }) {
 
                     <button
                         type="button"
+                        className={isActive("/concepts") ? "active" : ""}
+                        aria-current={isActive("/concepts") ? "page" : undefined}
+                        onClick={() => navigate("/concepts")}
+                    >
+                        <span className="nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M12 7v13M12 7C10 5 7 4 4 4v14c3 0 6 0 8 2 2-2 5-2 8-2V4c-3 0-6 1-8 3Z" />
+                            </svg>
+                        </span>
+                        <span>개념 학습</span>
+                    </button>
+
+                    <button
+                        type="button"
                         className={isActive("/learning") ? "active" : ""}
                         onClick={() => navigate(`/learning${sessionStorage.getItem("activeUserExamId") ? `?userExamId=${sessionStorage.getItem("activeUserExamId")}` : ""}`)}
                     >
